@@ -1,0 +1,18 @@
+Original game source and generated geometry
+===========================================
+
+The original game source and generated geometry are UNLICENSED. No public
+open-source license or additional redistribution rights are granted by this
+repository. Existing permissions provided to the project owner are unchanged.
+
+Third-party components retain their own licenses:
+
+- Three.js and its included addon modules: MIT license. See
+  vendor/THREE-LICENSE.txt.
+- Studio Small 09 HDRI by Sergej Majboroda / Poly Haven: CC0 1.0 Universal.
+  See assets/LICENSE.txt.
+- npm dependencies retain the licenses distributed with their packages.
+
+The game is an original visual interpretation and is not affiliated with,
+endorsed by, or a licensed product of Tesla. No Tesla photographs or official
+CAD assets are included.

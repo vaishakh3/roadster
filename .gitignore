@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.openai/
+.env
+.env.*
+!.env.example
+*.tar.gz
+*.png
+.DS_Store
+coverage/
+tests/*-report.json
+tests/*-report.txt
+tests/*-log.txt
+review-r*/

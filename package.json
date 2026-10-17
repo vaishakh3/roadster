@@ -1,0 +1,22 @@
+{
+  "name": "roadster-flight-lab",
+  "version": "1.0.0",
+  "description": "A cinematic original 3D Roadster-inspired proving ground",
+  "scripts": {
+    "start": "python3 -m http.server 4173",
+    "test": "node tests/physics.test.mjs && node tests/integration.test.mjs",
+    "build": "node scripts/build.mjs",
+    "test:browser": "node tests/browser-qa.cjs"
+  },
+  "keywords": [],
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "@sparticuz/chromium": "138.0.2",
+    "esbuild": "0.25.10",
+    "playwright-core": "1.57.0"
+  }
+}
