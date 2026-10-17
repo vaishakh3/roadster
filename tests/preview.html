@@ -1,21 +1,23 @@
 <!doctype html>
 <html lang="en">
-  <meta charset="utf-8" /><title>Roadster responsive review</title
+  <meta charset="utf-8" /><title>Breakwater responsive review</title
   ><style>
     body {
       margin: 24px;
-      background: #121318;
-      color: #eee;
-      font: 12px monospace;
+      background: #102b34;
+      color: #f6f1df;
+      font: 13px monospace;
     }
     nav {
       display: flex;
       gap: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
     }
     button {
       padding: 12px;
-      background: #eee;
+      background: #f6f1df;
+      color: #102b34;
       border: 0;
       cursor: pointer;
     }
@@ -25,6 +27,9 @@
       width: 844px;
       height: 390px;
     }
+    #status {
+      margin: 12px 0;
+    }
   </style>
   <nav>
     <button data-size="1280,720">Desktop</button
@@ -33,8 +38,22 @@
     ><button data-size="390,844">Portrait phone</button
     ><button id="reload">Reload game</button>
   </nav>
-  <iframe title="Game preview" src="../dist/"></iframe>
-  <script>
+  <nav>
+    <button data-view="home">Start screen</button
+    ><button data-view="drive">Drive</button
+    ><button data-view="gap">Bridge approach</button
+    ><button data-view="flight">In flight</button
+    ><button data-view="results">Results</button
+    ><button id="play">Play live</button
+    ><button id="tour">Watch full course</button>
+  </nav>
+  <p id="status">
+    Frozen visual review. Use Play live for native keyboard checks.
+  </p>
+  <p id="tour-report"></p>
+  <iframe title="Game preview" src="../dist/?qa=1"></iframe>
+  <script type="module">
+    import { GAPS, GATES, OBSTACLES } from "../run.js";
     const frame = document.querySelector("iframe");
     document.querySelectorAll("[data-size]").forEach(
       (b) =>
@@ -46,5 +65,119 @@
     );
     document.querySelector("#reload").onclick = () =>
       frame.contentWindow.location.reload();
+    document.querySelectorAll("[data-view]").forEach(
+      (b) =>
+        (b.onclick = () => {
+          const g = frame.contentWindow.__breakwater;
+          if (!g) return;
+          g.freeze();
+          if (b.dataset.view === "home") {
+            g.home();
+            g.step(0);
+            return;
+          }
+          g.start();
+          const v = b.dataset.view;
+          if (v === "drive")
+            g.setState({
+              d: 380,
+              x: 2.5,
+              speed: 60,
+              time: 6,
+              score: 250,
+              gates: 1,
+            });
+          if (v === "gap")
+            g.setState({
+              d: 580,
+              x: 0,
+              speed: 60,
+              time: 10,
+              score: 500,
+              gates: 2,
+            });
+          if (v === "flight")
+            g.setState({
+              d: 680,
+              x: 0,
+              y: 5.7,
+              vy: 1,
+              speed: 70,
+              time: 12,
+              score: 750,
+              gates: 2,
+              airborne: true,
+              lifting: true,
+              boosting: true,
+            });
+          if (v === "results") {
+            g.setState({ d: 3599, time: 59, gates: 16, score: 18600 });
+            g.step(0.1);
+          }
+          g.step(0);
+        }),
+    );
+    document.querySelector("#play").onclick = () => {
+      const g = frame.contentWindow.__breakwater;
+      g.start();
+      g.freeze(false);
+    };
+    document.getElementById("tour").onclick = () => {
+      const w = frame.contentWindow,
+        g = w.__breakwater;
+      g.start();
+      g.freeze(false);
+      const held = new Set();
+      let frames = 0,
+        started = performance.now();
+      const send = (code, on) => {
+        if (held.has(code) === on) return;
+        on ? held.add(code) : held.delete(code);
+        w.dispatchEvent(
+          new w.KeyboardEvent(on ? "keydown" : "keyup", {
+            code,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      };
+      const drive = () => {
+        const s = g.state;
+        if (g.phase !== "playing") {
+          for (const code of [...held]) send(code, false);
+          document.getElementById("tour-report").textContent =
+            `COURSE ${s.finished ? "COMPLETE" : "STOPPED"} · ${s.time.toFixed(2)} s · ${s.gates}/18 gates · hull ${s.hull}/3 · ${s.score} pts · ${Math.round(frames / ((performance.now() - started) / 1000))} browser frames/sec average`;
+          return;
+        }
+        const gate = GATES.find((a) => a.d > s.d),
+          gap = GAPS.find((a) => s.d > a.start - 80 && s.d < a.end + 5),
+          obstacle = OBSTACLES.find((a) => a.d > s.d - 8 && a.d < s.d + 85);
+        let target = gate?.x || 0;
+        if (obstacle && !gap) target = obstacle.x >= 0 ? -6 : 6;
+        const command = (target - s.x) * 2 - s.vx * 0.2;
+        send("ArrowRight", command > 0.25);
+        send("ArrowLeft", command < -0.25);
+        send("Space", !!gap);
+        send("ShiftLeft", s.energy > 18);
+        frames++;
+        requestAnimationFrame(drive);
+      };
+      requestAnimationFrame(drive);
+    };
+    frame.onload = () => {
+      const timer = setInterval(() => {
+        const g = frame.contentWindow.__breakwater;
+        if (g) {
+          if (g.phase === "home") g.freeze();
+          clearInterval(timer);
+        }
+      }, 50);
+    };
+    setInterval(() => {
+      const g = frame.contentWindow.__breakwater;
+      if (g)
+        document.querySelector("#status").textContent =
+          `${g.phase} · X ${g.state.x.toFixed(2)} · Y ${g.state.y.toFixed(2)} · Speed ${(g.state.speed * 3.6).toFixed(0)} · steer ${g.input.steer} · boost ${g.input.boost} · fly ${g.input.fly}`;
+    }, 100);
   </script>
 </html>
