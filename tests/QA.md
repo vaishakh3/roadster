@@ -1,49 +1,37 @@
-# Validation
+# Verification record
 
-## Repeatable source checks
+Upgrade validation performed on October 17, 2026.
 
-Run `npm test` from the repository root. The suite checks:
+## Automated source checks
 
-- 25 physics assertions for driving, reverse, drift, quaternion normalization,
-  pitch/roll/yaw, full rotations, body-relative thrust, reserve depletion,
-  leveling, landing, crash lockout, reset, and variable frame steps.
-- 31 integration, endurance, and geometry assertions, including ordered
-  circuit/air gates, an actually driven lap, pause/resume, blur, independent
-  multitouch cancellation, keyboard flight controls, rendering orientation,
-  lighting transitions, and 20 randomized two-minute runs.
+`npm test` runs 25 pure physics checks, 31 integration/endurance/geometry checks, and 9 scoring/performance/input/collision checks. Coverage includes:
 
-The integration test uses the real game and scene modules with mocked DOM and
-renderer objects. It is not a replacement for rendered browser checks.
+- A physically driven full lap through all 12 gates; the bounded steering controller finishes at about 30.95 seconds, staying within 1.48 m of the track center.
+- Full signed pitch/roll/yaw rotations, quaternion normalization, reserve depletion, orientation-dependent thrust, landing and crash lockout.
+- 20 randomized two-minute physics runs; finite geometry positions and normals.
+- Pause/blur/resume, independent pointer cancellation, steering pad pointer ownership, restart and recovery bookkeeping.
+- Combo multipliers, safe landing banking, forfeiture on impact/reset/timeout, medal thresholds, mobile pixel budgets, and obstacle collision response.
 
-## Rendered browser checks
+## Production-build browser harness
 
-Run `npm run build`, then `npm run test:browser` on a compatible Linux host.
-The browser suite loads the final standalone payload in headless Chromium
-and checks WebGL startup, driving, steering, braking, launch/climb, pause,
-recovery, garage return, simultaneous touch input, and portrait/landscape
-layouts. It writes a report to `tests/browser-qa-report.json` and screenshots
-to the repository root; these generated files are ignored by Git.
+Build with `npm run build`, run `npm start`, and open `/tests/browser.html`. The harness loads `dist/index.html?qa=1` in a real browser iframe and reports checks in its UI. It restores the previous personal-best storage values after the run.
 
-Other `tests/*.cjs` scripts are optional visual studies and render regressions.
-They use the same local-only browser tooling and do not require accounts.
+14 checks passed in the Codex browser with real WebGL rendering:
 
-## Manual flight checklist
+1. Production renderer initialization and geometry.
+2. Keyboard acceleration, steering and braking.
+3. Pause releases held input and freezes elapsed time.
+4. Photo mode freezes simulation and returns to the run.
+5. Actual launch → climb → full roll → stabilization → landing banks 750 points.
+6. The 90-second timer ends the run; restart clears scoring and starts a fresh countdown.
+7. Concurrent pointer inputs, independent cancellation, disabled selection and cancelled context menus.
+8–13. Garage actions fit and mobile control buttons do not overlap at 1440×900, 390×844, 375×667, 320×568, 844×390, and 568×320.
+14. No uncaught browser errors.
 
-- In Free Flight, launch with H and climb with Space to at least 30 m.
-- Hold W/S, Q/E, and A/D to exercise pitch loops, rolls, and yaw spins.
-- Check F for assisted/acro handling, Shift for body-relative forward thrust,
-  B for airbraking, Z for descent, and held X for leveling recovery.
-- Use H for powered landing; verify that an inverted or hard impact disables
-  propulsion until reset and that reset preserves remaining reserve.
-- On touch devices, exercise stick, roll, lift, and thrust simultaneously;
-  release each independently, then test pause and cancellation.
-- Test portrait and landscape, including small 320-pixel-tall viewports.
+Visual checks additionally inspect desktop garage, mobile garage, driving HUD, flight controls and short landscape. Browser pointer events in the harness are synthetic; physical operating-system long-press behavior is not emulated by that test. The optional Playwright command wraps the same harness; the command-line launcher was not executed during this session.
 
-## Limits
+## Before public launch
 
-Headless Chromium uses software SwiftShader, so its frame rate is not a GPU
-benchmark. Mobile touch and viewport checks are emulation, not physical iOS
-Safari or mobile-device validation. Scenery is intentionally non-colliding.
-Floor contact uses an oriented body box and a flat proving ground. Wall
-suction, structural damage, and full aerodynamic simulation are not included.
-Flight behavior is a game approximation, not manufacturer-measured performance.
+Test a real iPhone in Safari and an Android phone in Chrome for sustained multitouch, OS long-press handling, thermal/performance behavior, orientation changes, audio interruption and saving images. Test the Vercel preview on those devices. No physical-device frame-rate or thermal claim is made. Vercel deployment is left to the owner.
+
+The car remains a procedural visual interpretation. There is no claim of manufacturer CAD accuracy or simulation-grade physics. Terrain support is flat and collision footprints are approximate. These limits are intentional and documented in the README.

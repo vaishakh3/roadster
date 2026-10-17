@@ -1,50 +1,1949 @@
-:root{--ivory:#f5f5ed;--muted:#9da7ac;--accent:#96e8f2;--panel:rgba(13,20,24,.64)}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#11171c;color:var(--ivory);font-family:Arial,Helvetica,sans-serif;overscroll-behavior:none}button{font:inherit;color:inherit;cursor:pointer;border:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}#scene{display:block;width:100%;height:100%;touch-action:none}#vignette{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(6,11,16,.4),transparent 24%,transparent 68%,rgba(5,11,16,.55)),radial-gradient(ellipse at center,transparent 45%,rgba(8,13,17,.25))}#flash{position:absolute;inset:0;pointer-events:none;background:#96e8f2;opacity:0;transition:opacity .25s}.topbar{position:absolute;top:0;left:0;width:100%;display:flex;justify-content:space-between;align-items:center;padding:30px 40px;z-index:20}.brand{display:flex;align-items:center;gap:13px;font-size:14px;letter-spacing:5px;font-weight:600}.brandmark{font-size:27px;font-style:italic;font-weight:900;letter-spacing:-7px;border:1px solid #ffffff45;width:39px;height:39px;line-height:38px;padding-left:7px;transform:skew(-7deg)}.brand>div>span{display:block;font-size:7px;letter-spacing:1.3px;margin-top:7px;color:#cad0ce}.top-actions{display:flex;gap:8px;align-items:center}.top-actions button{background:#14212955;border:1px solid #ffffff20;backdrop-filter:blur(10px);height:35px;padding:0 13px;font-size:10px;letter-spacing:1px;color:#ddd}.top-actions button b{color:var(--accent);font-weight:400;margin-left:4px}#help,#pause{font-size:17px;min-width:35px}#pause{display:none}.hidden{display:none!important}.overlay{position:absolute;inset:0}.intro-copy{position:absolute;left:7.5%;top:23%;max-width:460px}.eyebrow{font-size:9px;letter-spacing:2.5px;color:#c8d0cd;font-weight:500}.eyebrow i,.drive-mode i{display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;margin-right:8px;box-shadow:0 0 9px #96e8f266}h1{font-size:clamp(54px,6.4vw,104px);font-weight:400;line-height:.96;letter-spacing:-5px;margin:23px 0}.lede{font-size:14px;line-height:1.7;color:#bcc5c7;margin:24px 0 27px}.mode-picker{display:flex;gap:12px;margin-bottom:18px}.mode-picker button{text-align:left;padding:12px 15px 11px;background:#0c141c66;border:1px solid #ffffff26;backdrop-filter:blur(10px);font-size:10px;letter-spacing:1px;min-width:170px}.mode-picker button.selected{border-color:#96e8f2aa;background:#96e8f214}.mode-picker button>span{color:var(--accent);margin-right:12px;font-size:9px}.mode-picker small{display:block;font-size:9px;letter-spacing:0;color:#a6afb2;margin-top:8px;margin-left:25px}.primary{display:flex;align-items:center;justify-content:space-between;background:var(--accent);color:#182020;font-weight:700;font-size:10px;letter-spacing:1.8px;padding:18px 21px;min-height:49px;width:100%;max-width:352px;transition:background .2s}.primary:hover{background:#d2fbff}.primary>span{font-size:20px;font-weight:400}.intro-note{color:#adb5b6;font-size:8px;line-height:1.6;margin-top:17px;max-width:345px}.intro-spec{position:absolute;right:5%;bottom:19%;text-align:right;pointer-events:none}.intro-spec>span{font-size:8px;letter-spacing:2px;color:#d6dbd7}.intro-spec strong{display:block;margin:14px 0 25px;font-size:27px;font-weight:400;line-height:1.1;letter-spacing:-.5px}.intro-spec>div{font-size:9px;color:var(--accent);letter-spacing:1.5px}.intro-spec>div>span{color:#a3afb2}.intro-bottom{position:absolute;bottom:27px;left:40px;right:40px;display:flex;justify-content:space-between;font-size:8px;letter-spacing:1.8px;color:#9eaaae}.mission{position:absolute;top:115px;left:40px;width:230px}.mission>.eyebrow{font-size:8px}#timer{font-size:37px;letter-spacing:0;font-variant-numeric:tabular-nums;font-weight:300;margin:9px 0}.mission-row{display:flex;justify-content:space-between;font-size:9px;letter-spacing:.6px;color:#aebbbe}#checkpoint{color:var(--accent)}#route-hint{position:absolute;top:125px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:9px;font-size:10px;letter-spacing:1px;color:#dae0dc;background:#13212a55;border:1px solid #ffffff13;padding:10px 17px;border-radius:2px;white-space:nowrap}.hint-arrow{font-size:18px;color:var(--accent)}.telemetry{position:absolute;right:42px;bottom:72px;width:245px}.drive-mode{font-size:9px;letter-spacing:2px;color:#96e8f2}.speedline{display:flex;align-items:center;gap:14px}.speedline strong{font-size:85px;font-weight:300;letter-spacing:-4px;line-height:1.2;font-variant-numeric:tabular-nums}.speedline>span{font-size:9px;line-height:2;letter-spacing:1px;color:#adb9bd}.speedline b{font-size:17px;color:#fff;font-weight:400}.charge-title{display:flex;justify-content:space-between;font-size:8px;letter-spacing:1.5px;margin:10px 0}.charge-title b{font-weight:400;color:var(--accent)}.charge-track{height:3px;background:#ffffff25}.charge-track>div{width:100%;height:100%;background:var(--accent);transition:width .1s}.telemetry-foot{display:flex;justify-content:space-between;font-size:7px;letter-spacing:.7px;margin-top:12px;color:#adb9bd}.map-wrap{position:absolute;bottom:72px;left:38px;width:180px}.map-wrap canvas{width:180px;height:132px}.map-wrap>span{display:block;font-size:7px;letter-spacing:1.4px;text-align:center;color:#899b9e}.desktop-controls{position:absolute;bottom:25px;left:0;width:100%;display:flex;justify-content:center;gap:22px;font-size:8px;letter-spacing:1px;color:#a8b2b5}.desktop-controls span{display:flex;align-items:center;gap:7px}kbd{font-family:inherit;border:1px solid #ffffff35;padding:4px 5px;font-size:8px;color:#e5e8df}.modal{position:absolute;inset:0;background:#09101788;backdrop-filter:blur(16px);z-index:30;display:flex;align-items:center;justify-content:center}.dialog-card{width:min(450px,90vw);padding:35px;background:#111d25ee;border:1px solid #ffffff26;box-shadow:0 20px 70px #0006}.dialog-card h2{font-size:36px;letter-spacing:-1px;font-weight:400;margin:14px 0 23px}.dialog-card .primary{max-width:none}.secondary{width:100%;background:#ffffff08;border:1px solid #ffffff25;min-height:43px;margin-top:10px;font-size:9px;letter-spacing:1.8px}.text-button{background:none;width:100%;margin-top:20px;font-size:8px;letter-spacing:1.6px;color:#a5b2b6}#dialog-content{color:#bcc7c9;font-size:12px;line-height:1.8;margin-bottom:22px}#dialog-content ul{padding-left:15px;margin:0}#dialog-content .result-time{font-size:42px;color:var(--accent);margin:8px 0}#dialog-content .keys{display:grid;grid-template-columns:110px auto;gap:5px}#dialog-content .keys b{color:#96e8f2;font-weight:400}#toast{position:absolute;left:50%;top:29%;transform:translateX(-50%);font-size:22px;letter-spacing:2px;color:var(--accent);text-shadow:0 2px 12px #000;opacity:0;transition:opacity .3s;white-space:nowrap;pointer-events:none}#loading{position:absolute;inset:0;background:#11171c;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;font-size:9px;letter-spacing:2px;z-index:40}.loader-line{width:140px;height:2px;background:#ffffff20;position:relative;overflow:hidden}.loader-line:after{content:'';height:2px;width:60px;background:var(--accent);position:absolute;animation:load 1s infinite}@keyframes load{from{left:-60px}to{left:140px}}#touch-controls,.mobile-utils{display:none}#error{position:absolute;inset:0;z-index:100;background:#11171c;padding:20%;text-align:center}#error button{padding:16px 30px;background:var(--accent);color:#11171c}
-@media(pointer:coarse){.desktop-controls{display:none}#touch-controls{display:flex;position:absolute;bottom:max(22px,env(safe-area-inset-bottom));left:max(22px,env(safe-area-inset-left));right:max(22px,env(safe-area-inset-right));justify-content:space-between;pointer-events:none}.touch-steer,.touch-pedals{display:flex;gap:10px;align-items:flex-end}.touch-steer button,.touch-pedals button{pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;width:66px;height:66px;background:#16263099;backdrop-filter:blur(6px);border:1px solid #ffffff45;border-radius:9px;font-size:10px;letter-spacing:.7px}.touch-steer button{font-size:42px}.touch-pedals button.accelerator{background:#96e8f2e8;color:#152122;font-weight:700;width:77px}.touch-pedals button.boost-button{height:45px;font-size:8px;color:var(--accent);border-color:#96e8f266}.touch-steer button.pressed,.touch-pedals button.pressed{background:#d2fbff;color:#172122}.mobile-utils{position:absolute;right:23px;top:185px;display:flex;gap:8px}.mobile-utils button{padding:10px;background:#16263099;border:1px solid #ffffff30;font-size:9px;letter-spacing:.8px;touch-action:manipulation}.telemetry{bottom:117px;right:26px}.map-wrap{bottom:112px;left:22px}}
-@media(max-width:800px){.topbar{padding:20px 22px}.brand{font-size:11px;letter-spacing:3px;gap:10px}.brandmark{width:33px;height:33px;font-size:24px;line-height:32px}.top-actions{gap:5px}.top-actions button{height:30px;font-size:8px;padding:0 8px}#help,#pause{min-width:30px;font-size:14px}.intro-copy{left:6%;top:24%}h1{font-size:68px;letter-spacing:-3px}.intro-spec{right:5%;bottom:18%}.intro-spec strong{font-size:22px}.intro-bottom{left:22px;right:22px;font-size:6px}.mission{top:87px;left:23px;width:180px}#timer{font-size:29px}.mission-row{font-size:8px}.mission>.eyebrow{font-size:7px;letter-spacing:1.5px}#route-hint{top:90px;font-size:8px;padding:6px 10px}.telemetry{width:190px}.speedline strong{font-size:65px}.map-wrap{width:140px}.map-wrap canvas{width:140px;height:103px}.telemetry-foot{font-size:6px}.drive-mode{font-size:8px;letter-spacing:1.4px}}
-@media(max-width:600px) and (orientation:portrait){.topbar{padding:18px 18px}.top-actions button:first-child{font-size:0;padding:0 10px}.top-actions button:first-child b{font-size:8px;margin:0}.brand>div>span{font-size:6px}.intro-copy{left:7%;top:16%;right:7%;max-width:none}h1{font-size:60px;line-height:.94;margin:18px 0}.intro-copy .eyebrow{font-size:7px;letter-spacing:1.4px}.lede{font-size:11px;margin:17px 0 23px;line-height:1.65;max-width:210px}.mode-picker{position:absolute;top:53vh;left:0;right:0;gap:9px;margin:0}.mode-picker button{min-width:0;width:50%;padding:11px;font-size:9px}.mode-picker small{font-size:8px;margin-left:0}.mode-picker button>span{margin-right:6px}.intro-copy>.primary{position:absolute;top:calc(53vh + 73px);max-width:none;width:100%;font-size:9px;min-height:48px;padding:12px 16px}.intro-note{position:absolute;top:calc(53vh + 122px);font-size:7px;line-height:1.5;max-width:none;margin-top:10px}.intro-spec{display:none}.intro-bottom{bottom:12px;left:18px;right:18px;font-size:5px;letter-spacing:1px}.mission{left:19px;top:87px;width:168px}#route-hint{top:181px;left:19px;transform:none;font-size:8px;background:none;border:0;padding:0}#route-text{max-width:170px;white-space:normal}.mobile-utils{top:95px;right:18px;flex-direction:column;gap:5px}.mobile-utils button{font-size:8px;padding:9px}.telemetry{width:158px;right:20px;bottom:126px}.speedline strong{font-size:61px}.speedline{gap:8px}.charge-title{font-size:7px;letter-spacing:.7px}.telemetry-foot{font-size:5px;letter-spacing:.2px}.map-wrap{left:12px;bottom:125px;width:130px}.map-wrap canvas{width:130px;height:95px}.map-wrap>span{font-size:5px}.drive-mode{font-size:7px;letter-spacing:.9px}#touch-controls{left:15px;right:15px;bottom:max(27px,env(safe-area-inset-bottom));align-items:flex-end}.touch-steer,.touch-pedals{gap:7px}.touch-steer button{width:52px;height:65px}.touch-pedals button{width:57px;height:65px;font-size:9px}.touch-pedals button.accelerator{width:64px}.touch-pedals button.boost-button{position:absolute;right:0;bottom:75px;width:64px;height:34px;font-size:7px}#toast{top:32%;font-size:15px;letter-spacing:1px}.dialog-card{padding:27px}.dialog-card h2{font-size:30px}}
-@media(max-height:550px) and (orientation:landscape){.topbar{padding:14px 22px}.intro-copy{top:22%;left:6%}h1{font-size:47px;letter-spacing:-2px;margin:13px 0}.intro-copy .eyebrow{font-size:6px}.lede{font-size:10px;margin:12px 0}.mode-picker{position:absolute;left:45vw;top:25vh;gap:8px}.mode-picker button{min-width:140px;font-size:8px}.intro-copy>.primary{position:absolute;left:45vw;top:calc(25vh + 72px);width:288px;max-width:none;font-size:8px;padding:10px 15px;min-height:42px}.intro-note{font-size:6px;margin-top:13px;max-width:260px}.intro-spec{right:8%;bottom:42%;font-size:8px}.intro-spec strong{font-size:19px}.intro-spec>div{display:none}.intro-bottom{bottom:13px}.mission{top:72px;left:23px}#timer{font-size:25px;margin:5px 0}.telemetry{width:155px;right:26px;bottom:105px}.speedline strong{font-size:48px}.drive-mode{font-size:6px}.charge-title{font-size:6px;margin:5px 0}.telemetry-foot{display:none}.map-wrap{width:100px;left:25px;bottom:100px}.map-wrap canvas{width:100px;height:73px}.map-wrap>span{font-size:5px}.mobile-utils{right:22px;top:70px}.mobile-utils button{font-size:7px;padding:8px}#route-hint{top:69px;font-size:7px}#touch-controls{bottom:18px}.touch-steer button,.touch-pedals button{height:58px;width:60px}.touch-pedals button.accelerator{width:75px}#toast{font-size:17px}.dialog-card{padding:19px;width:420px}.dialog-card h2{font-size:26px;margin:8px 0 12px}#dialog-content{font-size:10px;line-height:1.5;margin-bottom:12px}.dialog-card .primary{min-height:36px;padding:10px 15px}.secondary{min-height:32px;margin-top:8px}.text-button{margin-top:12px}}
+:root {
+  color-scheme: dark;
+  --ink: #101216;
+  --paper: #f3f4ed;
+  --muted: #a3a8aa;
+  --accent: #d7ff65;
+  --line: #ffffff26;
+  --panel: #111820bd;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: Arial, Helvetica, sans-serif;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+body {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+}
+button,
+a,
+canvas {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: #141b21a8;
+  touch-action: manipulation;
+}
+button:hover {
+  border-color: #d7ff6580;
+  background: #28342d;
+}
+button:active {
+  transform: translateY(1px);
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+a {
+  color: var(--accent);
+}
+.hidden {
+  display: none !important;
+}
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  outline: none;
+}
+#vignette,
+#flash,
+#speed-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#vignette {
+  background: linear-gradient(
+    180deg,
+    #090e1677,
+    transparent 35%,
+    transparent 58%,
+    #070d1677
+  );
+}
+#flash {
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+#speed-fx {
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    transparent 45%,
+    #c9f5ff22 90%
+  );
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: max(24px, env(safe-area-inset-top))
+    max(36px, env(safe-area-inset-right)) 20px
+    max(36px, env(safe-area-inset-left));
+  z-index: 20;
+  pointer-events: none;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  letter-spacing: 4px;
+  font-weight: 700;
+}
+.brandmark {
+  position: relative;
+  font-size: 32px;
+  font-style: italic;
+  letter-spacing: -6px;
+  width: 35px;
+  font-weight: 900;
+}
+.brandmark > span {
+  font-size: 17px;
+  color: var(--accent);
+  position: absolute;
+  top: -1px;
+  right: -3px;
+}
+.brand > div > span {
+  display: block;
+  font-size: 7px;
+  letter-spacing: 1.3px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.top-actions {
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+.top-actions button {
+  height: 40px;
+  min-width: 40px;
+  padding: 0 12px;
+  font-size: 9px;
+  letter-spacing: 1px;
+  border-radius: 3px;
+}
+.top-actions button b {
+  color: var(--accent);
+  font-weight: 500;
+  margin-left: 4px;
+}
+#fullscreen,
+#photo,
+#help,
+#pause {
+  font-size: 19px;
+  padding: 0 11px;
+}
+#pause {
+  display: none;
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.overlay button {
+  pointer-events: auto;
+}
+.intro-copy {
+  position: absolute;
+  left: 5%;
+  top: 16%;
+  z-index: 2;
+}
+.eyebrow {
+  font-size: 9px;
+  letter-spacing: 2px;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0;
+}
+.eyebrow i,
+.drive-mode i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+  margin-right: 9px;
+}
+h1 {
+  font-size: clamp(54px, 6.7vw, 110px);
+  letter-spacing: -0.075em;
+  font-weight: 500;
+  line-height: 0.94;
+  margin: 20px 0;
+}
+h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.lede {
+  font-size: 13px;
+  color: #c1c6c7;
+  line-height: 1.7;
+}
+.vehicle-tag {
+  position: absolute;
+  right: 5%;
+  top: 18%;
+  text-align: right;
+  display: grid;
+  gap: 12px;
+}
+.vehicle-tag span {
+  font: 9px/1.3 monospace;
+  letter-spacing: 1.7px;
+  color: var(--muted);
+}
+.vehicle-tag strong {
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: -0.8px;
+}
+.intro-spec {
+  position: absolute;
+  right: 5%;
+  bottom: 255px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.view-picker {
+  display: flex;
+  gap: 4px;
+}
+.view-picker button,
+#aero-preview {
+  font: 9px monospace;
+  letter-spacing: 1px;
+  height: 32px;
+  padding: 0 13px;
+  background: #0e141caa;
+  border-color: transparent;
+  border-bottom-color: var(--line);
+}
+.view-picker button.selected {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+#aero-preview {
+  color: var(--muted);
+}
+#aero-preview b {
+  color: var(--paper);
+  font-weight: 400;
+}
+.garage-bottom {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: 22px;
+  pointer-events: auto;
+}
+.garage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.local-record {
+  font: 9px monospace;
+  color: var(--muted);
+  letter-spacing: 0.6px;
+}
+.mode-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.mode-picker button {
+  text-align: left;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: #10151bce;
+  min-height: 82px;
+  padding: 18px;
+  border-radius: 4px;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+.mode-picker button.selected {
+  border-color: #d7ff6599;
+  background: #232c20dd;
+}
+.mode-no {
+  color: var(--muted);
+  font: 10px monospace;
+  align-self: flex-start;
+  padding-top: 3px;
+}
+.selected .mode-no {
+  color: var(--accent);
+}
+.mode-title {
+  font-size: 17px;
+  letter-spacing: -0.5px;
+}
+.mode-title small {
+  display: block;
+  margin-top: 7px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.mode-meta {
+  margin-left: auto;
+  font: 8px monospace;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+}
+.launch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 16px;
+}
+.launch-row p {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #cbd0cd;
+  margin: 0;
+}
+.launch-row p span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 3px;
+}
+.primary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--accent);
+  color: #172010;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 16px 22px;
+  min-height: 50px;
+  border: 0;
+  border-radius: 3px;
+}
+.primary:hover {
+  background: #e6ffac;
+  color: #172010;
+}
+.primary > span {
+  font-size: 21px;
+  font-weight: 400;
+}
+#start {
+  width: 29%;
+  min-width: 240px;
+}
+.intro-bottom {
+  display: flex;
+  justify-content: space-between;
+  color: #828c92;
+  font: 8px monospace;
+  letter-spacing: 0.8px;
+  margin-top: 18px;
+}
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#hud button {
+  pointer-events: auto;
+}
+.mission {
+  position: absolute;
+  left: 36px;
+  top: 104px;
+  width: 225px;
+}
+.mission .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1.6px;
+  color: var(--accent);
+}
+#timer {
+  font-size: 38px;
+  font-weight: 400;
+  letter-spacing: -1.5px;
+  font-variant-numeric: tabular-nums;
+  margin: 6px 0 10px;
+}
+.mission-row {
+  display: flex;
+  justify-content: space-between;
+  font: 9px monospace;
+  color: #cbd2d2;
+  gap: 8px;
+}
+.progress-track {
+  height: 2px;
+  background: #ffffff20;
+  margin-top: 13px;
+  overflow: hidden;
+}
+.progress-track > div {
+  height: 100%;
+  background: var(--accent);
+  width: 0;
+  transition: width 0.2s;
+}
+#route-hint {
+  position: absolute;
+  left: 50%;
+  top: 106px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 11px monospace;
+  color: #e3e8e7;
+  background: #101922b3;
+  border: 1px solid #ffffff15;
+  padding: 10px 14px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.hint-arrow {
+  display: block;
+  font-size: 21px;
+  color: var(--accent);
+}
+#toast {
+  position: absolute;
+  left: 50%;
+  top: 29%;
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 21px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  text-shadow: 0 2px 14px #000;
+  opacity: 0;
+  transition: opacity 0.2s;
+  max-width: 80%;
+  line-height: 1.35;
+}
+.telemetry {
+  position: absolute;
+  right: 36px;
+  bottom: 66px;
+  width: 215px;
+  padding: 16px;
+  background: linear-gradient(140deg, #101820c9, #10182055);
+  border: 1px solid #ffffff19;
+  border-radius: 5px;
+}
+.drive-mode {
+  font: 8px monospace;
+  letter-spacing: 1px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.speedline {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.speedline strong {
+  font-size: 72px;
+  line-height: 1.15;
+  letter-spacing: -4px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.speedline > span {
+  font: 9px/1.8 monospace;
+  color: var(--muted);
+}
+.speedline b {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--paper);
+}
+.charge-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font: 8px monospace;
+  letter-spacing: 0.6px;
+  margin: 10px 0;
+}
+.charge-title b {
+  font-weight: 500;
+  color: var(--accent);
+}
+.charge-track {
+  height: 4px;
+  background: #ffffff20;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.charge-track > div {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.1s;
+}
+.telemetry-foot {
+  display: flex;
+  justify-content: space-between;
+  font: 7px monospace;
+  margin-top: 10px;
+  color: var(--muted);
+}
+#flight-telemetry {
+  display: none;
+  position: absolute;
+  left: 36px;
+  top: 224px;
+  width: 225px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid #ffffff19;
+  border-radius: 4px;
+}
+.airborne #flight-telemetry {
+  display: block;
+}
+.flight-instrument-heading,
+.flight-instrument-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font: 8px monospace;
+  color: var(--muted);
+}
+.flight-instrument-heading b {
+  color: var(--accent);
+  font-weight: 500;
+}
+#attitude-readout {
+  font: 12px monospace;
+  margin: 9px 0;
+}
+.trick-counter b {
+  color: var(--paper);
+}
+#challenge-hud {
+  position: absolute;
+  right: 36px;
+  top: 104px;
+  width: 200px;
+  padding: 13px 15px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+#challenge-caption {
+  font: 8px monospace;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+}
+#banked-score {
+  display: block;
+  font-size: 34px;
+  letter-spacing: -1px;
+  font-weight: 400;
+  margin: 6px 0;
+}
+#challenge-hud > div {
+  font: 8px monospace;
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+}
+#pending-score {
+  color: var(--accent);
+}
+#challenge-hud .progress-track {
+  display: block;
+}
+#coach {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  width: min(400px, 40%);
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #d8e0dd;
+  background: #0c1422bb;
+  border: 1px solid #ffffff15;
+  padding: 12px 16px;
+  border-radius: 4px;
+}
+.coach-index {
+  display: block;
+  font: 8px monospace;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  margin-bottom: 5px;
+}
+.map-wrap {
+  position: absolute;
+  bottom: 65px;
+  left: 34px;
+  width: 170px;
+}
+.map-wrap canvas {
+  width: 170px;
+  height: 125px;
+}
+.map-wrap > span {
+  display: block;
+  font: 7px monospace;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-align: center;
+}
+.desktop-controls {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  color: #bbc5c8;
+  font: 8px monospace;
+}
+.desktop-controls span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+kbd {
+  font: 8px monospace;
+  border: 1px solid #ffffff35;
+  border-radius: 3px;
+  padding: 4px;
+  color: var(--paper);
+}
+.modal {
+  position: absolute;
+  inset: 0;
+  background: #070c15b8;
+  backdrop-filter: blur(12px);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  touch-action: pan-y;
+}
+.dialog-card {
+  width: min(470px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 30px;
+  background: #151d24;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 20px 80px #0007;
+}
+.dialog-card h2 {
+  font-size: 34px;
+  letter-spacing: -1.5px;
+  line-height: 1.05;
+  font-weight: 400;
+  margin: 12px 0 22px;
+}
+.dialog-card .primary {
+  width: 100%;
+}
+#dialog-content {
+  font-size: 12px;
+  line-height: 1.75;
+  color: #b9c4c7;
+  margin-bottom: 22px;
+}
+#dialog-content p {
+  margin: 12px 0;
+}
+#dialog-content .result-time {
+  font-size: 47px;
+  letter-spacing: -2px;
+  color: var(--accent);
+  line-height: 1.2;
+}
+.keys {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 6px 12px;
+}
+.keys b {
+  font: 11px/1.8 monospace;
+  color: var(--accent);
+}
+.result-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 18px 0;
+}
+.result-stats > div {
+  background: #ffffff06;
+  padding: 13px;
+  border: 1px solid #ffffff12;
+}
+.result-stats b {
+  display: block;
+  color: var(--paper);
+  font: 20px monospace;
+}
+.result-stats span {
+  font: 8px monospace;
+  letter-spacing: 1px;
+}
+.secondary {
+  width: 100%;
+  min-height: 44px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  margin-top: 9px;
+  border-radius: 3px;
+}
+.text-button {
+  background: none;
+  border: 0;
+  width: 100%;
+  margin-top: 17px;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  min-height: 36px;
+}
+#touch-controls,
+.mobile-utils {
+  display: none;
+}
+#loading {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: var(--ink);
+  gap: 24px;
+  font: 10px monospace;
+  letter-spacing: 2px;
+}
+.loading-mark {
+  font: bold italic 64px Arial;
+  color: var(--accent);
+  letter-spacing: -7px;
+}
+#loading small {
+  color: var(--muted);
+  font-size: 8px;
+}
+.loader-line {
+  height: 2px;
+  width: 160px;
+  background: #ffffff22;
+  position: relative;
+  overflow: hidden;
+}
+.loader-line:after {
+  content: "";
+  position: absolute;
+  left: -60px;
+  height: 2px;
+  width: 60px;
+  background: var(--accent);
+  animation: load 1s infinite;
+}
+@keyframes load {
+  to {
+    left: 160px;
+  }
+}
+#photo-panel {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  padding: 120px 5% 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+#photo-panel h2 {
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -1.5px;
+  font-weight: 400;
+}
+#photo-panel p {
+  font-size: 11px;
+  color: var(--muted);
+}
+.photo-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.photo-actions button {
+  pointer-events: auto;
+  width: auto;
+  margin: 0;
+}
+body[data-phase="photo"] .topbar {
+  opacity: 0;
+  pointer-events: none;
+}
+body[data-phase="photo"] .top-actions {
+  pointer-events: none;
+}
+#error {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 30px;
+}
+#error h2 {
+  font-weight: 400;
+}
+#error p {
+  max-width: 420px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+#error button {
+  margin-top: 20px;
+}
+/* Coarse pointer devices and small browsers share the same complete control deck. */
+@media (pointer: coarse), (max-width: 760px) {
+  .desktop-controls {
+    display: none;
+  }
+  .topbar {
+    padding: 16px max(18px, env(safe-area-inset-right)) 16px
+      max(18px, env(safe-area-inset-left));
+  }
+  .brand {
+    font-size: 11px;
+    letter-spacing: 3px;
+    gap: 8px;
+  }
+  .brandmark {
+    font-size: 28px;
+    width: 31px;
+  }
+  .top-actions {
+    gap: 5px;
+  }
+  .top-actions button {
+    min-width: 38px;
+    height: 38px;
+    padding: 0 8px;
+    font-size: 8px;
+  }
+  #fullscreen,
+  #photo,
+  #help,
+  #pause {
+    font-size: 17px;
+  }
+  #touch-controls {
+    display: block;
+    position: absolute;
+    inset: auto max(20px, env(safe-area-inset-right))
+      max(20px, var(--safe-bottom)) max(20px, env(safe-area-inset-left));
+    height: 180px;
+    pointer-events: none;
+  }
+  .mobile-utils {
+    display: flex;
+    position: absolute;
+    right: 20px;
+    top: 201px;
+    gap: 6px;
+  }
+  .mobile-utils button {
+    height: 42px;
+    padding: 0 13px;
+    font: 9px monospace;
+    border-radius: 5px;
+    background: #16232dd9;
+  }
+  #touch-hover {
+    color: var(--accent);
+  }
+  .ground-stick-wrap {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    pointer-events: auto;
+    text-align: center;
+  }
+  .ground-stick-wrap small,
+  .flight-stick-wrap small {
+    display: block;
+    font: 8px monospace;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  #ground-stick {
+    width: 120px;
+    height: 72px;
+    position: relative;
+    border: 1px solid #ffffff40;
+    background: #15222ed9;
+    border-radius: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 9px;
+    touch-action: none;
+    color: #dce6e88a;
+    font-size: 23px;
+  }
+  #ground-stick-knob,
+  #flight-stick-knob {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    margin: -22px;
+    width: 44px;
+    height: 44px;
+    background: #d7ff6522;
+    border: 1px solid #d7ff65aa;
+    border-radius: 50%;
+    pointer-events: none;
+    box-shadow: inset 0 0 14px #d7ff650c;
+  }
+  .touch-steer {
+    display: none;
+  }
+  .touch-pedals {
+    position: absolute;
+    bottom: 21px;
+    right: 0;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  .touch-pedals button {
+    width: 64px;
+    height: 70px;
+    border-radius: 8px;
+    background: #15222ee6;
+    font: 9px monospace;
+    letter-spacing: 0.5px;
+    touch-action: none;
+  }
+  .touch-pedals .accelerator {
+    width: 76px;
+    background: var(--accent);
+    color: #172010;
+    font: bold 15px Arial;
+  }
+  .touch-pedals .boost-button {
+    position: absolute;
+    right: 0;
+    bottom: 80px;
+    width: 76px;
+    height: 44px;
+    border-color: #d7ff6577;
+    color: var(--accent);
+    font-size: 9px;
+  }
+  .touch-pedals .drift-button {
+    position: absolute;
+    left: 0;
+    bottom: 80px;
+    width: 64px;
+    height: 44px;
+    color: #dce4e3;
+  }
+  #touch-controls button.pressed {
+    background: #f1ffc7;
+    color: #172010;
+    box-shadow: 0 0 15px #d7ff6544;
+  }
+  .airborne .ground-stick-wrap,
+  .airborne .drift-button {
+    display: none;
+  }
+  .flight-controls {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .flight-controls button {
+    border-radius: 6px;
+    font: 9px monospace;
+    touch-action: none;
+    background: #15222ee6;
+    min-height: 40px;
+  }
+  .flight-stick-wrap {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    pointer-events: auto;
+    text-align: center;
+  }
+  #flight-stick {
+    width: 112px;
+    height: 112px;
+    border: 1px solid #ffffff40;
+    background: #15222ee6;
+    border-radius: 50%;
+    position: relative;
+    touch-action: none;
+  }
+  .stick-axis-top {
+    position: absolute;
+    top: 9px;
+    left: 0;
+    width: 100%;
+    font: 7px monospace;
+    color: var(--muted);
+  }
+  .stick-yaw-left,
+  .stick-yaw-right {
+    position: absolute;
+    top: 43px;
+    color: var(--muted);
+    font-size: 21px;
+  }
+  .stick-yaw-left {
+    left: 8px;
+  }
+  .stick-yaw-right {
+    right: 8px;
+  }
+  .flight-roll-controls {
+    position: absolute;
+    left: 0;
+    bottom: 148px;
+    display: flex;
+    gap: 6px;
+  }
+  .flight-roll-controls button {
+    width: 53px;
+  }
+  .flight-altitude-controls {
+    position: absolute;
+    right: 0;
+    bottom: 164px;
+    display: flex;
+    gap: 8px;
+  }
+  .flight-altitude-controls button {
+    width: 70px;
+    font-size: 22px;
+  }
+  .flight-touch-toolbar {
+    position: absolute;
+    right: 84px;
+    bottom: 101px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .flight-touch-toolbar button {
+    width: 64px;
+    font-size: 8px;
+    min-height: 38px;
+  }
+  .telemetry {
+    bottom: 180px;
+    width: 163px;
+    right: 20px;
+    padding: 12px;
+  }
+  .speedline strong {
+    font-size: 50px;
+  }
+  .charge-title {
+    font-size: 7px;
+    letter-spacing: 0;
+  }
+  .telemetry-foot {
+    font-size: 6px;
+  }
+  .drive-mode {
+    font-size: 7px;
+    letter-spacing: 0;
+  }
+  .map-wrap {
+    bottom: 175px;
+    left: 20px;
+    width: 115px;
+  }
+  .map-wrap canvas {
+    width: 115px;
+    height: 84px;
+  }
+  .map-wrap > span {
+    font-size: 5px;
+  }
+  #coach {
+    bottom: 28px;
+    font-size: 10px;
+    width: calc(100% - 360px);
+    min-width: 130px;
+    padding: 8px;
+  }
+  #coach .coach-index {
+    font-size: 7px;
+  }
+  .airborne .telemetry {
+    top: 90px;
+    bottom: auto;
+  }
+  .airborne .map-wrap {
+    display: none;
+  }
+  .airborne #flight-telemetry {
+    top: 200px;
+  }
+  .airborne #coach {
+    bottom: 58px;
+  }
+  .airborne .mobile-utils {
+    top: 200px;
+  }
+}
+@media (max-width: 1000px) {
+  .mode-meta {
+    display: none;
+  }
+  .mode-picker button {
+    padding: 14px;
+    gap: 10px;
+  }
+  .intro-spec {
+    bottom: 252px;
+  }
+  .intro-copy {
+    top: 16%;
+  }
+  .vehicle-tag {
+    top: 17%;
+  }
+  .vehicle-tag strong {
+    font-size: 18px;
+  }
+  .local-record {
+    font-size: 8px;
+  }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .topbar {
+    padding-top: max(15px, env(safe-area-inset-top));
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .brand {
+    font-size: 10px;
+    letter-spacing: 2px;
+  }
+  .brand > div > span {
+    font-size: 5px;
+    letter-spacing: 1px;
+  }
+  .brandmark {
+    font-size: 24px;
+    width: 26px;
+  }
+  .top-actions {
+    gap: 4px;
+  }
+  .top-actions button {
+    min-width: 34px;
+    width: 34px;
+    height: 36px;
+    padding: 0;
+  }
+  #sound {
+    font-size: 0;
+  }
+  #sound b {
+    font-size: 8px;
+    margin: 0;
+  }
+  #fullscreen {
+    display: none;
+  }
+  #quality {
+    font-size: 7px;
+  }
+  #photo {
+    font-size: 17px;
+  }
+  .intro-copy {
+    left: 6%;
+    top: 13%;
+  }
+  h1 {
+    font-size: clamp(48px, 13.5vw, 72px);
+    margin: 12px 0;
+    line-height: 0.91;
+  }
+  .intro-copy .eyebrow {
+    font-size: 7px;
+    letter-spacing: 1.2px;
+  }
+  .lede {
+    font-size: 10px;
+    margin: 12px 0;
+  }
+  .vehicle-tag {
+    display: none;
+  }
+  .garage-bottom {
+    left: 6%;
+    right: 6%;
+    bottom: max(15px, var(--safe-bottom));
+  }
+  .garage-heading {
+    margin-bottom: 10px;
+  }
+  .garage-heading .eyebrow {
+    font-size: 8px;
+  }
+  .local-record {
+    font-size: 7px;
+    letter-spacing: 0;
+    max-width: 155px;
+    text-align: right;
+  }
+  .mode-picker {
+    gap: 7px;
+  }
+  .mode-picker button {
+    display: block;
+    min-height: 82px;
+    padding: 11px 9px;
+  }
+  .mode-no {
+    display: block;
+    font-size: 8px;
+    padding: 0;
+    margin-bottom: 10px;
+  }
+  .mode-title {
+    font-size: 12px;
+    letter-spacing: -0.2px;
+  }
+  .mode-title small {
+    font-size: 8px;
+    line-height: 1.35;
+    margin-top: 6px;
+  }
+  .launch-row {
+    display: block;
+    margin-top: 12px;
+  }
+  .launch-row p {
+    font-size: 9px;
+    line-height: 1.5;
+    min-height: 29px;
+  }
+  .launch-row p span {
+    display: none;
+  }
+  #start {
+    margin-top: 10px;
+    width: 100%;
+    min-width: 0;
+    min-height: 47px;
+    font-size: 10px;
+  }
+  .intro-bottom {
+    margin-top: 12px;
+    font-size: 6px;
+    letter-spacing: 0.2px;
+    line-height: 1.5;
+  }
+  .intro-bottom > span:last-child {
+    display: none;
+  }
+  .intro-spec {
+    bottom: 280px;
+    right: 6%;
+    left: 6%;
+    justify-content: space-between;
+    gap: 0;
+  }
+  .view-picker button,
+  #aero-preview {
+    font-size: 8px;
+    padding: 0 9px;
+    height: 30px;
+  }
+  .mission {
+    left: 20px;
+    top: 82px;
+    width: 155px;
+  }
+  .mission .eyebrow {
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+  #timer {
+    font-size: 29px;
+    margin: 6px 0 8px;
+    letter-spacing: -1px;
+  }
+  .mission-row {
+    font-size: 7px;
+  }
+  .progress-track {
+    margin-top: 10px;
+  }
+  #route-hint {
+    top: 168px;
+    left: 20px;
+    transform: none;
+    background: none;
+    border: 0;
+    padding: 0;
+    font-size: 9px;
+    gap: 7px;
+  }
+  .hint-arrow {
+    font-size: 17px;
+  }
+  .telemetry {
+    right: 20px;
+    bottom: 184px;
+    width: 158px;
+  }
+  .mobile-utils {
+    right: 20px;
+    top: 82px;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .mobile-utils button {
+    height: 38px;
+    padding: 0 12px;
+    font-size: 8px;
+  }
+  #touch-hover {
+    min-width: 78px;
+  }
+  #toast {
+    top: 33%;
+    font-size: 16px;
+    width: 80%;
+    max-width: 80%;
+  }
+  #coach {
+    left: 20px;
+    right: 20px;
+    bottom: 330px;
+    transform: none;
+    width: auto;
+    min-width: 0;
+    text-align: left;
+    max-width: 230px;
+    font-size: 10px;
+    padding: 8px 10px;
+  }
+  .coach-index {
+    font-size: 7px;
+  }
+  #touch-controls {
+    left: 16px;
+    right: 16px;
+    bottom: max(20px, var(--safe-bottom));
+  }
+  #ground-stick {
+    width: 112px;
+  }
+  .touch-pedals button {
+    width: 58px;
+  }
+  .touch-pedals .accelerator {
+    width: 68px;
+  }
+  .touch-pedals .boost-button {
+    width: 68px;
+  }
+  .touch-pedals .drift-button {
+    width: 58px;
+  }
+  #flight-telemetry,
+  .airborne #flight-telemetry {
+    left: 20px;
+    top: 202px;
+    width: 155px;
+    padding: 9px;
+    font-size: 8px;
+  }
+  .flight-instrument-heading,
+  .flight-instrument-foot {
+    font-size: 6px;
+  }
+  .flight-instrument-heading > span {
+    display: none;
+  }
+  #attitude-readout {
+    font-size: 10px;
+    margin: 6px 0;
+  }
+  .airborne .telemetry {
+    right: 20px;
+    top: 201px;
+    bottom: auto;
+    width: 136px;
+    padding: 9px;
+  }
+  .airborne .speedline strong {
+    font-size: 40px;
+  }
+  .airborne .speedline {
+    gap: 8px;
+  }
+  .airborne .drive-mode {
+    font-size: 6px;
+  }
+  .airborne .telemetry-foot {
+    font-size: 5px;
+  }
+  .airborne .charge-title {
+    font-size: 6px;
+  }
+  .airborne .mobile-utils {
+    top: 82px;
+  }
+  .airborne #coach {
+    bottom: 265px;
+    max-width: none;
+    font-size: 9px;
+  }
+  .airborne #toast {
+    top: 39%;
+  }
+  .flight-altitude-controls button {
+    width: 63px;
+  }
+  .flight-touch-toolbar {
+    right: 76px;
+  }
+  .flight-touch-toolbar button {
+    width: 58px;
+  }
+  #challenge-hud {
+    top: 283px;
+    left: 20px;
+    right: auto;
+    width: 155px;
+    padding: 9px;
+  }
+  #challenge-caption {
+    font-size: 6px;
+    letter-spacing: 1px;
+  }
+  #banked-score {
+    font-size: 26px;
+    margin: 4px 0;
+  }
+  #challenge-hud > div {
+    font-size: 6px;
+  }
+  .airborne #challenge-hud {
+    top: 283px;
+  }
+  body[data-mode="stunt"] #coach {
+    display: none;
+  }
+  body[data-mode="stunt"] .map-wrap {
+    display: none;
+  }
+  body[data-mode="stunt"] #toast {
+    top: 43%;
+  }
+  .dialog-card {
+    padding: 23px;
+  }
+  .dialog-card h2 {
+    font-size: 30px;
+  }
+  #photo-panel {
+    padding: 95px 6% 25px;
+  }
+  #photo-panel h2 {
+    font-size: 29px;
+  }
+  .photo-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .photo-actions button {
+    width: 100%;
+  }
+}
+@media (max-height: 560px) and (orientation: landscape) {
+  .topbar {
+    padding: 12px max(22px, env(safe-area-inset-right)) 10px
+      max(22px, env(safe-area-inset-left));
+  }
+  .brand {
+    font-size: 10px;
+  }
+  .top-actions button {
+    height: 34px;
+    min-width: 34px;
+  }
+  #photo,
+  #fullscreen {
+    font-size: 16px;
+  }
+  .intro-copy {
+    top: 23%;
+    left: 5%;
+  }
+  .intro-copy .eyebrow {
+    font-size: 7px;
+  }
+  h1 {
+    font-size: 44px;
+    line-height: 0.91;
+    margin: 10px 0;
+  }
+  .lede {
+    font-size: 9px;
+    max-width: 140px;
+  }
+  .vehicle-tag {
+    display: none;
+  }
+  .garage-bottom {
+    left: 5%;
+    right: 5%;
+    bottom: 12px;
+  }
+  .garage-heading,
+  .intro-bottom,
+  .launch-row p,
+  .mode-title small {
+    display: none;
+  }
+  .mode-picker {
+    width: 67%;
+    gap: 7px;
+  }
+  .mode-picker button {
+    min-height: 53px;
+    padding: 10px;
+    font-size: 11px;
+    gap: 8px;
+  }
+  .mode-title {
+    font-size: 12px;
+  }
+  .mode-no {
+    font-size: 8px;
+  }
+  .launch-row {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    width: 30%;
+  }
+  #start {
+    width: 100%;
+    min-width: 0;
+    font-size: 9px;
+    min-height: 53px;
+  }
+  .intro-spec {
+    bottom: 78px;
+    right: 5%;
+  }
+  .view-picker button,
+  #aero-preview {
+    height: 28px;
+    font-size: 8px;
+  }
+  .mission {
+    left: 22px;
+    top: 65px;
+    width: 155px;
+  }
+  .mission .eyebrow {
+    font-size: 7px;
+  }
+  #timer {
+    font-size: 27px;
+    margin: 4px 0 5px;
+  }
+  .mission-row {
+    font-size: 7px;
+  }
+  .progress-track {
+    margin-top: 7px;
+  }
+  #route-hint {
+    top: 64px;
+    font-size: 8px;
+    padding: 5px 9px;
+  }
+  .hint-arrow {
+    font-size: 16px;
+  }
+  .mobile-utils,
+  .airborne .mobile-utils {
+    right: 22px;
+    top: 63px;
+    flex-direction: row;
+    gap: 5px;
+  }
+  .mobile-utils button {
+    height: 36px;
+    padding: 0 10px;
+    font-size: 8px;
+  }
+  .telemetry,
+  .airborne .telemetry {
+    top: 108px;
+    bottom: auto;
+    right: 22px;
+    width: 148px;
+    padding: 8px;
+  }
+  .speedline strong,
+  .airborne .speedline strong {
+    font-size: 36px;
+    letter-spacing: -2px;
+  }
+  .speedline > span {
+    font-size: 7px;
+  }
+  .speedline b {
+    font-size: 11px;
+  }
+  .drive-mode {
+    font-size: 6px;
+  }
+  .charge-title {
+    font-size: 6px;
+    margin: 5px 0;
+  }
+  .telemetry-foot {
+    display: none;
+  }
+  .map-wrap {
+    display: none;
+  }
+  #touch-controls {
+    left: max(22px, env(safe-area-inset-left));
+    right: max(22px, env(safe-area-inset-right));
+    bottom: max(12px, var(--safe-bottom));
+    height: 160px;
+  }
+  #ground-stick {
+    height: 64px;
+    width: 112px;
+  }
+  .touch-pedals {
+    bottom: 18px;
+  }
+  .touch-pedals button {
+    height: 57px;
+    width: 62px;
+  }
+  .touch-pedals .accelerator {
+    width: 74px;
+  }
+  .touch-pedals .boost-button,
+  .touch-pedals .drift-button {
+    bottom: 65px;
+    height: 38px;
+  }
+  .touch-pedals .boost-button {
+    width: 74px;
+  }
+  .touch-pedals .drift-button {
+    width: 62px;
+  }
+  #flight-stick {
+    width: 90px;
+    height: 90px;
+  }
+  .stick-yaw-left,
+  .stick-yaw-right {
+    top: 33px;
+  }
+  .flight-roll-controls {
+    bottom: 119px;
+  }
+  .flight-roll-controls button {
+    width: 43px;
+    min-height: 34px;
+    font-size: 7px;
+  }
+  .flight-altitude-controls {
+    right: 155px;
+    bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .flight-altitude-controls button {
+    min-height: 38px;
+    width: 43px;
+    font-size: 19px;
+  }
+  .flight-touch-toolbar {
+    right: 82px;
+    bottom: 83px;
+    flex-direction: row;
+    gap: 6px;
+  }
+  .flight-touch-toolbar button {
+    width: 54px;
+    min-height: 34px;
+    font-size: 7px;
+  }
+  #flight-telemetry,
+  .airborne #flight-telemetry {
+    left: 22px;
+    top: 145px;
+    width: 155px;
+    padding: 8px;
+  }
+  .flight-instrument-heading {
+    display: none;
+  }
+  .flight-instrument-foot {
+    font-size: 6px;
+  }
+  #attitude-readout {
+    font-size: 10px;
+    margin: 0 0 5px;
+  }
+  #coach,
+  .airborne #coach {
+    bottom: 24px;
+    width: 35%;
+    max-width: 270px;
+    min-width: 0;
+    font-size: 9px;
+    padding: 8px;
+  }
+  .coach-index {
+    font-size: 6px;
+  }
+  #toast {
+    top: 42%;
+    font-size: 16px;
+    max-width: 44%;
+  }
+  #challenge-hud,
+  .airborne #challenge-hud {
+    top: 112px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: 190px;
+    padding: 8px 12px;
+  }
+  #challenge-caption {
+    font-size: 6px;
+  }
+  #banked-score {
+    font-size: 25px;
+    display: inline-block;
+    margin: 4px 10px 3px 0;
+  }
+  #challenge-hud > div {
+    font-size: 7px;
+  }
+  body[data-mode="stunt"] #toast {
+    top: 59%;
+  }
+  .dialog-card {
+    max-height: calc(100dvh - 24px);
+    padding: 22px;
+    width: 460px;
+  }
+  #photo-panel {
+    padding: 74px 5% 24px;
+  }
+  #photo-panel h2 {
+    font-size: 26px;
+  }
+  .photo-actions button {
+    min-height: 42px;
+    font-size: 9px;
+  }
+}
+@media (max-width: 360px) {
+  .brand > div {
+    display: none;
+  }
+  .intro-spec {
+    bottom: 282px;
+  }
+  .mode-title {
+    font-size: 11px;
+  }
+  .mode-title small {
+    font-size: 7px;
+  }
+  .touch-pedals button {
+    width: 53px;
+  }
+  .touch-pedals .accelerator,
+  .touch-pedals .boost-button {
+    width: 60px;
+  }
+  .touch-pedals .drift-button {
+    width: 53px;
+  }
+  #ground-stick {
+    width: 104px;
+  }
+  .flight-touch-toolbar {
+    right: 68px;
+  }
+  .flight-altitude-controls button {
+    width: 56px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *:before,
+  *:after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  #speed-fx {
+    display: none;
+  }
+}
 
-.flight-controls{display:flex;position:absolute;left:0;bottom:77px;gap:10px;pointer-events:auto}.flight-controls button{touch-action:none;width:53px;height:36px;border:1px solid #96e8f270;background:#162630bb;color:#96e8f2;border-radius:6px;font-size:22px}.flight-controls button.pressed{background:#96e8f2;color:#152122}
-
-#intro{background:linear-gradient(90deg,rgba(8,16,22,.76),rgba(8,16,22,.38) 35%,transparent 65%)}@media(max-width:600px) and (orientation:portrait){#intro{background:linear-gradient(180deg,rgba(8,16,22,.64),transparent 42%,transparent 60%,rgba(8,16,22,.65))}}
-.lede,.mission,.telemetry,#route-hint{text-shadow:0 1px 9px #0008}
-@media(pointer:coarse){.map-wrap{bottom:142px}.map-wrap>span{display:none}}
-@media(max-width:600px) and (orientation:portrait){.telemetry{bottom:149px}.map-wrap{bottom:155px}.lede{color:#d5dddf;text-shadow:0 1px 8px #14212c}}
-@media(max-height:550px) and (orientation:landscape){.map-wrap{bottom:137px}}
-@media(max-width:650px) and (orientation:landscape){.mode-picker{left:45vw}.mode-picker button{min-width:120px;font-size:7px}.intro-copy>.primary{width:248px}.intro-spec{display:none}.intro-copy .lede{max-width:230px}h1{font-size:42px}}
-@media(max-width:360px) and (orientation:portrait){.topbar{padding:16px 14px}.brand{font-size:9px;letter-spacing:2px;gap:8px}.brandmark{width:29px;height:29px;line-height:28px;font-size:21px}.brand>div>span{font-size:5px;letter-spacing:.7px}.top-actions{gap:4px}.top-actions button{padding:0 6px}.top-actions button:first-child{padding:0 8px}#help,#pause{min-width:27px}}
-@media(max-height:650px) and (orientation:portrait){#toast{top:38%;font-size:12px;letter-spacing:.5px}}
-
-@media(max-height:650px) and (orientation:portrait){.telemetry{width:120px;right:16px;bottom:142px}.speedline strong{font-size:39px;letter-spacing:-2px}.speedline{gap:6px}.speedline>span{font-size:7px}.charge-title{font-size:6px;margin:6px 0}.drive-mode{font-size:5px;letter-spacing:.5px}.telemetry-foot{font-size:4px;margin-top:7px}.map-wrap{width:90px;bottom:157px}.map-wrap canvas{width:90px;height:66px}}
-.dialog-card{max-height:calc(100dvh - 28px);overflow-y:auto;overscroll-behavior:contain}
-
-.view-picker{display:flex;gap:8px;pointer-events:auto}.view-picker button{padding:10px 12px;border:1px solid #ffffff30;background:#0c131b88;color:#a7afb4;font-size:8px;letter-spacing:1.2px;backdrop-filter:blur(10px)}.view-picker button.selected{color:var(--accent);border-color:#96e8f280;background:#96e8f212}.intro-spec{pointer-events:auto}.intro-spec>strong{font-size:24px}
-@media(max-width:600px) and (orientation:portrait){.intro-spec{display:block;right:7%;left:7%;top:61%;bottom:auto;text-align:center}.intro-spec>span,.intro-spec>strong{display:none}.intro-spec .view-picker{justify-content:center;display:flex;margin:0}.view-picker button{font-size:7px;padding:7px 10px}}
-/* Only the actual view buttons accept clicks; the caption never blocks a mode. */
-.intro-spec{pointer-events:none}.view-picker,.view-picker button{pointer-events:auto}
-@media(max-height:550px) and (orientation:landscape){.intro-spec{display:none}}
-
-/* In the design studio, the car is the hero; controls stay around its silhouette. */
-@media(min-width:801px) and (min-height:551px){#intro{background:linear-gradient(180deg,#080d1444,transparent 30%,transparent 70%,#080d1477)}.intro-copy{inset:0;max-width:none;pointer-events:none}.intro-copy .eyebrow{position:absolute;left:6.5%;top:15%;font-size:8px}.intro-copy h1{position:absolute;left:6.5%;top:17%;font-size:48px;line-height:1.0;letter-spacing:-2px;margin:0}.intro-copy h1 br{display:none}.intro-copy .lede{position:absolute;left:6.5%;top:24%;font-size:11px;line-height:1.5;margin:0}.intro-copy .lede br{display:none}.intro-copy .mode-picker{position:absolute;left:6.5%;bottom:105px;margin:0;pointer-events:auto}.intro-copy>.primary{position:absolute;left:calc(6.5% + 374px);bottom:105px;width:300px;min-height:54px;pointer-events:auto}.intro-note{position:absolute;left:6.5%;bottom:62px;max-width:700px;margin:0}.intro-spec{bottom:113px;right:6.5%}.intro-spec>span,.intro-spec>strong{display:none}}
-
-
-/* Flight deck. All overrides are scoped to airborne mode; the ground HUD stays intact. */
-#flight-telemetry{display:none;position:absolute;top:115px;right:42px;width:245px;padding:13px 14px 12px;border:1px solid #96e8f22b;border-left:2px solid #96e8f28c;background:linear-gradient(110deg,#10222bd9,#0c1725a8);backdrop-filter:blur(10px);text-shadow:0 1px 7px #0008;pointer-events:none}
-.airborne #flight-telemetry{display:grid;gap:12px}.flight-instrument-heading,.flight-instrument-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}.flight-instrument-heading{font-size:7px;letter-spacing:1.6px;color:#a8bec6}.flight-instrument-heading b{font-size:8px;font-weight:500;letter-spacing:1px;color:var(--accent)}#attitude-readout{font-size:10px;letter-spacing:.6px;color:#e7f5f5;font-variant-numeric:tabular-nums;white-space:nowrap}.flight-instrument-foot{font-size:7px;letter-spacing:.6px;color:#a5bbc5}#flight-status{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.trick-counter{flex:none;font-size:7px;color:#91a9b2}.trick-counter b{font-size:13px;font-variant-numeric:tabular-nums;font-weight:400;color:var(--accent);margin-right:3px}
-#control-legend{flex-wrap:wrap;row-gap:8px;padding:0 16px}.airborne #control-legend{gap:16px}.airborne .touch-steer,.airborne [data-control="throttle"]{display:none!important}
-#flight-controls{position:absolute;inset:0;pointer-events:none;display:block}.flight-stick-wrap{position:absolute;left:0;bottom:0;width:116px;height:116px;pointer-events:auto;touch-action:none}.stick-caption{position:absolute;left:0;right:0;bottom:-14px;text-align:center;font-size:6px;letter-spacing:1.5px;color:#91aab5;pointer-events:none}
-#flight-stick{position:relative;width:100%;height:100%;border-radius:50%;border:1px solid #96e8f259;background:radial-gradient(circle,transparent 36%,#96e8f20d 37%,#96e8f20d 38%,transparent 39%),linear-gradient(90deg,transparent calc(50% - .5px),#96e8f21a 50%,transparent calc(50% + .5px)),linear-gradient(0deg,transparent calc(50% - .5px),#96e8f21a 50%,transparent calc(50% + .5px)),#11212cc9;box-shadow:inset 0 0 22px #96e8f20b,0 4px 24px #0003;backdrop-filter:blur(7px);touch-action:none;user-select:none;-webkit-user-select:none}
-#flight-stick-knob{position:absolute;left:calc(50% - 19px);top:calc(50% - 19px);width:38px;height:38px;border:1px solid #bceef7bb;border-radius:50%;background:radial-gradient(circle at 35% 30%,#8bd1dd88,#4892a366);box-shadow:0 0 16px #96e8f21a,inset 0 1px 7px #c2f9ff20;pointer-events:none;will-change:transform}#flight-stick.pressed #flight-stick-knob{border-color:#c6f9ff;background:#8edcea99;box-shadow:0 0 19px #96e8f233}.stick-axis-label{position:absolute;left:0;right:0;font-size:6px;letter-spacing:.9px;text-align:center;color:#a8c6cf;pointer-events:none}.stick-axis-top{top:12px}.stick-axis-bottom{bottom:12px}.stick-yaw-arrow{position:absolute;top:calc(50% - 12px);font-size:23px;line-height:24px;color:#96e8f299;pointer-events:none}.stick-yaw-left{left:10px}.stick-yaw-right{right:10px}
-.flight-roll-controls,.flight-altitude-controls,.flight-touch-toolbar{display:flex;position:absolute;gap:6px;pointer-events:auto}.flight-roll-controls{left:0;bottom:124px}.flight-altitude-controls{right:0;bottom:52px}.flight-touch-toolbar{right:0;bottom:104px}
-#flight-controls button{width:55px;height:40px;padding:0 4px;background:#142631d9;border:1px solid #96e8f247;border-radius:8px;color:#c6e9ef;font-size:7px;font-weight:500;letter-spacing:.5px;line-height:1;touch-action:none;user-select:none;-webkit-user-select:none;backdrop-filter:blur(7px)}#flight-controls button span{font-size:17px;vertical-align:middle}#flight-controls .flight-altitude-controls button{height:44px;width:51px}#flight-controls .flight-altitude-controls button span{font-size:16px}#flight-controls .flight-touch-toolbar button{width:51px;font-size:7px;letter-spacing:.5px}#flight-controls #touch-assist{color:var(--accent);border-color:#96e8f26b;background:#1d4651bf}#flight-controls #touch-assist[aria-pressed="false"]{color:#f6cf9c;border-color:#d7a66f80;background:#4d3425c9}#flight-controls #touch-level span{display:block;font-size:7px;letter-spacing:.7px}#flight-controls #touch-level small{display:block;margin-top:4px;font-size:5px;letter-spacing:1.5px;color:#8baab5}#flight-controls button.pressed{background:#b7edf6;color:#142229;border-color:#d2f9ff}#flight-controls button.pressed small{color:#335560}
-@media(pointer:coarse){.airborne #touch-controls{height:164px;align-items:flex-end;bottom:max(30px,env(safe-area-inset-bottom))}.airborne .touch-pedals{margin-left:auto;gap:6px}.airborne .touch-pedals button{height:44px;width:51px;font-size:7px;border-radius:8px}.airborne .touch-pedals button.boost-button{position:static;height:44px;width:51px;font-size:7px;background:#8ddbe9d9;border-color:#a4e7ef;color:#10232b;font-weight:700}.airborne .touch-pedals button[data-control="brake"]{order:-1}.airborne .mobile-utils button{min-height:40px;min-width:40px}.airborne .map-wrap{bottom:212px}}
-@media(max-width:800px){#flight-telemetry{top:88px;right:23px;width:190px;padding:11px;gap:10px}.airborne #control-legend{font-size:7px;gap:10px}.airborne #control-legend kbd{font-size:7px}}
-@media(max-width:600px) and (orientation:portrait){.airborne #flight-telemetry{top:183px;left:19px;right:auto;width:calc(100% - 151px);max-width:245px;padding:10px 9px;gap:11px}.flight-instrument-heading{font-size:6px;letter-spacing:.7px}.flight-instrument-heading b{font-size:7px;letter-spacing:.7px}#attitude-readout{font-size:8px;letter-spacing:0}.flight-instrument-foot{font-size:5px;letter-spacing:.2px}.trick-counter{font-size:5px}.trick-counter b{font-size:11px;margin-right:1px}.airborne .telemetry{top:183px;right:16px;bottom:auto;width:102px}.airborne .speedline{gap:5px}.airborne .speedline strong{font-size:40px;letter-spacing:-2px}.airborne .speedline>span{font-size:6px}.airborne .speedline b{font-size:12px}.airborne .drive-mode{font-size:5px;letter-spacing:.4px;white-space:nowrap}.airborne .charge-title{font-size:5px;letter-spacing:.2px;margin:6px 0}.airborne .telemetry-foot{font-size:4px;letter-spacing:0;margin-top:8px}.airborne .map-wrap{display:none}.airborne #route-hint{top:289px;left:19px;right:19px;font-size:8px}.airborne #route-text{max-width:none;white-space:normal}.airborne .mobile-utils{top:88px;right:16px;display:grid;grid-template-columns:40px 40px;gap:6px}.airborne .mobile-utils button{padding:0;font-size:7px}.airborne #touch-hover{grid-column:1/-1;min-width:86px}.airborne #toast{top:56%;max-width:calc(100% - 30px);font-size:12px;white-space:normal;text-align:center}.airborne #touch-controls{left:15px;right:15px;bottom:max(28px,env(safe-area-inset-bottom))}}
-@media(max-height:550px) and (orientation:landscape){.airborne #flight-telemetry{top:117px;left:50%;right:auto;transform:translateX(-50%);width:190px;padding:10px 12px;gap:9px}.airborne .flight-instrument-heading{font-size:6px;letter-spacing:1px}.airborne #attitude-readout{font-size:8px}.airborne .flight-instrument-foot{font-size:6px}.airborne .trick-counter b{font-size:11px}.airborne .telemetry{top:126px;right:23px;bottom:auto;width:134px}.airborne .speedline strong{font-size:43px}.airborne .map-wrap{display:none}.airborne #touch-controls{height:144px;bottom:max(21px,env(safe-area-inset-bottom))}.flight-stick-wrap{width:96px;height:96px}.flight-roll-controls{bottom:104px}.flight-touch-toolbar{bottom:100px}.flight-altitude-controls{bottom:48px}#flight-controls .flight-roll-controls button{width:45px;font-size:6px}.stick-axis-top{top:9px}.stick-axis-bottom{bottom:9px}.stick-yaw-left{left:7px}.stick-yaw-right{right:7px}.airborne .mobile-utils{top:70px;right:23px;gap:5px}.airborne .mobile-utils button{min-height:40px;padding:0 9px}.airborne #toast{top:55%;font-size:13px;max-width:40%;white-space:normal;text-align:center}}
-@media(max-width:600px) and (max-height:550px) and (orientation:landscape){.airborne #flight-telemetry{top:128px;width:162px;padding:8px;gap:8px}.airborne .flight-instrument-heading{letter-spacing:.5px}.airborne .telemetry{right:18px;width:105px}.airborne .speedline strong{font-size:37px}.airborne #route-hint{top:74px;max-width:190px;white-space:normal}.airborne #route-text{max-width:150px}.airborne .mission{width:145px}.airborne .mobile-utils{right:18px}.airborne .mobile-utils button{padding:0 7px}.airborne #touch-controls{left:18px;right:18px}}
-@media(prefers-reduced-motion:reduce){#flight-stick-knob{will-change:auto}}
-
-.air-brake-label{display:none}.airborne .ground-brake-label{display:none}.airborne .air-brake-label{display:inline}
-
-/* Keep the flight deck above the car on short phone landscapes. */
-@media(max-height:350px) and (orientation:landscape){.airborne #flight-telemetry{top:114px;width:190px;padding:7px 9px;grid-template-columns:43px 1fr;column-gap:8px;row-gap:5px}.airborne .flight-instrument-heading{grid-column:1;grid-row:1/3;justify-content:flex-start}.airborne .flight-instrument-heading>span{display:none}.airborne #flight-assist-status{font-size:7px}.airborne #attitude-readout{grid-column:2;font-size:7px;line-height:9px}.airborne .flight-instrument-foot{grid-column:2;font-size:5px;line-height:9px;gap:5px}.airborne .trick-counter{font-size:5px}.airborne .trick-counter b{font-size:9px}.airborne .telemetry{top:114px;width:105px}.airborne .drive-mode{display:none}.airborne .speedline{height:22px;gap:6px}.airborne .speedline strong{font-size:22px;letter-spacing:-1px;line-height:1}.airborne .speedline>span{font-size:6px;line-height:1}.airborne .speedline>span br,.airborne .speedline b{display:none}.airborne .charge-title{font-size:5px;line-height:6px;letter-spacing:.3px;margin:4px 0}.airborne .telemetry-foot{display:block;position:absolute;top:7px;right:0;margin:0;font-size:6px;letter-spacing:0}.airborne #grip{display:none}.airborne #toast{top:160px;font-size:9px;letter-spacing:.5px;max-width:46%}}
+.air-brake-label {
+  display: none;
+}
+.airborne .ground-brake-label {
+  display: none;
+}
+.airborne .air-brake-label {
+  display: inline;
+}
+#hud:not(.airborne) #touch-assist {
+  display: none;
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .telemetry {
+    top: 201px;
+    bottom: auto;
+    width: 136px;
+    padding: 9px;
+  }
+  .speedline strong {
+    font-size: 40px;
+  }
+  .drive-mode {
+    font-size: 6px;
+  }
+  .telemetry-foot {
+    font-size: 5px;
+  }
+  .charge-title {
+    font-size: 6px;
+  }
+  #coach {
+    top: 320px;
+    bottom: auto;
+    max-width: none;
+  }
+  .airborne #coach {
+    top: auto;
+    bottom: 265px;
+  }
+  .mobile-utils,
+  .airborne .mobile-utils {
+    display: grid;
+    grid-template-columns: 68px 68px;
+    gap: 5px;
+  }
+  #touch-hover {
+    min-width: 0;
+  }
+  .mobile-utils button {
+    padding: 0 5px;
+    font-size: 7px;
+  }
+  #hud:not(.airborne) #touch-hover {
+    grid-column: 1/-1;
+  }
+}
