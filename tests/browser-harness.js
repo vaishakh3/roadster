@@ -352,6 +352,14 @@ document.getElementById("run").onclick = async () => {
     ok(g.memory.geometries <= memory.geometries + 2, JSON.stringify(g.memory));
     ok(g.memory.textures <= memory.textures + 1);
   });
+  check("All venue cards show the extended route distances", () => {
+    for (const c of COURSES)
+      ok(
+        d
+          .querySelector(`[data-course="${c.id}"] small`)
+          .textContent.includes((c.length / 1000).toFixed(1) + " KM"),
+      );
+  });
   g.home();
   d.getElementById("start-tour").click();
   check("World Tour begins at the Atlantic course", () =>

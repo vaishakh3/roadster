@@ -212,6 +212,9 @@ function selectCourse(id) {
   $("destination").textContent = course.name + " ↗";
   document.querySelectorAll("[data-course]").forEach((b) => {
     if (b.tagName === "BUTTON") {
+      const meta = b.querySelector("small[data-region]");
+      if (meta)
+        meta.textContent = `${meta.dataset.region} / ${(getCourse(b.dataset.course).length / 1000).toFixed(1)} KM`;
       const active = b.dataset.course === course.id;
       b.setAttribute("aria-pressed", active);
       b.classList.toggle("active", active);
@@ -1036,7 +1039,21 @@ async function boot() {
       );
     });
     const selectedId = course.id;
-    const nextFrame = () => new Promise(requestAnimationFrame);
+    // A hidden/background tab can suspend RAF indefinitely. Yield to painting
+    // when possible, with a timer fallback so loading still makes progress.
+    const nextFrame = () =>
+      new Promise((resolve) => {
+        let complete = false;
+        const finish = () => {
+          if (complete) return;
+          complete = true;
+          clearTimeout(timer);
+          cancelAnimationFrame(frame);
+          resolve();
+        };
+        const timer = setTimeout(finish, 80),
+          frame = requestAnimationFrame(finish);
+      });
     for (const c of COURSES) {
       $("loading").querySelector("strong").textContent =
         "PREPARING / " + c.name;
@@ -1051,7 +1068,11 @@ async function boot() {
       applyQuality();
       resize();
       updateVisuals(0, true);
-      await renderer.compileAsync(scene, camera);
+      $("loading").querySelector("strong").textContent =
+        "PREPARING LIGHTING / " + c.name;
+      // Rendering warms the visible world's actual lighting/material variants.
+      // compile(scene) also traverses hidden venues, preparing every world under
+      // every other world's lights; its parallel completion query can stall.
       renderer.render(scene, camera);
       await nextFrame();
     }

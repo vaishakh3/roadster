@@ -3,10 +3,10 @@
 ## Release checks
 
 - **43 simulation/input/geometry checks passed.**
-- **60 production-browser checks passed, zero failures.**
+- **61 production-browser checks passed, zero failures.**
 - **13 rendered ramp checks passed.** Full steering and boost were applied during ascent. Minimum measured wheel/bumper clearance was 1.8–2.0 cm, with correction outlets and landing lift active on every ramp.
 - All three extended courses completed through the production keyboard handlers with every gate and full vehicle condition; fastest-run ghosts appeared on replay.
-- Build and whitespace checks passed. Standalone and hosted HTML are identical: **2,589,016 bytes**, **1,377,727 bytes gzip**. All graphics, fonts and sound remain local to the bundle; there are no runtime asset/API requests.
+- Build and whitespace checks passed. Standalone and hosted HTML are identical: **2,589,559 bytes**, **1,377,845 bytes gzip**. All graphics, fonts and sound remain local to the bundle; there are no runtime asset/API requests.
 
 ## Longer courses and route map
 
@@ -39,10 +39,12 @@ Primary references: [Tesla Roadster](https://www.tesla.com/roadster) and [Tesla 
 
 Sampled 844×390 scenes after geometry/instance optimization submitted approximately **170k–337k triangles** and **124–189 draw calls**, versus 349k–493k triangles earlier in this refinement. These samples precede a small cactus geometry improvement and are not a device-wide maximum. Browser frame intervals were approximately 8.3–8.6 ms on this desktop GPU, not a mobile benchmark. Real frame pacing, GPU time and thermal behavior on phones are not inferred from those numbers.
 
-Venue selection through the first rendered frame: **4.7–8.3 ms**, median **6.8 ms**, across nine local switches. Cached initialization measured **1,080 ms**. All nine switches retained 155 geometries and 15 textures; additional district resources upload on first use during racing. Worlds and assets are reused across selection.
+Venue selection through the first rendered frame: **2.2–9.5 ms**, median **6.7 ms**, across nine local switches. Initialization measured **4,577 ms** in the final startup check; shader caches, GPU drivers and browser scheduling affect this value. All nine switches retained 155 geometries and 15 textures; additional district resources upload on first use during racing. Worlds and assets are reused across selection.
 
 ## Layout and device limits
 
 Validated 1280×720 desktop; 844×390, 667×375 and 568×320 landscape; and 390×844 and 320×568 portrait. HUD/map/controls remain in bounds without critical overlap. Portrait pauses and requires deliberate resume. Simultaneous Shift/arrows/Space and independent synthetic touch pointers pass; selection, context menus and touch scrolling remain suppressed. QA records are isolated from personal progress.
 
 Physical iPhone Safari and Android Chrome still need sustained multitouch, safe-area/browser-chrome, thermal and battery testing. Desktop emulation cannot establish phone frame rates. Automated complete runs establish feasibility, not human enjoyment. Local records do not sync across devices.
+
+Startup prewarming now renders only each visible venue, avoiding compilation of hidden venues under unrelated lighting variants and an unbounded parallel shader-completion wait. Frame-yield timers allow preparation to continue when background tabs suspend animation frames. Venue-card distances are derived from course data.

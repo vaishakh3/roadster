@@ -55,15 +55,27 @@
         </div>
         <nav id="course-select" aria-label="Select race course">
           <button data-course="breakwater" aria-pressed="true">
-            <i>01</i><span>BREAKWATER<small>ATLANTIC / 3.6 KM</small></span
+            <i>01</i
+            ><span
+              >BREAKWATER<small data-region="ATLANTIC"
+                >ATLANTIC / 5.4 KM</small
+              ></span
             ><b aria-hidden="true">↗</b>
           </button>
           <button data-course="redshift" aria-pressed="false">
-            <i>02</i><span>REDSHIFT<small>BADLANDS / 3.9 KM</small></span
+            <i>02</i
+            ><span
+              >REDSHIFT<small data-region="BADLANDS"
+                >BADLANDS / 5.7 KM</small
+              ></span
             ><b aria-hidden="true">↗</b>
           </button>
           <button data-course="nightshift" aria-pressed="false">
-            <i>03</i><span>NIGHTSHIFT<small>FREIGHT PORT / 4.2 KM</small></span
+            <i>03</i
+            ><span
+              >NIGHTSHIFT<small data-region="FREIGHT PORT"
+                >FREIGHT PORT / 6.0 KM</small
+              ></span
             ><b aria-hidden="true">↗</b>
           </button>
         </nav>
@@ -90,7 +102,7 @@
               stroke-width="3"
             />
           </svg>
-          <b id="route-meta">3.6 KM / FLOW</b><span id="route-tags"></span>
+          <b id="route-meta">5.4 KM / FLOW</b><span id="route-tags"></span>
           <span id="course-gold"></span>
           <div id="course-badges" class="badges"></div>
         </div>
@@ -134,7 +146,7 @@
           </div>
           <div class="journey">
             <div class="journey-label">
-              <span id="distance">3.6 KM TO GO</span
+              <span id="distance">5.4 KM TO GO</span
               ><span id="destination">BREAKWATER ↗</span
               ><b id="map-percent">0%</b>
             </div>
@@ -175,8 +187,8 @@
           ><strong id="announcement-title"></strong>
         </div>
         <div id="race-target">
-          <span>GOLD TARGET</span><b id="target-time">01:05</b
-          ><span id="target-gates">0 / 12 GATES</span>
+          <span>GOLD TARGET</span><b id="target-time">01:37</b
+          ><span id="target-gates">0 / 17 GATES</span>
         </div>
         <div id="ghost-delta" hidden></div>
         <div id="event" role="status" aria-live="polite"></div>
