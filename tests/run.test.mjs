@@ -136,7 +136,7 @@ test("Brake overrides thrust without locking steering", () => {
   assert(!s.boosting);
   assert(s.x < -3);
 });
-test("Magnetic ramp warnings give time to align before the launch", () => {
+test("Suction ramp warnings give time to align before the launch", () => {
   const s = createRun();
   s.d = 500;
   assert.equal(nextWarning(s).kind, "ramp");

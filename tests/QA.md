@@ -6,7 +6,7 @@
 - **61 production-browser checks passed, zero failures.**
 - **13 rendered ramp checks passed.** Full steering and boost were applied during ascent. Minimum measured wheel/bumper clearance was 1.8–2.0 cm, with correction outlets and landing lift active on every ramp.
 - All three extended courses completed through the production keyboard handlers with every gate and full vehicle condition; fastest-run ghosts appeared on replay.
-- Build and whitespace checks passed. Standalone and hosted HTML are identical: **2,589,559 bytes**, **1,377,845 bytes gzip**. All graphics, fonts and sound remain local to the bundle; there are no runtime asset/API requests.
+- Build and whitespace checks passed. Standalone and hosted HTML are identical: **2,589,558 bytes**, **1,377,844 bytes gzip**. All graphics, fonts and sound remain local to the bundle; there are no runtime asset/API requests.
 
 ## Longer courses and route map
 
