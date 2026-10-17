@@ -1,50 +1,2133 @@
-:root{--ivory:#f5f5ed;--muted:#9da7ac;--accent:#96e8f2;--panel:rgba(13,20,24,.64)}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#11171c;color:var(--ivory);font-family:Arial,Helvetica,sans-serif;overscroll-behavior:none}button{font:inherit;color:inherit;cursor:pointer;border:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}#scene{display:block;width:100%;height:100%;touch-action:none}#vignette{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(6,11,16,.4),transparent 24%,transparent 68%,rgba(5,11,16,.55)),radial-gradient(ellipse at center,transparent 45%,rgba(8,13,17,.25))}#flash{position:absolute;inset:0;pointer-events:none;background:#96e8f2;opacity:0;transition:opacity .25s}.topbar{position:absolute;top:0;left:0;width:100%;display:flex;justify-content:space-between;align-items:center;padding:30px 40px;z-index:20}.brand{display:flex;align-items:center;gap:13px;font-size:14px;letter-spacing:5px;font-weight:600}.brandmark{font-size:27px;font-style:italic;font-weight:900;letter-spacing:-7px;border:1px solid #ffffff45;width:39px;height:39px;line-height:38px;padding-left:7px;transform:skew(-7deg)}.brand>div>span{display:block;font-size:7px;letter-spacing:1.3px;margin-top:7px;color:#cad0ce}.top-actions{display:flex;gap:8px;align-items:center}.top-actions button{background:#14212955;border:1px solid #ffffff20;backdrop-filter:blur(10px);height:35px;padding:0 13px;font-size:10px;letter-spacing:1px;color:#ddd}.top-actions button b{color:var(--accent);font-weight:400;margin-left:4px}#help,#pause{font-size:17px;min-width:35px}#pause{display:none}.hidden{display:none!important}.overlay{position:absolute;inset:0}.intro-copy{position:absolute;left:7.5%;top:23%;max-width:460px}.eyebrow{font-size:9px;letter-spacing:2.5px;color:#c8d0cd;font-weight:500}.eyebrow i,.drive-mode i{display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;margin-right:8px;box-shadow:0 0 9px #96e8f266}h1{font-size:clamp(54px,6.4vw,104px);font-weight:400;line-height:.96;letter-spacing:-5px;margin:23px 0}.lede{font-size:14px;line-height:1.7;color:#bcc5c7;margin:24px 0 27px}.mode-picker{display:flex;gap:12px;margin-bottom:18px}.mode-picker button{text-align:left;padding:12px 15px 11px;background:#0c141c66;border:1px solid #ffffff26;backdrop-filter:blur(10px);font-size:10px;letter-spacing:1px;min-width:170px}.mode-picker button.selected{border-color:#96e8f2aa;background:#96e8f214}.mode-picker button>span{color:var(--accent);margin-right:12px;font-size:9px}.mode-picker small{display:block;font-size:9px;letter-spacing:0;color:#a6afb2;margin-top:8px;margin-left:25px}.primary{display:flex;align-items:center;justify-content:space-between;background:var(--accent);color:#182020;font-weight:700;font-size:10px;letter-spacing:1.8px;padding:18px 21px;min-height:49px;width:100%;max-width:352px;transition:background .2s}.primary:hover{background:#d2fbff}.primary>span{font-size:20px;font-weight:400}.intro-note{color:#adb5b6;font-size:8px;line-height:1.6;margin-top:17px;max-width:345px}.intro-spec{position:absolute;right:5%;bottom:19%;text-align:right;pointer-events:none}.intro-spec>span{font-size:8px;letter-spacing:2px;color:#d6dbd7}.intro-spec strong{display:block;margin:14px 0 25px;font-size:27px;font-weight:400;line-height:1.1;letter-spacing:-.5px}.intro-spec>div{font-size:9px;color:var(--accent);letter-spacing:1.5px}.intro-spec>div>span{color:#a3afb2}.intro-bottom{position:absolute;bottom:27px;left:40px;right:40px;display:flex;justify-content:space-between;font-size:8px;letter-spacing:1.8px;color:#9eaaae}.mission{position:absolute;top:115px;left:40px;width:230px}.mission>.eyebrow{font-size:8px}#timer{font-size:37px;letter-spacing:0;font-variant-numeric:tabular-nums;font-weight:300;margin:9px 0}.mission-row{display:flex;justify-content:space-between;font-size:9px;letter-spacing:.6px;color:#aebbbe}#checkpoint{color:var(--accent)}#route-hint{position:absolute;top:125px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:9px;font-size:10px;letter-spacing:1px;color:#dae0dc;background:#13212a55;border:1px solid #ffffff13;padding:10px 17px;border-radius:2px;white-space:nowrap}.hint-arrow{font-size:18px;color:var(--accent)}.telemetry{position:absolute;right:42px;bottom:72px;width:245px}.drive-mode{font-size:9px;letter-spacing:2px;color:#96e8f2}.speedline{display:flex;align-items:center;gap:14px}.speedline strong{font-size:85px;font-weight:300;letter-spacing:-4px;line-height:1.2;font-variant-numeric:tabular-nums}.speedline>span{font-size:9px;line-height:2;letter-spacing:1px;color:#adb9bd}.speedline b{font-size:17px;color:#fff;font-weight:400}.charge-title{display:flex;justify-content:space-between;font-size:8px;letter-spacing:1.5px;margin:10px 0}.charge-title b{font-weight:400;color:var(--accent)}.charge-track{height:3px;background:#ffffff25}.charge-track>div{width:100%;height:100%;background:var(--accent);transition:width .1s}.telemetry-foot{display:flex;justify-content:space-between;font-size:7px;letter-spacing:.7px;margin-top:12px;color:#adb9bd}.map-wrap{position:absolute;bottom:72px;left:38px;width:180px}.map-wrap canvas{width:180px;height:132px}.map-wrap>span{display:block;font-size:7px;letter-spacing:1.4px;text-align:center;color:#899b9e}.desktop-controls{position:absolute;bottom:25px;left:0;width:100%;display:flex;justify-content:center;gap:22px;font-size:8px;letter-spacing:1px;color:#a8b2b5}.desktop-controls span{display:flex;align-items:center;gap:7px}kbd{font-family:inherit;border:1px solid #ffffff35;padding:4px 5px;font-size:8px;color:#e5e8df}.modal{position:absolute;inset:0;background:#09101788;backdrop-filter:blur(16px);z-index:30;display:flex;align-items:center;justify-content:center}.dialog-card{width:min(450px,90vw);padding:35px;background:#111d25ee;border:1px solid #ffffff26;box-shadow:0 20px 70px #0006}.dialog-card h2{font-size:36px;letter-spacing:-1px;font-weight:400;margin:14px 0 23px}.dialog-card .primary{max-width:none}.secondary{width:100%;background:#ffffff08;border:1px solid #ffffff25;min-height:43px;margin-top:10px;font-size:9px;letter-spacing:1.8px}.text-button{background:none;width:100%;margin-top:20px;font-size:8px;letter-spacing:1.6px;color:#a5b2b6}#dialog-content{color:#bcc7c9;font-size:12px;line-height:1.8;margin-bottom:22px}#dialog-content ul{padding-left:15px;margin:0}#dialog-content .result-time{font-size:42px;color:var(--accent);margin:8px 0}#dialog-content .keys{display:grid;grid-template-columns:110px auto;gap:5px}#dialog-content .keys b{color:#96e8f2;font-weight:400}#toast{position:absolute;left:50%;top:29%;transform:translateX(-50%);font-size:22px;letter-spacing:2px;color:var(--accent);text-shadow:0 2px 12px #000;opacity:0;transition:opacity .3s;white-space:nowrap;pointer-events:none}#loading{position:absolute;inset:0;background:#11171c;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;font-size:9px;letter-spacing:2px;z-index:40}.loader-line{width:140px;height:2px;background:#ffffff20;position:relative;overflow:hidden}.loader-line:after{content:'';height:2px;width:60px;background:var(--accent);position:absolute;animation:load 1s infinite}@keyframes load{from{left:-60px}to{left:140px}}#touch-controls,.mobile-utils{display:none}#error{position:absolute;inset:0;z-index:100;background:#11171c;padding:20%;text-align:center}#error button{padding:16px 30px;background:var(--accent);color:#11171c}
-@media(pointer:coarse){.desktop-controls{display:none}#touch-controls{display:flex;position:absolute;bottom:max(22px,env(safe-area-inset-bottom));left:max(22px,env(safe-area-inset-left));right:max(22px,env(safe-area-inset-right));justify-content:space-between;pointer-events:none}.touch-steer,.touch-pedals{display:flex;gap:10px;align-items:flex-end}.touch-steer button,.touch-pedals button{pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;width:66px;height:66px;background:#16263099;backdrop-filter:blur(6px);border:1px solid #ffffff45;border-radius:9px;font-size:10px;letter-spacing:.7px}.touch-steer button{font-size:42px}.touch-pedals button.accelerator{background:#96e8f2e8;color:#152122;font-weight:700;width:77px}.touch-pedals button.boost-button{height:45px;font-size:8px;color:var(--accent);border-color:#96e8f266}.touch-steer button.pressed,.touch-pedals button.pressed{background:#d2fbff;color:#172122}.mobile-utils{position:absolute;right:23px;top:185px;display:flex;gap:8px}.mobile-utils button{padding:10px;background:#16263099;border:1px solid #ffffff30;font-size:9px;letter-spacing:.8px;touch-action:manipulation}.telemetry{bottom:117px;right:26px}.map-wrap{bottom:112px;left:22px}}
-@media(max-width:800px){.topbar{padding:20px 22px}.brand{font-size:11px;letter-spacing:3px;gap:10px}.brandmark{width:33px;height:33px;font-size:24px;line-height:32px}.top-actions{gap:5px}.top-actions button{height:30px;font-size:8px;padding:0 8px}#help,#pause{min-width:30px;font-size:14px}.intro-copy{left:6%;top:24%}h1{font-size:68px;letter-spacing:-3px}.intro-spec{right:5%;bottom:18%}.intro-spec strong{font-size:22px}.intro-bottom{left:22px;right:22px;font-size:6px}.mission{top:87px;left:23px;width:180px}#timer{font-size:29px}.mission-row{font-size:8px}.mission>.eyebrow{font-size:7px;letter-spacing:1.5px}#route-hint{top:90px;font-size:8px;padding:6px 10px}.telemetry{width:190px}.speedline strong{font-size:65px}.map-wrap{width:140px}.map-wrap canvas{width:140px;height:103px}.telemetry-foot{font-size:6px}.drive-mode{font-size:8px;letter-spacing:1.4px}}
-@media(max-width:600px) and (orientation:portrait){.topbar{padding:18px 18px}.top-actions button:first-child{font-size:0;padding:0 10px}.top-actions button:first-child b{font-size:8px;margin:0}.brand>div>span{font-size:6px}.intro-copy{left:7%;top:16%;right:7%;max-width:none}h1{font-size:60px;line-height:.94;margin:18px 0}.intro-copy .eyebrow{font-size:7px;letter-spacing:1.4px}.lede{font-size:11px;margin:17px 0 23px;line-height:1.65;max-width:210px}.mode-picker{position:absolute;top:53vh;left:0;right:0;gap:9px;margin:0}.mode-picker button{min-width:0;width:50%;padding:11px;font-size:9px}.mode-picker small{font-size:8px;margin-left:0}.mode-picker button>span{margin-right:6px}.intro-copy>.primary{position:absolute;top:calc(53vh + 73px);max-width:none;width:100%;font-size:9px;min-height:48px;padding:12px 16px}.intro-note{position:absolute;top:calc(53vh + 122px);font-size:7px;line-height:1.5;max-width:none;margin-top:10px}.intro-spec{display:none}.intro-bottom{bottom:12px;left:18px;right:18px;font-size:5px;letter-spacing:1px}.mission{left:19px;top:87px;width:168px}#route-hint{top:181px;left:19px;transform:none;font-size:8px;background:none;border:0;padding:0}#route-text{max-width:170px;white-space:normal}.mobile-utils{top:95px;right:18px;flex-direction:column;gap:5px}.mobile-utils button{font-size:8px;padding:9px}.telemetry{width:158px;right:20px;bottom:126px}.speedline strong{font-size:61px}.speedline{gap:8px}.charge-title{font-size:7px;letter-spacing:.7px}.telemetry-foot{font-size:5px;letter-spacing:.2px}.map-wrap{left:12px;bottom:125px;width:130px}.map-wrap canvas{width:130px;height:95px}.map-wrap>span{font-size:5px}.drive-mode{font-size:7px;letter-spacing:.9px}#touch-controls{left:15px;right:15px;bottom:max(27px,env(safe-area-inset-bottom));align-items:flex-end}.touch-steer,.touch-pedals{gap:7px}.touch-steer button{width:52px;height:65px}.touch-pedals button{width:57px;height:65px;font-size:9px}.touch-pedals button.accelerator{width:64px}.touch-pedals button.boost-button{position:absolute;right:0;bottom:75px;width:64px;height:34px;font-size:7px}#toast{top:32%;font-size:15px;letter-spacing:1px}.dialog-card{padding:27px}.dialog-card h2{font-size:30px}}
-@media(max-height:550px) and (orientation:landscape){.topbar{padding:14px 22px}.intro-copy{top:22%;left:6%}h1{font-size:47px;letter-spacing:-2px;margin:13px 0}.intro-copy .eyebrow{font-size:6px}.lede{font-size:10px;margin:12px 0}.mode-picker{position:absolute;left:45vw;top:25vh;gap:8px}.mode-picker button{min-width:140px;font-size:8px}.intro-copy>.primary{position:absolute;left:45vw;top:calc(25vh + 72px);width:288px;max-width:none;font-size:8px;padding:10px 15px;min-height:42px}.intro-note{font-size:6px;margin-top:13px;max-width:260px}.intro-spec{right:8%;bottom:42%;font-size:8px}.intro-spec strong{font-size:19px}.intro-spec>div{display:none}.intro-bottom{bottom:13px}.mission{top:72px;left:23px}#timer{font-size:25px;margin:5px 0}.telemetry{width:155px;right:26px;bottom:105px}.speedline strong{font-size:48px}.drive-mode{font-size:6px}.charge-title{font-size:6px;margin:5px 0}.telemetry-foot{display:none}.map-wrap{width:100px;left:25px;bottom:100px}.map-wrap canvas{width:100px;height:73px}.map-wrap>span{font-size:5px}.mobile-utils{right:22px;top:70px}.mobile-utils button{font-size:7px;padding:8px}#route-hint{top:69px;font-size:7px}#touch-controls{bottom:18px}.touch-steer button,.touch-pedals button{height:58px;width:60px}.touch-pedals button.accelerator{width:75px}#toast{font-size:17px}.dialog-card{padding:19px;width:420px}.dialog-card h2{font-size:26px;margin:8px 0 12px}#dialog-content{font-size:10px;line-height:1.5;margin-bottom:12px}.dialog-card .primary{min-height:36px;padding:10px 15px}.secondary{min-height:32px;margin-top:8px}.text-button{margin-top:12px}}
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("assets/fonts/BarlowCondensed-SemiBold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("assets/fonts/IBMPlexMono-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+:root {
+  color-scheme: dark;
+  --ink: #101216;
+  --paper: #f3f4ed;
+  --muted: #a3a8aa;
+  --accent: #ff493d;
+  --mono: "IBM Plex Mono", monospace;
+  --display: "Barlow Condensed", sans-serif;
+  --line: #ffffff26;
+  --panel: #111820bd;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: "IBM Plex Mono", monospace;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+body {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+}
+button,
+a,
+canvas {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: #141b21a8;
+  touch-action: manipulation;
+}
+button:hover {
+  border-color: #ff493d80;
+  background: #28342d;
+}
+button:active {
+  transform: translateY(1px);
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+a {
+  color: var(--accent);
+}
+.hidden {
+  display: none !important;
+}
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  outline: none;
+}
+#vignette,
+#flash,
+#speed-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#vignette {
+  background: linear-gradient(
+    180deg,
+    #090e1677,
+    transparent 35%,
+    transparent 58%,
+    #070d1677
+  );
+}
+#flash {
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+#speed-fx {
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    transparent 45%,
+    #c9f5ff22 90%
+  );
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: max(24px, env(safe-area-inset-top))
+    max(36px, env(safe-area-inset-right)) 20px
+    max(36px, env(safe-area-inset-left));
+  z-index: 20;
+  pointer-events: none;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  letter-spacing: 4px;
+  font-weight: 700;
+}
+.brandmark {
+  position: relative;
+  font-size: 32px;
+  font-style: italic;
+  letter-spacing: -6px;
+  width: 35px;
+  font-weight: 900;
+}
+.brandmark > span {
+  font-size: 17px;
+  color: var(--accent);
+  position: absolute;
+  top: -1px;
+  right: -3px;
+}
+.brand > div > span {
+  display: block;
+  font-size: 7px;
+  letter-spacing: 1.3px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.top-actions {
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+.top-actions button {
+  height: 40px;
+  min-width: 40px;
+  padding: 0 12px;
+  font-size: 9px;
+  letter-spacing: 1px;
+  border-radius: 3px;
+}
+.top-actions button b {
+  color: var(--accent);
+  font-weight: 500;
+  margin-left: 4px;
+}
+#fullscreen,
+#photo,
+#help,
+#pause {
+  font-size: 19px;
+  padding: 0 11px;
+}
+#pause {
+  display: none;
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.overlay button {
+  pointer-events: auto;
+}
+.intro-copy {
+  position: absolute;
+  left: 5%;
+  top: 16%;
+  z-index: 2;
+}
+.eyebrow {
+  font-size: 9px;
+  letter-spacing: 2px;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0;
+}
+.eyebrow i,
+.drive-mode i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+  margin-right: 9px;
+}
+h1 {
+  font-size: clamp(54px, 6.7vw, 110px);
+  letter-spacing: -0.075em;
+  font-weight: 500;
+  line-height: 0.94;
+  margin: 20px 0;
+}
+h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.lede {
+  font-size: 13px;
+  color: #c1c6c7;
+  line-height: 1.7;
+}
+.vehicle-tag {
+  position: absolute;
+  right: 5%;
+  top: 18%;
+  text-align: right;
+  display: grid;
+  gap: 12px;
+}
+.vehicle-tag span {
+  font: 9px/1.3 var(--mono);
+  letter-spacing: 1.7px;
+  color: var(--muted);
+}
+.vehicle-tag strong {
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: -0.8px;
+}
+.intro-spec {
+  position: absolute;
+  right: 5%;
+  bottom: 255px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.view-picker {
+  display: flex;
+  gap: 4px;
+}
+.view-picker button,
+#aero-preview {
+  font: 9px var(--mono);
+  letter-spacing: 1px;
+  height: 32px;
+  padding: 0 13px;
+  background: #0e141caa;
+  border-color: transparent;
+  border-bottom-color: var(--line);
+}
+.view-picker button.selected {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+#aero-preview {
+  color: var(--muted);
+}
+#aero-preview b {
+  color: var(--paper);
+  font-weight: 400;
+}
+.garage-bottom {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: 22px;
+  pointer-events: auto;
+}
+.garage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.local-record {
+  font: 9px var(--mono);
+  color: var(--muted);
+  letter-spacing: 0.6px;
+}
+.mode-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.mode-picker button {
+  text-align: left;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: #10151bce;
+  min-height: 82px;
+  padding: 18px;
+  border-radius: 4px;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+.mode-picker button.selected {
+  border-color: #ff493d99;
+  background: #ffffff0a;
+}
+.mode-no {
+  color: var(--muted);
+  font: 10px var(--mono);
+  align-self: flex-start;
+  padding-top: 3px;
+}
+.selected .mode-no {
+  color: var(--accent);
+}
+.mode-title {
+  font-size: 17px;
+  letter-spacing: -0.5px;
+}
+.mode-title small {
+  display: block;
+  margin-top: 7px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.mode-meta {
+  margin-left: auto;
+  font: 8px var(--mono);
+  letter-spacing: 0.6px;
+  color: var(--muted);
+}
+.launch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 16px;
+}
+.launch-row p {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #cbd0cd;
+  margin: 0;
+}
+.launch-row p span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 3px;
+}
+.primary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 16px 22px;
+  min-height: 50px;
+  border: 0;
+  border-radius: 3px;
+}
+.primary:hover {
+  background: #ff675b;
+  color: #ffffff;
+}
+.primary > span {
+  font-size: 21px;
+  font-weight: 400;
+}
+#start {
+  width: 29%;
+  min-width: 240px;
+}
+.intro-bottom {
+  display: flex;
+  justify-content: space-between;
+  color: #828c92;
+  font: 8px var(--mono);
+  letter-spacing: 0.8px;
+  margin-top: 18px;
+}
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#hud button {
+  pointer-events: auto;
+}
+.mission {
+  position: absolute;
+  left: 36px;
+  top: 104px;
+  width: 225px;
+}
+.mission .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1.6px;
+  color: var(--accent);
+}
+#timer {
+  font-size: 38px;
+  font-weight: 400;
+  letter-spacing: -1.5px;
+  font-variant-numeric: tabular-nums;
+  margin: 6px 0 10px;
+}
+.mission-row {
+  display: flex;
+  justify-content: space-between;
+  font: 9px var(--mono);
+  color: #cbd2d2;
+  gap: 8px;
+}
+.progress-track {
+  height: 2px;
+  background: #ffffff20;
+  margin-top: 13px;
+  overflow: hidden;
+}
+.progress-track > div {
+  height: 100%;
+  background: var(--accent);
+  width: 0;
+  transition: width 0.2s;
+}
+#route-hint {
+  position: absolute;
+  left: 50%;
+  top: 106px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 11px var(--mono);
+  color: #e3e8e7;
+  background: #101922b3;
+  border: 1px solid #ffffff15;
+  padding: 10px 14px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.hint-arrow {
+  display: block;
+  font-size: 21px;
+  color: var(--accent);
+}
+#toast {
+  position: absolute;
+  left: 50%;
+  top: 29%;
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 21px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  text-shadow: 0 2px 14px #000;
+  opacity: 0;
+  transition: opacity 0.2s;
+  max-width: 80%;
+  line-height: 1.35;
+}
+.telemetry {
+  position: absolute;
+  right: 36px;
+  bottom: 66px;
+  width: 215px;
+  padding: 16px;
+  background: linear-gradient(140deg, #101820c9, #10182055);
+  border: 1px solid #ffffff19;
+  border-radius: 5px;
+}
+.drive-mode {
+  font: 8px var(--mono);
+  letter-spacing: 1px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.speedline {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.speedline strong {
+  font-size: 72px;
+  line-height: 1.15;
+  letter-spacing: -4px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.speedline > span {
+  font: 9px/1.8 var(--mono);
+  color: var(--muted);
+}
+.speedline b {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--paper);
+}
+.charge-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font: 8px var(--mono);
+  letter-spacing: 0.6px;
+  margin: 10px 0;
+}
+.charge-title b {
+  font-weight: 500;
+  color: var(--accent);
+}
+.charge-track {
+  height: 4px;
+  background: #ffffff20;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.charge-track > div {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.1s;
+}
+.telemetry-foot {
+  display: flex;
+  justify-content: space-between;
+  font: 7px var(--mono);
+  margin-top: 10px;
+  color: var(--muted);
+}
+#flight-telemetry {
+  display: none;
+  position: absolute;
+  left: 36px;
+  top: 224px;
+  width: 225px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid #ffffff19;
+  border-radius: 4px;
+}
+.airborne #flight-telemetry {
+  display: block;
+}
+.flight-instrument-heading,
+.flight-instrument-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font: 8px var(--mono);
+  color: var(--muted);
+}
+.flight-instrument-heading b {
+  color: var(--accent);
+  font-weight: 500;
+}
+#attitude-readout {
+  font: 12px var(--mono);
+  margin: 9px 0;
+}
+.trick-counter b {
+  color: var(--paper);
+}
+#challenge-hud {
+  position: absolute;
+  right: 36px;
+  top: 104px;
+  width: 200px;
+  padding: 13px 15px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+#challenge-caption {
+  font: 8px var(--mono);
+  letter-spacing: 1.5px;
+  color: var(--muted);
+}
+#banked-score {
+  display: block;
+  font-size: 34px;
+  letter-spacing: -1px;
+  font-weight: 400;
+  margin: 6px 0;
+}
+#challenge-hud > div {
+  font: 8px var(--mono);
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+}
+#pending-score {
+  color: var(--accent);
+}
+#challenge-hud .progress-track {
+  display: block;
+}
+#coach {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  width: min(400px, 40%);
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #d8e0dd;
+  background: #0c1422bb;
+  border: 1px solid #ffffff15;
+  padding: 12px 16px;
+  border-radius: 4px;
+}
+.coach-index {
+  display: block;
+  font: 8px var(--mono);
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  margin-bottom: 5px;
+}
+.map-wrap {
+  position: absolute;
+  bottom: 65px;
+  left: 34px;
+  width: 170px;
+}
+.map-wrap canvas {
+  width: 170px;
+  height: 125px;
+}
+.map-wrap > span {
+  display: block;
+  font: 7px var(--mono);
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-align: center;
+}
+.desktop-controls {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  color: #bbc5c8;
+  font: 8px var(--mono);
+}
+.desktop-controls span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+kbd {
+  font: 8px var(--mono);
+  border: 1px solid #ffffff35;
+  border-radius: 3px;
+  padding: 4px;
+  color: var(--paper);
+}
+.modal {
+  position: absolute;
+  inset: 0;
+  background: #070c15b8;
+  backdrop-filter: blur(12px);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  touch-action: pan-y;
+}
+.dialog-card {
+  width: min(470px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 30px;
+  background: #151d24;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 20px 80px #0007;
+}
+.dialog-card h2 {
+  font-size: 34px;
+  letter-spacing: -1.5px;
+  line-height: 1.05;
+  font-weight: 400;
+  margin: 12px 0 22px;
+}
+.dialog-card .primary {
+  width: 100%;
+}
+#dialog-content {
+  font-size: 12px;
+  line-height: 1.75;
+  color: #b9c4c7;
+  margin-bottom: 22px;
+}
+#dialog-content p {
+  margin: 12px 0;
+}
+#dialog-content .result-time {
+  font-size: 47px;
+  letter-spacing: -2px;
+  color: var(--accent);
+  line-height: 1.2;
+}
+.keys {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 6px 12px;
+}
+.keys b {
+  font: 11px/1.8 var(--mono);
+  color: var(--accent);
+}
+.result-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 18px 0;
+}
+.result-stats > div {
+  background: #ffffff06;
+  padding: 13px;
+  border: 1px solid #ffffff12;
+}
+.result-stats b {
+  display: block;
+  color: var(--paper);
+  font: 20px var(--mono);
+}
+.result-stats span {
+  font: 8px var(--mono);
+  letter-spacing: 1px;
+}
+.secondary {
+  width: 100%;
+  min-height: 44px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  margin-top: 9px;
+  border-radius: 3px;
+}
+.text-button {
+  background: none;
+  border: 0;
+  width: 100%;
+  margin-top: 17px;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  min-height: 36px;
+}
+#touch-controls,
+.mobile-utils {
+  display: none;
+}
+#loading {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: var(--ink);
+  gap: 24px;
+  font: 10px var(--mono);
+  letter-spacing: 2px;
+}
+.loading-mark {
+  font: bold italic 64px Arial;
+  color: var(--accent);
+  letter-spacing: -7px;
+}
+#loading small {
+  color: var(--muted);
+  font-size: 8px;
+}
+.loader-line {
+  height: 2px;
+  width: 160px;
+  background: #ffffff22;
+  position: relative;
+  overflow: hidden;
+}
+.loader-line:after {
+  content: "";
+  position: absolute;
+  left: -60px;
+  height: 2px;
+  width: 60px;
+  background: var(--accent);
+  animation: load 1s infinite;
+}
+@keyframes load {
+  to {
+    left: 160px;
+  }
+}
+#photo-panel {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  padding: 120px 5% 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+#photo-panel h2 {
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -1.5px;
+  font-weight: 400;
+}
+#photo-panel p {
+  font-size: 11px;
+  color: var(--muted);
+}
+.photo-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.photo-actions button {
+  pointer-events: auto;
+  width: auto;
+  margin: 0;
+}
+body[data-phase="photo"] .topbar {
+  opacity: 0;
+  pointer-events: none;
+}
+body[data-phase="photo"] .top-actions {
+  pointer-events: none;
+}
+#error {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 30px;
+}
+#error h2 {
+  font-weight: 400;
+}
+#error p {
+  max-width: 420px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+#error button {
+  margin-top: 20px;
+}
+/* One landscape control deck; portrait is a deliberate pause screen. */
+#game-shell {
+  width: 100%;
+  height: 100%;
+}
+#rotate-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  padding: 32px;
+  background: radial-gradient(ellipse at 50% 35%, #1b1c20 0, #101216 65%);
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+#rotate-screen h1 {
+  font-size: clamp(44px, 11vw, 72px);
+  line-height: 0.98;
+  margin: 36px 0 20px;
+}
+#rotate-screen p {
+  color: var(--paper);
+  font-size: 15px;
+}
+#rotate-screen small {
+  max-width: 270px;
+  line-height: 1.7;
+  color: var(--muted);
+  font-size: 12px;
+}
+.rotate-phone {
+  width: 58px;
+  height: 100px;
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  margin-top: 50px;
+  transform: rotate(90deg);
+  box-shadow: 0 0 55px #ff493d14;
+  display: grid;
+  place-items: center;
+}
+.rotate-phone span {
+  transform: rotate(-90deg);
+  color: var(--accent);
+  font-size: 38px;
+}
+.rotate-required #rotate-screen {
+  display: flex;
+}
+.rotate-required #game-shell {
+  visibility: hidden;
+}
+@media (orientation: portrait) and (max-width: 600px),
+  (orientation: portrait) and (pointer: coarse) {
+  #rotate-screen {
+    display: flex;
+  }
+  #game-shell {
+    visibility: hidden;
+  }
+}
+#control-style {
+  width: 100%;
+  min-height: 44px;
+  font: 10px var(--mono);
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+#pause-tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+#pause-tools button {
+  min-height: 44px;
+  font: 9px var(--mono);
+  border-radius: 4px;
+}
+body:not([data-phase="paused"]) #pause-tools {
+  display: none;
+}
+.easy-controls #touch-assist {
+  display: none;
+}
+.simple-brief b {
+  color: var(--accent);
+  font: 10px var(--mono);
+}
+#easy-stunt,
+.air-go-label,
+.air-brake-label {
+  display: none;
+}
+.airborne .ground-go-label,
+.airborne .ground-brake-label {
+  display: none;
+}
+.airborne .air-go-label,
+.airborne .air-brake-label {
+  display: inline;
+}
+.touch-ui .desktop-controls,
+.touch-ui .touch-steer {
+  display: none;
+}
+.touch-ui .topbar {
+  padding: max(14px, env(safe-area-inset-top))
+    max(22px, env(safe-area-inset-right)) 12px
+    max(22px, env(safe-area-inset-left));
+}
+.touch-ui .brand {
+  font-size: 11px;
+  gap: 8px;
+}
+.touch-ui .top-actions {
+  gap: 7px;
+}
+.touch-ui .top-actions button {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  font-size: 9px;
+}
+.touch-ui #fullscreen,
+.touch-ui #photo,
+.touch-ui #help,
+.touch-ui #pause {
+  font-size: 19px;
+}
+.touch-ui:not([data-phase="intro"]) .brand {
+  display: none;
+}
+.touch-ui:not([data-phase="intro"]) .top-actions {
+  margin-left: auto;
+}
+.touch-ui:not([data-phase="intro"]) .top-actions button:not(#pause) {
+  display: none;
+}
+.touch-ui .mission {
+  left: max(22px, env(safe-area-inset-left));
+  top: max(18px, env(safe-area-inset-top));
+  width: 154px;
+}
+.touch-ui .mission .eyebrow {
+  font-size: 7px;
+  letter-spacing: 1px;
+}
+.touch-ui #timer {
+  font-size: 28px;
+  margin: 5px 0;
+}
+.touch-ui .mission-row {
+  font-size: 8px;
+}
+.touch-ui .progress-track {
+  margin-top: 8px;
+}
+.touch-ui .telemetry {
+  right: max(80px, calc(env(safe-area-inset-right) + 58px));
+  top: max(14px, env(safe-area-inset-top));
+  bottom: auto;
+  width: 128px;
+  padding: 8px 10px;
+  background: #0a141c99;
+}
+.touch-ui .speedline {
+  gap: 8px;
+}
+.touch-ui .speedline strong {
+  font-size: 37px;
+  letter-spacing: -2px;
+}
+.touch-ui .speedline > span {
+  font-size: 7px;
+}
+.touch-ui .speedline b {
+  font-size: 11px;
+}
+.touch-ui .drive-mode {
+  font-size: 6px;
+  letter-spacing: 0.5px;
+}
+.touch-ui .charge-title {
+  font-size: 7px;
+  letter-spacing: 0;
+  margin: 5px 0;
+}
+.touch-ui .charge-title > span {
+  font-size: 7px;
+}
 
-.flight-controls{display:flex;position:absolute;left:0;bottom:77px;gap:10px;pointer-events:auto}.flight-controls button{touch-action:none;width:53px;height:36px;border:1px solid #96e8f270;background:#162630bb;color:#96e8f2;border-radius:6px;font-size:22px}.flight-controls button.pressed{background:#96e8f2;color:#152122}
+.touch-ui .telemetry-foot {
+  font-size: 8px;
+  margin-top: 6px;
+  justify-content: flex-end;
+}
+.touch-ui #grip {
+  display: none;
+}
+.touch-ui #route-hint {
+  top: max(20px, env(safe-area-inset-top));
+  font-size: 9px;
+  padding: 6px 9px;
+  max-width: calc(100% - 420px);
+  overflow: hidden;
+}
+.touch-ui .hint-arrow {
+  font-size: 18px;
+}
+.touch-ui .map-wrap {
+  display: none;
+}
+.touch-ui #flight-telemetry {
+  display: none;
+}
+.touch-ui #challenge-hud {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  top: 62px;
+  width: 190px;
+  padding: 8px 12px;
+  background: #0a141c88;
+}
+.touch-ui #challenge-caption {
+  font-size: 6px;
+}
+.touch-ui #banked-score {
+  font-size: 26px;
+  display: inline-block;
+  margin: 2px 10px 3px 0;
+}
+.touch-ui #challenge-hud > div {
+  font-size: 8px;
+}
+.touch-ui #challenge-fill {
+  height: 2px;
+}
+.touch-ui #toast {
+  top: 40%;
+  font-size: 16px;
+  width: 45%;
+  max-width: 340px;
+}
+.touch-ui #coach {
+  bottom: max(18px, var(--safe-bottom));
+  width: calc(100% - 440px);
+  max-width: 300px;
+  padding: 8px;
+  font-size: 10px;
+}
+.touch-ui .coach-index {
+  font-size: 7px;
+}
+.touch-ui #touch-controls {
+  display: block;
+  position: absolute;
+  left: max(22px, env(safe-area-inset-left));
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(18px, var(--safe-bottom));
+  height: 160px;
+  pointer-events: none;
+}
+.touch-ui .mobile-utils {
+  display: flex;
+  position: absolute;
+  right: max(22px, env(safe-area-inset-right));
+  bottom: calc(max(18px, var(--safe-bottom)) + 80px);
+}
+.touch-ui #touch-hover {
+  min-height: 44px;
+  width: 80px;
+  padding: 0 4px;
+  background: #15222ee6;
+  border-color: #ff493d66;
+  border-radius: 7px;
+  color: var(--accent);
+  font: 9px var(--mono);
+}
+.touch-ui .ground-stick-wrap,
+.touch-ui .flight-stick-wrap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  pointer-events: auto;
+  text-align: center;
+}
+.touch-ui .ground-stick-wrap small,
+.touch-ui .flight-stick-wrap small {
+  display: block;
+  font: 8px var(--mono);
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin-top: 9px;
+}
+.touch-ui #ground-stick {
+  position: relative;
+  width: 140px;
+  height: 82px;
+  border-radius: 44px;
+  border: 1px solid #ffffff33;
+  background: #15222eaa;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  color: #ffffff88;
+  font-size: 26px;
+  touch-action: none;
+}
+.touch-ui #ground-stick-knob,
+.touch-ui #flight-stick-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -25px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #ff493d24;
+  border: 1px solid #ff493dbb;
+  box-shadow: inset 0 0 15px #ff493d11;
+  pointer-events: none;
+}
+.touch-ui .touch-pedals {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.touch-ui .touch-pedals button {
+  width: 80px;
+  height: 68px;
+  background: #15222ed9;
+  border-radius: 8px;
+  font: 10px var(--mono);
+  touch-action: none;
+}
+.touch-ui .touch-pedals .accelerator {
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: bold;
+}
+.touch-ui .touch-pedals .boost-button {
+  position: absolute;
+  right: 0;
+  bottom: 80px;
+  height: 44px;
+  color: var(--accent);
+}
+.touch-ui:not(.easy-controls) .mobile-utils {
+  right: max(198px, calc(env(safe-area-inset-right) + 176px));
+  bottom: max(18px, var(--safe-bottom));
+}
+.touch-ui .touch-pedals .drift-button {
+  position: absolute;
+  right: 88px;
+  bottom: 80px;
+  height: 44px;
+}
+.touch-ui #touch-controls button.pressed {
+  background: #ff675b;
+  color: #ffffff;
+  box-shadow: 0 0 14px #ff493d33;
+}
+.touch-ui .airborne .ground-stick-wrap,
+.touch-ui .airborne .drift-button {
+  display: none;
+}
+.touch-ui .flight-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.touch-ui .flight-controls button {
+  background: #15222ee6;
+  border-radius: 6px;
+  min-height: 44px;
+  font: 9px var(--mono);
+  touch-action: none;
+}
+.touch-ui #flight-stick {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  border: 1px solid #ffffff44;
+  background: #15222ecc;
+  touch-action: none;
+}
+.touch-ui .stick-axis-top {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  width: 100%;
+  font: 7px var(--mono);
+  color: var(--muted);
+}
+.touch-ui .stick-yaw-left,
+.touch-ui .stick-yaw-right {
+  position: absolute;
+  top: 40px;
+  font-size: 20px;
+  color: var(--muted);
+}
+.touch-ui .stick-yaw-left {
+  left: 8px;
+}
+.touch-ui .stick-yaw-right {
+  right: 8px;
+}
+.touch-ui .flight-roll-controls {
+  position: absolute;
+  bottom: 134px;
+  left: 0;
+  display: flex;
+  gap: 8px;
+}
+.touch-ui .flight-roll-controls button {
+  width: 48px;
+}
+.touch-ui .flight-altitude-controls {
+  position: absolute;
+  right: 176px;
+  bottom: 55px;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+}
+.touch-ui .flight-altitude-controls button {
+  width: 80px;
+  font-size: 22px;
+}
+.touch-ui .flight-touch-toolbar {
+  position: absolute;
+  right: 88px;
+  bottom: 80px;
+}
+.touch-ui .flight-touch-toolbar button {
+  width: 80px;
+}
+.touch-ui.easy-controls .flight-controls,
+.touch-ui.easy-controls .drift-button,
+.touch-ui.easy-controls .accelerator {
+  display: none !important;
+}
+.touch-ui.easy-controls .airborne .ground-stick-wrap {
+  display: block;
+}
+.touch-ui.easy-controls .touch-pedals .boost-button {
+  position: static;
+  height: 68px;
+  background: var(--accent);
+  color: #ffffff;
+  order: 2;
+  font-weight: bold;
+}
+.touch-ui.easy-controls .airborne #easy-stunt {
+  display: block;
+  position: absolute;
+  right: 88px;
+  bottom: 80px;
+  width: 80px;
+  min-height: 44px;
+  font: 9px var(--mono);
+  color: var(--accent);
+  border-radius: 7px;
+  background: #15222ee6;
+}
+@media (max-width: 1000px) {
+  .mode-meta {
+    display: none;
+  }
+  .mode-picker button {
+    padding: 14px;
+    gap: 10px;
+  }
+  .intro-spec {
+    bottom: 252px;
+  }
+  .intro-copy {
+    top: 16%;
+  }
+  .vehicle-tag {
+    top: 17%;
+  }
+  .vehicle-tag strong {
+    font-size: 18px;
+  }
+  .local-record {
+    font-size: 8px;
+  }
+}
+@media (max-height: 600px) and (orientation: landscape) {
+  .topbar {
+    padding: 12px max(22px, env(safe-area-inset-right)) 10px
+      max(22px, env(safe-area-inset-left));
+  }
+  .brand {
+    font-size: 10px;
+  }
+  .intro-copy {
+    top: 24%;
+    left: 5%;
+  }
+  .intro-copy .eyebrow {
+    font-size: 7px;
+  }
+  h1 {
+    font-size: 44px;
+    line-height: 0.91;
+    margin: 10px 0;
+  }
+  .lede {
+    font-size: 10px;
+    max-width: 145px;
+  }
+  .vehicle-tag {
+    display: none;
+  }
+  .garage-bottom {
+    left: max(5%, env(safe-area-inset-left));
+    right: max(5%, env(safe-area-inset-right));
+    bottom: max(12px, var(--safe-bottom));
+  }
+  .garage-heading,
+  .intro-bottom,
+  .launch-row p,
+  .mode-title small {
+    display: none;
+  }
+  .mode-picker {
+    width: 67%;
+    gap: 7px;
+  }
+  .mode-picker button {
+    min-height: 53px;
+    padding: 10px;
+    font-size: 11px;
+    gap: 8px;
+  }
+  .mode-title {
+    font-size: 12px;
+  }
+  .mode-no {
+    font-size: 8px;
+  }
+  .launch-row {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    width: 30%;
+  }
+  #start {
+    width: 100%;
+    min-width: 0;
+    font-size: 9px;
+    min-height: 53px;
+  }
+  .intro-spec {
+    bottom: calc(max(12px, var(--safe-bottom)) + 66px);
+    right: 5%;
+  }
+  .view-picker button,
+  #aero-preview {
+    min-height: 44px;
+    font-size: 8px;
+  }
+  .dialog-card {
+    max-height: calc(100dvh - 24px);
+    padding: 22px;
+    width: 520px;
+  }
+  .dialog-card h2 {
+    font-size: 27px;
+    margin: 10px 0;
+  }
+  #photo-panel {
+    padding: 28px 5% 24px;
+  }
+  #photo-panel h2 {
+    font-size: 26px;
+  }
+  .photo-actions button {
+    min-height: 44px;
+    font-size: 9px;
+  }
+}
+@media (max-height: 350px) and (orientation: landscape) {
+  .touch-ui #coach {
+    display: none;
+  }
+  .touch-ui #challenge-hud {
+    top: 65px;
+    width: 150px;
+  }
+  .touch-ui #route-hint {
+    font-size: 8px;
+  }
+  .touch-ui .mission {
+    width: 135px;
+  }
+  .touch-ui:not(.easy-controls) #toast {
+    top: 43%;
+    font-size: 13px;
+  }
+  .intro-copy h1 {
+    font-size: 36px;
+  }
+  .intro-copy .eyebrow {
+    display: none;
+  }
+}
+@media (max-width: 700px) and (orientation: landscape) {
+  .touch-ui #route-hint {
+    display: none;
+  }
+  .touch-ui #coach {
+    display: none;
+  }
+  .touch-ui #challenge-hud {
+    width: 150px;
+  }
+  .touch-ui #toast {
+    font-size: 13px;
+  }
+  .touch-ui:not(.easy-controls) #touch-controls {
+    height: 146px;
+  }
+  .mode-picker button {
+    padding: 9px 6px;
+    gap: 5px;
+  }
+  .mode-title {
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *:before,
+  *:after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  #speed-fx {
+    display: none;
+  }
+}
 
-#intro{background:linear-gradient(90deg,rgba(8,16,22,.76),rgba(8,16,22,.38) 35%,transparent 65%)}@media(max-width:600px) and (orientation:portrait){#intro{background:linear-gradient(180deg,rgba(8,16,22,.64),transparent 42%,transparent 60%,rgba(8,16,22,.65))}}
-.lede,.mission,.telemetry,#route-hint{text-shadow:0 1px 9px #0008}
-@media(pointer:coarse){.map-wrap{bottom:142px}.map-wrap>span{display:none}}
-@media(max-width:600px) and (orientation:portrait){.telemetry{bottom:149px}.map-wrap{bottom:155px}.lede{color:#d5dddf;text-shadow:0 1px 8px #14212c}}
-@media(max-height:550px) and (orientation:landscape){.map-wrap{bottom:137px}}
-@media(max-width:650px) and (orientation:landscape){.mode-picker{left:45vw}.mode-picker button{min-width:120px;font-size:7px}.intro-copy>.primary{width:248px}.intro-spec{display:none}.intro-copy .lede{max-width:230px}h1{font-size:42px}}
-@media(max-width:360px) and (orientation:portrait){.topbar{padding:16px 14px}.brand{font-size:9px;letter-spacing:2px;gap:8px}.brandmark{width:29px;height:29px;line-height:28px;font-size:21px}.brand>div>span{font-size:5px;letter-spacing:.7px}.top-actions{gap:4px}.top-actions button{padding:0 6px}.top-actions button:first-child{padding:0 8px}#help,#pause{min-width:27px}}
-@media(max-height:650px) and (orientation:portrait){#toast{top:38%;font-size:12px;letter-spacing:.5px}}
+/* AFTER HOURS — motorsport timing sheets, track markings and cockpit readouts. */
+:root {
+  --ink: #0b0c0f;
+  --paper: #eeeae4;
+  --muted: #a6a6a5;
+  --line: #eeece633;
+}
+body {
+  font-family: var(--mono);
+}
+button {
+  border-radius: 0;
+}
+button:hover {
+  background: #ffffff0a;
+  border-color: #eeeae480;
+}
+.primary {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 0;
+  font-family: var(--mono);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 12px),
+    calc(100% - 12px) 100%,
+    0 100%
+  );
+}
+.primary:hover {
+  background: #ff6b5e;
+  color: #fff;
+}
+.brand {
+  font-family: var(--display);
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.brandmark {
+  color: var(--accent);
+  font: 600 40px/1 var(--display);
+  letter-spacing: -5px;
+  width: 36px;
+  font-style: normal;
+}
+.brand > div > span {
+  font: 7px var(--mono);
+  letter-spacing: 1.2px;
+  margin-top: 4px;
+  color: #bbb;
+}
+.top-actions button {
+  border: 0;
+  border-bottom: 1px solid #ffffff44;
+  background: transparent;
+  border-radius: 0;
+}
+.intro-copy {
+  top: 15%;
+  left: 5%;
+}
+.intro-copy .eyebrow {
+  font: 9px var(--mono);
+  letter-spacing: 1px;
+}
+.live-mark {
+  color: var(--accent);
+  margin-left: 18px;
+}
+.intro-copy h1 {
+  font: 600 clamp(70px, 10.8vw, 164px) / 0.85 var(--display);
+  letter-spacing: -1px;
+  margin: 18px 0 16px;
+  position: relative;
+}
+.title-rule {
+  display: block;
+  width: 72px;
+  height: 5px;
+  margin-top: 20px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--accent) 0 20px,
+    transparent 20px 26px
+  );
+}
+.lede {
+  color: #c0c0bc;
+  font: 9px var(--mono);
+  letter-spacing: 1.6px;
+  margin-top: 20px;
+}
+.vehicle-tag {
+  top: 18%;
+  gap: 8px;
+}
+.vehicle-tag strong {
+  font: 600 27px var(--display);
+  letter-spacing: 1px;
+}
+.vehicle-tag span {
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.garage-bottom {
+  bottom: 23px;
+}
+.garage-heading {
+  border-bottom: 1px solid #eeece633;
+  padding-bottom: 10px;
+  margin-bottom: 0;
+}
+.garage-heading .eyebrow {
+  color: #999;
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.mode-picker {
+  gap: 26px;
+}
+.mode-picker button {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid #ffffff33;
+  padding: 14px 0;
+  min-height: 80px;
+  border-radius: 0;
+}
+.mode-picker button.selected {
+  background: none;
+  border-color: var(--accent);
+  box-shadow: 0 1px var(--accent);
+}
+.mode-picker button:hover {
+  background: #ffffff04;
+}
+.mode-no {
+  font: 600 30px var(--display);
+  padding-top: 0;
+  align-self: center;
+  color: #6c7075;
+}
+.mode-title {
+  font: 600 26px var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.mode-title small {
+  font: 8px var(--mono);
+  letter-spacing: 0.5px;
+  margin-top: 5px;
+}
+.mode-meta {
+  font-size: 7px;
+  letter-spacing: 0;
+}
+.selected .mode-no {
+  color: var(--accent);
+}
+.launch-row {
+  margin-top: 17px;
+}
+.launch-row p {
+  font-size: 10px;
+}
+#start {
+  font-size: 11px;
+  min-height: 54px;
+}
+.intro-bottom {
+  color: #6e7377;
+  font-size: 7px;
+  letter-spacing: 0.2px;
+}
+.view-picker button,
+#aero-preview {
+  border-radius: 0;
+  background: transparent;
+  font-size: 8px;
+  border-bottom: 1px solid #ffffff44;
+}
+.intro-spec {
+  bottom: 254px;
+}
+.mission,
+.telemetry,
+#challenge-hud,
+#flight-telemetry {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  text-shadow: 0 2px 8px #000;
+}
+.mission {
+  border-left: 3px solid var(--accent);
+  padding-left: 13px;
+}
+#timer {
+  font: 600 48px/0.95 var(--display);
+  letter-spacing: 0.5px;
+  margin-top: 10px;
+}
+.speedline strong {
+  font: 600 86px/1 var(--display);
+  letter-spacing: 0;
+}
+.speedline > span {
+  font-size: 8px;
+}
+.charge-track {
+  height: 5px;
+  border-radius: 0;
+  background: #ffffff33;
+}
+.charge-track > div {
+  background: repeating-linear-gradient(
+    90deg,
+    #eeeae4 0 6px,
+    transparent 6px 8px
+  );
+}
+.charge-title b {
+  color: var(--paper);
+}
+.drive-mode {
+  color: #eeeae4;
+}
+#route-hint {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  text-shadow: 0 2px 8px #000;
+  padding: 0;
+}
+#toast {
+  font: 600 29px/1 var(--display);
+  letter-spacing: 0.7px;
+  color: #fff;
+}
+#banked-score {
+  font: 600 46px/1 var(--display);
+}
+#challenge-hud {
+  border-top: 2px solid var(--accent);
+  padding-top: 10px;
+}
+#coach {
+  background: #080b0e88;
+  border: 0;
+  border-left: 2px solid #ffffff55;
+  border-radius: 0;
+  text-align: left;
+}
+.coach-index {
+  color: #fff;
+}
+#flight-telemetry {
+  border-top: 1px solid #ffffff55;
+  padding-top: 10px;
+}
+.modal {
+  background: #090b0eec;
+  backdrop-filter: blur(7px);
+}
+.dialog-card {
+  border: 0;
+  border-top: 3px solid var(--accent);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 24px 0;
+  width: min(560px, 100%);
+}
+.dialog-card h2 {
+  font: 600 58px/0.95 var(--display);
+  letter-spacing: 0;
+  margin: 16px 0;
+  text-transform: uppercase;
+}
+#dialog-content {
+  font-size: 11px;
+}
+#pause-tools {
+  gap: 0 24px;
+}
+#pause-tools button,
+#control-style,
+.secondary {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #ffffff33;
+  border-radius: 0;
+  text-align: left;
+  padding: 12px 0;
+}
+#control-style {
+  border-bottom-color: var(--accent);
+}
+#pause-tools button:hover,
+.secondary:hover {
+  color: var(--accent);
+}
+.dialog-card .primary {
+  margin-top: 16px;
+}
+#photo-panel h2 {
+  font: 600 60px/0.95 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+#rotate-screen {
+  background: #101114;
+}
+#rotate-screen .eyebrow {
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+#rotate-screen h1 {
+  font: 600 clamp(66px, 18vw, 100px) / 0.88 var(--display);
+  letter-spacing: 0;
+}
+#rotate-screen h1 em {
+  color: var(--paper);
+  font-style: normal;
+}
+#rotate-screen p {
+  font-size: 11px;
+}
+#rotate-screen small {
+  font-size: 10px;
+}
+.rotate-phone {
+  border-color: #eeeae4;
+  box-shadow: none;
+  border-radius: 7px;
+}
+.rotate-phone span {
+  color: var(--accent);
+}
+.touch-ui .brand {
+  font: 600 18px var(--display);
+  letter-spacing: 0.7px;
+}
+.touch-ui .top-actions button {
+  border: 0;
+  background: #080a0d66;
+  border-radius: 0;
+}
+.touch-ui .mission {
+  padding-left: 10px;
+}
+.touch-ui #timer {
+  font: 600 34px/1 var(--display);
+}
+.touch-ui .telemetry {
+  background: transparent;
+  padding: 0;
+  width: 110px;
+}
+.touch-ui .speedline strong {
+  font: 600 51px/0.95 var(--display);
+}
+.touch-ui #challenge-hud {
+  background: transparent;
+  padding: 7px 0 0;
+  width: 170px;
+}
+.touch-ui #banked-score {
+  font: 600 31px/1 var(--display);
+}
+.touch-ui #coach {
+  font-size: 9px;
+  line-height: 1.5;
+}
+.touch-ui #toast {
+  font: 600 21px/1 var(--display);
+}
+.touch-ui #ground-stick {
+  background: #080b0e55;
+  border: 1px solid #ffffff77;
+}
+.touch-ui #ground-stick-knob,
+.touch-ui #flight-stick-knob {
+  background: #eeeae411;
+  border: 2px solid #eeeae4aa;
+  box-shadow: none;
+}
+.touch-ui .touch-pedals button,
+.touch-ui #touch-hover,
+.touch-ui.easy-controls .airborne #easy-stunt,
+.touch-ui .flight-controls button {
+  background: #080b0e99;
+  border: 1px solid #ffffff66;
+  border-radius: 3px;
+  color: #eeeae4;
+}
+.touch-ui.easy-controls .touch-pedals .boost-button {
+  background: #ed4035;
+  border: 0;
+  color: #fff;
+  font-family: var(--mono);
+}
+.touch-ui #touch-hover,
+.touch-ui.easy-controls .airborne #easy-stunt {
+  border-color: #ff493d99;
+}
+.touch-ui #touch-controls button.pressed {
+  background: #eeeae4;
+  color: #141414;
+  box-shadow: none;
+}
+@media (max-height: 600px) and (orientation: landscape) {
+  .intro-copy {
+    top: 25%;
+  }
+  .intro-copy h1 {
+    font-size: clamp(64px, 10vw, 90px);
+    margin: 10px 0;
+    letter-spacing: -0.5px;
+  }
+  .intro-copy .eyebrow {
+    font-size: 7px;
+  }
+  .title-rule {
+    height: 3px;
+    margin-top: 12px;
+    width: 50px;
+  }
+  .lede {
+    font-size: 7px;
+    letter-spacing: 0.7px;
+    max-width: 220px;
+    margin-top: 14px;
+  }
+  .garage-bottom {
+    bottom: max(12px, var(--safe-bottom));
+  }
+  .garage-heading {
+    display: none;
+  }
+  .mode-picker {
+    gap: 12px;
+  }
+  .mode-picker button {
+    min-height: 52px;
+    padding: 6px 0;
+    gap: 8px;
+  }
+  .mode-title {
+    font-size: 20px;
+  }
+  .mode-no {
+    font-size: 23px;
+  }
+  #start {
+    min-height: 52px;
+    font-size: 9px;
+  }
+  .intro-spec {
+    bottom: calc(max(12px, var(--safe-bottom)) + 64px);
+  }
+  .dialog-card h2 {
+    font-size: 37px;
+  }
+  .dialog-card {
+    padding: 14px 0;
+  }
+  #photo-panel h2 {
+    font-size: 38px;
+  }
+}
+@media (max-width: 700px) and (orientation: landscape) {
+  .intro-copy h1 {
+    font-size: 62px;
+  }
+  .intro-copy .eyebrow {
+    display: none;
+  }
+  .mode-title {
+    font-size: 17px;
+  }
+  .mode-no {
+    font-size: 19px;
+  }
+  .mode-picker {
+    gap: 9px;
+  }
+  .mode-picker button {
+    gap: 6px;
+  }
+  .touch-ui #challenge-hud {
+    width: 136px;
+  }
+}
 
-@media(max-height:650px) and (orientation:portrait){.telemetry{width:120px;right:16px;bottom:142px}.speedline strong{font-size:39px;letter-spacing:-2px}.speedline{gap:6px}.speedline>span{font-size:7px}.charge-title{font-size:6px;margin:6px 0}.drive-mode{font-size:5px;letter-spacing:.5px}.telemetry-foot{font-size:4px;margin-top:7px}.map-wrap{width:90px;bottom:157px}.map-wrap canvas{width:90px;height:66px}}
-.dialog-card{max-height:calc(100dvh - 28px);overflow-y:auto;overscroll-behavior:contain}
-
-.view-picker{display:flex;gap:8px;pointer-events:auto}.view-picker button{padding:10px 12px;border:1px solid #ffffff30;background:#0c131b88;color:#a7afb4;font-size:8px;letter-spacing:1.2px;backdrop-filter:blur(10px)}.view-picker button.selected{color:var(--accent);border-color:#96e8f280;background:#96e8f212}.intro-spec{pointer-events:auto}.intro-spec>strong{font-size:24px}
-@media(max-width:600px) and (orientation:portrait){.intro-spec{display:block;right:7%;left:7%;top:61%;bottom:auto;text-align:center}.intro-spec>span,.intro-spec>strong{display:none}.intro-spec .view-picker{justify-content:center;display:flex;margin:0}.view-picker button{font-size:7px;padding:7px 10px}}
-/* Only the actual view buttons accept clicks; the caption never blocks a mode. */
-.intro-spec{pointer-events:none}.view-picker,.view-picker button{pointer-events:auto}
-@media(max-height:550px) and (orientation:landscape){.intro-spec{display:none}}
-
-/* In the design studio, the car is the hero; controls stay around its silhouette. */
-@media(min-width:801px) and (min-height:551px){#intro{background:linear-gradient(180deg,#080d1444,transparent 30%,transparent 70%,#080d1477)}.intro-copy{inset:0;max-width:none;pointer-events:none}.intro-copy .eyebrow{position:absolute;left:6.5%;top:15%;font-size:8px}.intro-copy h1{position:absolute;left:6.5%;top:17%;font-size:48px;line-height:1.0;letter-spacing:-2px;margin:0}.intro-copy h1 br{display:none}.intro-copy .lede{position:absolute;left:6.5%;top:24%;font-size:11px;line-height:1.5;margin:0}.intro-copy .lede br{display:none}.intro-copy .mode-picker{position:absolute;left:6.5%;bottom:105px;margin:0;pointer-events:auto}.intro-copy>.primary{position:absolute;left:calc(6.5% + 374px);bottom:105px;width:300px;min-height:54px;pointer-events:auto}.intro-note{position:absolute;left:6.5%;bottom:62px;max-width:700px;margin:0}.intro-spec{bottom:113px;right:6.5%}.intro-spec>span,.intro-spec>strong{display:none}}
-
-
-/* Flight deck. All overrides are scoped to airborne mode; the ground HUD stays intact. */
-#flight-telemetry{display:none;position:absolute;top:115px;right:42px;width:245px;padding:13px 14px 12px;border:1px solid #96e8f22b;border-left:2px solid #96e8f28c;background:linear-gradient(110deg,#10222bd9,#0c1725a8);backdrop-filter:blur(10px);text-shadow:0 1px 7px #0008;pointer-events:none}
-.airborne #flight-telemetry{display:grid;gap:12px}.flight-instrument-heading,.flight-instrument-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}.flight-instrument-heading{font-size:7px;letter-spacing:1.6px;color:#a8bec6}.flight-instrument-heading b{font-size:8px;font-weight:500;letter-spacing:1px;color:var(--accent)}#attitude-readout{font-size:10px;letter-spacing:.6px;color:#e7f5f5;font-variant-numeric:tabular-nums;white-space:nowrap}.flight-instrument-foot{font-size:7px;letter-spacing:.6px;color:#a5bbc5}#flight-status{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.trick-counter{flex:none;font-size:7px;color:#91a9b2}.trick-counter b{font-size:13px;font-variant-numeric:tabular-nums;font-weight:400;color:var(--accent);margin-right:3px}
-#control-legend{flex-wrap:wrap;row-gap:8px;padding:0 16px}.airborne #control-legend{gap:16px}.airborne .touch-steer,.airborne [data-control="throttle"]{display:none!important}
-#flight-controls{position:absolute;inset:0;pointer-events:none;display:block}.flight-stick-wrap{position:absolute;left:0;bottom:0;width:116px;height:116px;pointer-events:auto;touch-action:none}.stick-caption{position:absolute;left:0;right:0;bottom:-14px;text-align:center;font-size:6px;letter-spacing:1.5px;color:#91aab5;pointer-events:none}
-#flight-stick{position:relative;width:100%;height:100%;border-radius:50%;border:1px solid #96e8f259;background:radial-gradient(circle,transparent 36%,#96e8f20d 37%,#96e8f20d 38%,transparent 39%),linear-gradient(90deg,transparent calc(50% - .5px),#96e8f21a 50%,transparent calc(50% + .5px)),linear-gradient(0deg,transparent calc(50% - .5px),#96e8f21a 50%,transparent calc(50% + .5px)),#11212cc9;box-shadow:inset 0 0 22px #96e8f20b,0 4px 24px #0003;backdrop-filter:blur(7px);touch-action:none;user-select:none;-webkit-user-select:none}
-#flight-stick-knob{position:absolute;left:calc(50% - 19px);top:calc(50% - 19px);width:38px;height:38px;border:1px solid #bceef7bb;border-radius:50%;background:radial-gradient(circle at 35% 30%,#8bd1dd88,#4892a366);box-shadow:0 0 16px #96e8f21a,inset 0 1px 7px #c2f9ff20;pointer-events:none;will-change:transform}#flight-stick.pressed #flight-stick-knob{border-color:#c6f9ff;background:#8edcea99;box-shadow:0 0 19px #96e8f233}.stick-axis-label{position:absolute;left:0;right:0;font-size:6px;letter-spacing:.9px;text-align:center;color:#a8c6cf;pointer-events:none}.stick-axis-top{top:12px}.stick-axis-bottom{bottom:12px}.stick-yaw-arrow{position:absolute;top:calc(50% - 12px);font-size:23px;line-height:24px;color:#96e8f299;pointer-events:none}.stick-yaw-left{left:10px}.stick-yaw-right{right:10px}
-.flight-roll-controls,.flight-altitude-controls,.flight-touch-toolbar{display:flex;position:absolute;gap:6px;pointer-events:auto}.flight-roll-controls{left:0;bottom:124px}.flight-altitude-controls{right:0;bottom:52px}.flight-touch-toolbar{right:0;bottom:104px}
-#flight-controls button{width:55px;height:40px;padding:0 4px;background:#142631d9;border:1px solid #96e8f247;border-radius:8px;color:#c6e9ef;font-size:7px;font-weight:500;letter-spacing:.5px;line-height:1;touch-action:none;user-select:none;-webkit-user-select:none;backdrop-filter:blur(7px)}#flight-controls button span{font-size:17px;vertical-align:middle}#flight-controls .flight-altitude-controls button{height:44px;width:51px}#flight-controls .flight-altitude-controls button span{font-size:16px}#flight-controls .flight-touch-toolbar button{width:51px;font-size:7px;letter-spacing:.5px}#flight-controls #touch-assist{color:var(--accent);border-color:#96e8f26b;background:#1d4651bf}#flight-controls #touch-assist[aria-pressed="false"]{color:#f6cf9c;border-color:#d7a66f80;background:#4d3425c9}#flight-controls #touch-level span{display:block;font-size:7px;letter-spacing:.7px}#flight-controls #touch-level small{display:block;margin-top:4px;font-size:5px;letter-spacing:1.5px;color:#8baab5}#flight-controls button.pressed{background:#b7edf6;color:#142229;border-color:#d2f9ff}#flight-controls button.pressed small{color:#335560}
-@media(pointer:coarse){.airborne #touch-controls{height:164px;align-items:flex-end;bottom:max(30px,env(safe-area-inset-bottom))}.airborne .touch-pedals{margin-left:auto;gap:6px}.airborne .touch-pedals button{height:44px;width:51px;font-size:7px;border-radius:8px}.airborne .touch-pedals button.boost-button{position:static;height:44px;width:51px;font-size:7px;background:#8ddbe9d9;border-color:#a4e7ef;color:#10232b;font-weight:700}.airborne .touch-pedals button[data-control="brake"]{order:-1}.airborne .mobile-utils button{min-height:40px;min-width:40px}.airborne .map-wrap{bottom:212px}}
-@media(max-width:800px){#flight-telemetry{top:88px;right:23px;width:190px;padding:11px;gap:10px}.airborne #control-legend{font-size:7px;gap:10px}.airborne #control-legend kbd{font-size:7px}}
-@media(max-width:600px) and (orientation:portrait){.airborne #flight-telemetry{top:183px;left:19px;right:auto;width:calc(100% - 151px);max-width:245px;padding:10px 9px;gap:11px}.flight-instrument-heading{font-size:6px;letter-spacing:.7px}.flight-instrument-heading b{font-size:7px;letter-spacing:.7px}#attitude-readout{font-size:8px;letter-spacing:0}.flight-instrument-foot{font-size:5px;letter-spacing:.2px}.trick-counter{font-size:5px}.trick-counter b{font-size:11px;margin-right:1px}.airborne .telemetry{top:183px;right:16px;bottom:auto;width:102px}.airborne .speedline{gap:5px}.airborne .speedline strong{font-size:40px;letter-spacing:-2px}.airborne .speedline>span{font-size:6px}.airborne .speedline b{font-size:12px}.airborne .drive-mode{font-size:5px;letter-spacing:.4px;white-space:nowrap}.airborne .charge-title{font-size:5px;letter-spacing:.2px;margin:6px 0}.airborne .telemetry-foot{font-size:4px;letter-spacing:0;margin-top:8px}.airborne .map-wrap{display:none}.airborne #route-hint{top:289px;left:19px;right:19px;font-size:8px}.airborne #route-text{max-width:none;white-space:normal}.airborne .mobile-utils{top:88px;right:16px;display:grid;grid-template-columns:40px 40px;gap:6px}.airborne .mobile-utils button{padding:0;font-size:7px}.airborne #touch-hover{grid-column:1/-1;min-width:86px}.airborne #toast{top:56%;max-width:calc(100% - 30px);font-size:12px;white-space:normal;text-align:center}.airborne #touch-controls{left:15px;right:15px;bottom:max(28px,env(safe-area-inset-bottom))}}
-@media(max-height:550px) and (orientation:landscape){.airborne #flight-telemetry{top:117px;left:50%;right:auto;transform:translateX(-50%);width:190px;padding:10px 12px;gap:9px}.airborne .flight-instrument-heading{font-size:6px;letter-spacing:1px}.airborne #attitude-readout{font-size:8px}.airborne .flight-instrument-foot{font-size:6px}.airborne .trick-counter b{font-size:11px}.airborne .telemetry{top:126px;right:23px;bottom:auto;width:134px}.airborne .speedline strong{font-size:43px}.airborne .map-wrap{display:none}.airborne #touch-controls{height:144px;bottom:max(21px,env(safe-area-inset-bottom))}.flight-stick-wrap{width:96px;height:96px}.flight-roll-controls{bottom:104px}.flight-touch-toolbar{bottom:100px}.flight-altitude-controls{bottom:48px}#flight-controls .flight-roll-controls button{width:45px;font-size:6px}.stick-axis-top{top:9px}.stick-axis-bottom{bottom:9px}.stick-yaw-left{left:7px}.stick-yaw-right{right:7px}.airborne .mobile-utils{top:70px;right:23px;gap:5px}.airborne .mobile-utils button{min-height:40px;padding:0 9px}.airborne #toast{top:55%;font-size:13px;max-width:40%;white-space:normal;text-align:center}}
-@media(max-width:600px) and (max-height:550px) and (orientation:landscape){.airborne #flight-telemetry{top:128px;width:162px;padding:8px;gap:8px}.airborne .flight-instrument-heading{letter-spacing:.5px}.airborne .telemetry{right:18px;width:105px}.airborne .speedline strong{font-size:37px}.airborne #route-hint{top:74px;max-width:190px;white-space:normal}.airborne #route-text{max-width:150px}.airborne .mission{width:145px}.airborne .mobile-utils{right:18px}.airborne .mobile-utils button{padding:0 7px}.airborne #touch-controls{left:18px;right:18px}}
-@media(prefers-reduced-motion:reduce){#flight-stick-knob{will-change:auto}}
-
-.air-brake-label{display:none}.airborne .ground-brake-label{display:none}.airborne .air-brake-label{display:inline}
-
-/* Keep the flight deck above the car on short phone landscapes. */
-@media(max-height:350px) and (orientation:landscape){.airborne #flight-telemetry{top:114px;width:190px;padding:7px 9px;grid-template-columns:43px 1fr;column-gap:8px;row-gap:5px}.airborne .flight-instrument-heading{grid-column:1;grid-row:1/3;justify-content:flex-start}.airborne .flight-instrument-heading>span{display:none}.airborne #flight-assist-status{font-size:7px}.airborne #attitude-readout{grid-column:2;font-size:7px;line-height:9px}.airborne .flight-instrument-foot{grid-column:2;font-size:5px;line-height:9px;gap:5px}.airborne .trick-counter{font-size:5px}.airborne .trick-counter b{font-size:9px}.airborne .telemetry{top:114px;width:105px}.airborne .drive-mode{display:none}.airborne .speedline{height:22px;gap:6px}.airborne .speedline strong{font-size:22px;letter-spacing:-1px;line-height:1}.airborne .speedline>span{font-size:6px;line-height:1}.airborne .speedline>span br,.airborne .speedline b{display:none}.airborne .charge-title{font-size:5px;line-height:6px;letter-spacing:.3px;margin:4px 0}.airborne .telemetry-foot{display:block;position:absolute;top:7px;right:0;margin:0;font-size:6px;letter-spacing:0}.airborne #grip{display:none}.airborne #toast{top:160px;font-size:9px;letter-spacing:.5px;max-width:46%}}
+.touch-ui #toast {
+  top: 30%;
+  font-size: 19px;
+  max-width: 320px;
+}
+@media (max-width: 700px) and (orientation: landscape) {
+  .intro-copy h1 {
+    font-size: 54px;
+  }
+  #start {
+    padding: 12px;
+    letter-spacing: 0.5px;
+    font-size: 8px;
+    gap: 8px;
+  }
+}
+/* Resume stays immediately reachable; settings occupy the second landscape column. */
+body[data-phase="paused"] .dialog-card {
+  display: flex;
+  flex-direction: column;
+}
+body[data-phase="paused"] #dialog-label {
+  order: -4;
+}
+body[data-phase="paused"] #dialog-title {
+  order: -3;
+}
+body[data-phase="paused"] #resume {
+  order: -2;
+  margin: 0 0 12px;
+}
+@media (max-height: 600px) and (orientation: landscape) {
+  body[data-phase="paused"] .dialog-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 28px;
+    width: min(740px, 100%);
+    align-items: start;
+    padding: 12px 0;
+  }
+  body[data-phase="paused"] #dialog-label {
+    grid-area: 1 / 1;
+    margin: 0;
+  }
+  body[data-phase="paused"] #dialog-title {
+    grid-area: 2 / 1;
+    margin: 9px 0 12px;
+  }
+  body[data-phase="paused"] #resume {
+    grid-area: 3 / 1;
+    min-height: 44px;
+    margin: 0 0 12px;
+  }
+  body[data-phase="paused"] #dialog-content {
+    grid-area: 4 / 1;
+    max-height: 80px;
+    overflow: auto;
+    font-size: 10px;
+    line-height: 1.6;
+    margin: 0 0 8px;
+    touch-action: pan-y;
+  }
+  body[data-phase="paused"] #restart {
+    grid-area: 5 / 1;
+    margin: 0;
+    min-height: 38px;
+  }
+  body[data-phase="paused"] #garage {
+    grid-area: 6 / 1;
+    min-height: 38px;
+    margin: 0;
+  }
+  body[data-phase="paused"] #control-style {
+    grid-area: 1 / 2 / 3 / 3;
+    align-self: end;
+    margin-bottom: 12px;
+  }
+  body[data-phase="paused"] #pause-tools {
+    grid-area: 3 / 2 / 7 / 3;
+    gap: 0 14px;
+    margin: 0;
+  }
+}

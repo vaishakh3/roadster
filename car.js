@@ -6,7 +6,7 @@ import { createInterior } from './interior.js';
 export function createCar() {
   const car = new THREE.Group();
   car.name = 'Roadster';
-  const paint = new THREE.MeshPhysicalMaterial({color: 0xe7e9e7, metalness:.18, roughness:.26, clearcoat:1, clearcoatRoughness:.075, side:THREE.DoubleSide});
+  const paint = new THREE.MeshPhysicalMaterial({color: 0xeeefec, metalness:.24, roughness:.22, clearcoat:1, clearcoatRoughness:.075, side:THREE.DoubleSide});
   const black = new THREE.MeshStandardMaterial({color:0x080b0d, metalness:.3, roughness:.43, side:THREE.DoubleSide});
   const intakeVoid=new THREE.MeshStandardMaterial({color:0x010203,metalness:0,roughness:1,side:THREE.DoubleSide});
   const frontBand=new THREE.MeshPhysicalMaterial({color:0x363c42,metalness:.15,roughness:.23,clearcoat:1,clearcoatRoughness:.08,side:THREE.DoubleSide});
@@ -17,7 +17,7 @@ export function createCar() {
   const darkAlloy = new THREE.MeshStandardMaterial({color:0x252e32, metalness:.92, roughness:.3, side:THREE.DoubleSide});
   const chrome = new THREE.MeshStandardMaterial({color:0xbac6c7, metalness:1, roughness:.15});
   const brake = new THREE.MeshStandardMaterial({color:0x70251b, metalness:.55, roughness:.35});
-  const glass = new THREE.MeshPhysicalMaterial({color:0x3a312b, metalness:.10, roughness:.095, transmission:.9, thickness:.05, ior:1.5, attenuationColor:0x9e7350, attenuationDistance:.35, clearcoat:.6, clearcoatRoughness:.10, side:THREE.DoubleSide, envMapIntensity:1.0, iridescence:.08, iridescenceIOR:1.24, iridescenceThicknessRange:[220,260]});
+  const glass = new THREE.MeshPhysicalMaterial({color:0x201b18, metalness:.25, roughness:.12, transmission:.28, thickness:.05, ior:1.5, attenuationColor:0x9e7350, attenuationDistance:.35, clearcoat:.6, clearcoatRoughness:.10, side:THREE.DoubleSide, envMapIntensity:1.0, iridescence:.08, iridescenceIOR:1.24, iridescenceThicknessRange:[220,260]});
   const headlamp = new THREE.MeshStandardMaterial({color:0xe4f9ff, emissive:0xc4e9ff, emissiveIntensity:3.5, roughness:.14, side:THREE.DoubleSide});
   const tail = new THREE.MeshStandardMaterial({color:0xb5060c, emissive:0xff0816, emissiveIntensity:2.3, roughness:.17});
   const amber = new THREE.MeshStandardMaterial({color:0xffae46, emissive:0xff760c, emissiveIntensity:1.8});
@@ -51,7 +51,7 @@ export function createCar() {
     m.position.set(x,y,z);return m;
   }
   function torus(radius,tube,material,x,y,z,axis='x',parent=car) {
-    const m=mesh(new THREE.TorusGeometry(radius,tube,10,64),material,parent);
+    const m=mesh(new THREE.TorusGeometry(radius,tube,8,40),material,parent);
     if(axis==='x')m.rotation.y=Math.PI/2;
     else if(axis==='y')m.rotation.x=Math.PI/2;
     m.position.set(x,y,z);return m;
@@ -86,8 +86,8 @@ export function createCar() {
     return a.map((v,j)=>j===0?z:(2*t*t*t-3*t*t+1)*v+(t*t*t-2*t*t+t)*h*(b[j]-prev[j])/(b[0]-prev[0])+(-2*t*t*t+3*t*t)*b[j]+(t*t*t-t*t)*h*(next[j]-a[j])/(next[0]-a[0]));
   }
   function bottom(z){for(const center of [frontZ,rearZ])if(Math.abs(z-center)<archR)return wheelY+Math.sqrt(archR*archR-(z-center)**2);return z<-1.88?.31:.222;}
-  const zs=new Set([-1.03,.57,1.55,1.9]);for(let i=0;i<=140;i++)zs.add(-2.38+4.77*i/140);
-  for(const z0 of [frontZ,rearZ])for(let i=0;i<=52;i++)zs.add(z0+Math.cos(Math.PI*i/52)*archR);
+  const zs=new Set([-1.03,.57,1.55,1.9]);for(let i=0;i<=80;i++)zs.add(-2.38+4.77*i/80);
+  for(const z0 of [frontZ,rearZ])for(let i=0;i<=32;i++)zs.add(z0+Math.cos(Math.PI*i/32)*archR);
   const samples=[...zs].sort((a,b)=>a-b).map(station);
   function sideX(z,u){const w=station(z)[1],door=THREE.MathUtils.smoothstep(z,-1.18,-.82)*(1-THREE.MathUtils.smoothstep(z,.75,1.17));return w*(.972+.028*Math.sin(u*Math.PI*.5))-.014*u*u-.035*THREE.MathUtils.smoothstep(z,1.95,2.39)*u*u-.047*door*Math.pow(Math.sin(Math.PI*u),2);}
   // Central panels stop at the glazing; no duplicate painted surfaces beneath
@@ -102,12 +102,12 @@ export function createCar() {
     // Deliberate diagonal shoulder crease and gently rolled outer fender.
     const shoulderRow=([z,w,h,sh,inner])=>{
       if(z>=1.9)inner=THREE.MathUtils.lerp(.44,.77,(z-1.9)/.49);
-      const row=[];for(let j=0;j<=14;j++){const u=j/14;const x=THREE.MathUtils.lerp(inner,w*.972,u);const y=THREE.MathUtils.lerp(h,sh,u)+.016*Math.sin(Math.PI*u);row.push([side*x,y,z]);}return row;
+      const row=[];for(let j=0;j<=8;j++){const u=j/8;const x=THREE.MathUtils.lerp(inner,w*.972,u);const y=THREE.MathUtils.lerp(h,sh,u)+.016*Math.sin(Math.PI*u);row.push([side*x,y,z]);}return row;
     };
     strip(samples.filter(row=>row[0]<=.57).map(shoulderRow),paint);
     strip(samples.filter(row=>row[0]>=1.9).map(shoulderRow),paint);
     strip(samples.map(([z,w,h,sh,inner])=>{
-      const row=[], low=bottom(z);for(let j=0;j<=10;j++){const u=j/10;const x=sideX(z,u);const y=THREE.MathUtils.lerp(sh,Math.min(sh-.025,low),u);row.push([side*x,y,z]);}return row;
+      const row=[], low=bottom(z);for(let j=0;j<=6;j++){const u=j/6;const x=sideX(z,u);const y=THREE.MathUtils.lerp(sh,Math.min(sh-.025,low),u);row.push([side*x,y,z]);}return row;
     }),paint);
     strip(samples.filter(row=>row[0]<-1.882).map(([z,w,h,sh])=>[[side*(w-.014),bottom(z),z],[side*(w-.024),.179,z]]),carbon);
     // Finite, flush wheel opening return, no inverted/self-intersecting triangles.
@@ -141,7 +141,7 @@ export function createCar() {
     const lampPoint=(x,z,lift=.004)=>{const [_,w,h,sh,inner]=station(z),u=(x-inner)/(w*.972-inner);return [side*x,THREE.MathUtils.lerp(h,sh,u)+.016*Math.sin(Math.PI*u)+lift,z];};
     const lampA=[.748,-2.345],lampB=[.966,-2.20],lampC=[.706,-2.045];
     function lensPatch(A,B,C,material,lift){
-      const vertices=[],N=20,point=(a,b)=>lampPoint(A[0]+(B[0]-A[0])*a+(C[0]-A[0])*b,A[1]+(B[1]-A[1])*a+(C[1]-A[1])*b,lift);
+      const vertices=[],N=8,point=(a,b)=>lampPoint(A[0]+(B[0]-A[0])*a+(C[0]-A[0])*b,A[1]+(B[1]-A[1])*a+(C[1]-A[1])*b,lift);
       for(let i=0;i<N;i++)for(let j=0;j<N-i;j++){
         const a=i/N,b=j/N,step=1/N;vertices.push(...point(a,b),...point(a+step,b),...point(a,b+step));
         if(i+j<N-1)vertices.push(...point(a+step,b),...point(a+step,b+step),...point(a,b+step));
@@ -169,19 +169,20 @@ export function createCar() {
 
   // Flush aircraft glazing. Flat central roof, subtle compound windshield curvature.
   const canopy=[[-1.03,.880,.770,.860],[-.83,.800,.898,.883],[-.58,.728,1.024,1.009],[-.32,.673,1.161,1.146],[-.20,.655,1.197,1.182],[.22,.650,1.210,1.195],[.57,.620,1.201,1.186],[.78,.577,1.145,1.130],[1.04,.506,1.035,1.020],[1.38,.397,.861,.846],[1.55,.355,.833,.825]];
-  for(const row of canopy){const lift=.085*Math.max(0,1-Math.abs(row[0]-.20)/1.25);row[2]+=lift+.035;row[3]+=lift;row[1]*=1.025;}
-  function canopyRow(row){const[z,w,h,e]=row,out=[];for(let j=0;j<=20;j++){const t=j/20*2-1;out.push([t*w,h-(h-e)*Math.pow(Math.abs(t),2.4),z]);}return out;}
+  // Broad, planar roof and straight windshield follow the revealed wedge silhouette.
+  for(const row of canopy){row[2]+=.018;row[3]+=.012;row[1]*=1.025;}
+  function canopyRow(row){const[z,w,h,e]=row,out=[];for(let j=0;j<=12;j++){const t=j/12*2-1;out.push([t*w,h-(h-e)*Math.pow(Math.abs(t),4),z]);}return out;}
   // Resample along Z to avoid normal jumps while retaining the roof break.
-  const canopyRows=[];for(let i=0;i<canopy.length-1;i++)for(let j=0;j<8;j++){
-    const t=j/8,a=canopy[i],b=canopy[i+1],prev=canopy[Math.max(0,i-1)],next=canopy[Math.min(canopy.length-1,i+2)],dz=b[0]-a[0];
-    canopyRows.push(canopyRow(a.map((v,k)=>k===0?THREE.MathUtils.lerp(a[0],b[0],t):(2*t*t*t-3*t*t+1)*v+(t*t*t-2*t*t+t)*dz*(b[k]-prev[k])/(b[0]-prev[0])+(-2*t*t*t+3*t*t)*b[k]+(t*t*t-t*t)*dz*(next[k]-a[k])/(next[0]-a[0]))));
+  const canopyRows=[];for(let i=0;i<canopy.length-1;i++)for(let j=0;j<4;j++){
+    const t=j/4,a=canopy[i],b=canopy[i+1],prev=canopy[Math.max(0,i-1)],next=canopy[Math.min(canopy.length-1,i+2)],dz=b[0]-a[0];
+    canopyRows.push(canopyRow(a.map((v,k)=>k===0?THREE.MathUtils.lerp(a[0],b[0],t):THREE.MathUtils.lerp(v,b[k],t))));
   }canopyRows.push(canopyRow(canopy.at(-1)));strip(canopyRows,glass);
   for(const side of [-1,1]){
     const top=canopy.slice(0,8).map(([z,x,h,y])=>[z,x,y]);
     function glassSill(z,x,y){const outer=.908-(z+1.03)*.016,st=station(z),u=(outer-st[4])/(st[1]*.972-st[4]),base=THREE.MathUtils.lerp(st[2],st[3],u)+.016*Math.sin(Math.PI*u)+.004,t=THREE.MathUtils.smoothstep(z,.57,1.2525);return [THREE.MathUtils.lerp(outer,x,t),THREE.MathUtils.lerp(base,y,t)];}
     const sideEdges=[];
     const sideRows=canopyRows.filter(row=>row[0][2]<=1.2526).map(row=>{const z=row[0][2],p=side>0?row.at(-1):row[0],[lowerX,lowerY]=glassSill(z,Math.abs(p[0]),p[1]),out=[];for(let i=0;i<=12;i++){const u=i/12;out.push([THREE.MathUtils.lerp(p[0],side*lowerX,u)+side*.009*Math.sin(Math.PI*u),THREE.MathUtils.lerp(p[1],lowerY,u),z]);}sideEdges.push([side*lowerX,lowerY+.002,z]);return out;});if(side<0)for(const row of sideRows)row.reverse();strip(sideRows,glass);
-    line(canopyRows.filter(row=>row[0][2]<=1.2526).map(row=>{const p=side>0?row.at(-1):row[0];return [p[0]+side*.002,p[1]+.002,p[2]]}),paint,.005);
+    line(canopyRows.filter(row=>row[0][2]<=1.2526).map(row=>{const p=side>0?row.at(-1):row[0];return [p[0]+side*.002,p[1]+.002,p[2]]}),black,.003);
     line(sideEdges,black,.003);
     // The flying buttress is a single continuous patch from canopy edge to
     // shoulder, with aligned longitudinal stations and no overlapping triangles.
@@ -205,7 +206,7 @@ export function createCar() {
     const pivot=new THREE.Group();pivot.position.set(side*(z>0?1.01:.995),wheelY,z);car.add(pivot);
     const spin=new THREE.Group();pivot.add(spin);
     const profile=[new THREE.Vector2(.306,-.139),new THREE.Vector2(.339,-.138),new THREE.Vector2(.371,-.124),new THREE.Vector2(.389,-.097),new THREE.Vector2(.395,-.055),new THREE.Vector2(.395,.055),new THREE.Vector2(.389,.097),new THREE.Vector2(.371,.124),new THREE.Vector2(.339,.138),new THREE.Vector2(.306,.139)];
-    const tire=mesh(new THREE.LatheGeometry(profile,96),rubber,spin);tire.rotation.z=Math.PI/2;
+    const tire=mesh(new THREE.LatheGeometry(profile,64),rubber,spin);tire.rotation.z=Math.PI/2;
     // Tread channels and sidewall bead sit on the curved rubber, not on its silhouette.
     for(const x of [-.062,-.021,.021,.062])torus(.394,.002,black,x,0,0,'x',spin);
     const out=side*.141;cyl(.313,.04,darkAlloy,side*.072,0,0,'x',spin,80);
@@ -275,7 +276,7 @@ export function createCar() {
     const vapour=new THREE.Mesh(new THREE.ConeGeometry(.18,1.3,24,8,true),new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,uniforms:{time:{value:0}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'varying vec2 vUv;uniform float time;void main(){float wave=.65+.35*sin(vUv.x*42.+vUv.y*29.-time*17.);float fade=smoothstep(0.,.35,vUv.y)*(1.-smoothstep(.87,1.,vUv.y));gl_FragColor=vec4(.90,.95,1.,fade*wave*.28);}'}));vapour.geometry.translate(0,-.65,0);vapour.position.set(side*.94,.15,z);vapour.visible=false;car.add(vapour);liftJets.push(vapour);
   }
   // Broad active airfoil with folded polygon endplates, not a wire spoiler.
-  const wing=new THREE.Group();wing.name='Active rear wing';wing.position.set(0,.79,2.02);car.add(wing);
+  const wing=new THREE.Group();wing.name='Active rear wing';wing.position.set(0,.49,2.02);car.add(wing);
   for(const side of [-1,1]){
     strip([[[side*.57,-.03,-.13],[side*.61,-.03,-.07]],[[side*.57,.10,-.17],[side*.61,.10,-.09]],[[side*.57,.22,-.08],[side*.61,.22,-.015]]],darkAlloy,wing);
     cyl(.019,.045,alloy,side*.59,.21,-.045,'x',wing,20);
@@ -339,6 +340,6 @@ export function createCar() {
   for(const wheel of wheels){batchRigid(wheel.spin);batchRigid(wheel.pivot);}
   batchRigid(wing);
   batchRigid(car,new Set([...brakeLights,...thrusterJets,...liftJets]));
-  car.userData={wheels,brakeLights,thrusterJets,liftJets,wing,paintMaterial:paint,glassMaterial:glass,headlightMaterial:headlamp};
+  car.userData={interior,setDetail:detailed=>{glass.transmission=detailed?.28:0;glass.needsUpdate=true;},wheels,brakeLights,thrusterJets,liftJets,wing,paintMaterial:paint,glassMaterial:glass,headlightMaterial:headlamp};
   return car;
 }

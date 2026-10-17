@@ -42,6 +42,7 @@ function surfaceTexture(kind) {
 }
 
 export function createWorld(scene, renderer) {
+ const obstacles=[];
  const world = new THREE.Group(); world.name = 'Afterdark proving ground'; scene.add(world);
  scene.background = new THREE.Color('#07111e'); scene.fog = new THREE.FogExp2('#0a1827', .0021);
  const sunDirection = new THREE.Vector3(-160, 95, -110).normalize();
@@ -150,6 +151,7 @@ export function createWorld(scene, renderer) {
    barriers.push([x, .65, z, .12, .30, 2.24, a], [x, .91, z, .12, .13, 2.24, a]); if (i % 2 === 0) barrierSupports.push([x, .46, z, .14, .92, .18, a]);
   }
  }
+ for(const e of barriers)obstacles.push({x:e[0],z:e[2],halfX:e[3]/2,halfZ:e[5]/2,height:1.05,angle:e[6]});
  instanceBoxes('Satin steel Armco', barriers, steel, false); instanceBoxes('Armco uprights', barrierSupports, dark, false);
 
  const activeGate = new THREE.MeshStandardMaterial({ color: '#ff3854', emissive: '#ff173f', emissiveIntensity: 3.1, metalness: .45, roughness: .35 });
@@ -201,9 +203,9 @@ export function createWorld(scene, renderer) {
  });
  const floorReflection = new THREE.Mesh(new THREE.PlaneGeometry(17.95, 12.95), reflectionMaterial); floorReflection.name='Satin showroom reflection'; floorReflection.rotation.x=-Math.PI/2;floorReflection.position.set(30,.093,134);floorReflection.renderOrder=2;world.add(floorReflection);
  const mirrorPosition=new THREE.Vector3(),cameraPosition=new THREE.Vector3(),normal=new THREE.Vector3(),view=new THREE.Vector3(),look=new THREE.Vector3(),target=new THREE.Vector3(),rotation=new THREE.Matrix4(),clipPlane=new THREE.Plane(),clip=new THREE.Vector4(),q=new THREE.Vector4();
- let reflectionBusy=false,lastReflection=-Infinity;
+ let reflectionBusy=false,lastReflection=-Infinity,reflectionEnabled=true,reflectionInterval=100;
  floorReflection.onBeforeRender=(activeRenderer,activeScene,camera)=>{
-  if(reflectionBusy||performance.now()-lastReflection<70)return;lastReflection=performance.now();
+  if(!reflectionEnabled||reflectionBusy||performance.now()-lastReflection<reflectionInterval)return;lastReflection=performance.now();
   mirrorPosition.setFromMatrixPosition(floorReflection.matrixWorld);cameraPosition.setFromMatrixPosition(camera.matrixWorld);
   if(cameraPosition.distanceToSquared(mirrorPosition)>1800)return;
   rotation.extractRotation(floorReflection.matrixWorld);normal.set(0,0,1).applyMatrix4(rotation);view.subVectors(mirrorPosition,cameraPosition);if(view.dot(normal)>0)return;
@@ -217,6 +219,7 @@ export function createWorld(scene, renderer) {
   activeRenderer.xr.enabled=oldXr;activeRenderer.shadowMap.autoUpdate=oldShadow;activeRenderer.setRenderTarget(oldTarget);if(camera.viewport!==undefined)activeRenderer.state.viewport(camera.viewport);floorReflection.visible=true;reflectionBusy=false;
  };
  const studio=new THREE.Group();studio.name='Photographic design studio';scene.add(studio);const studioFloor=mesh(new THREE.PlaneGeometry(160,160),new THREE.MeshStandardMaterial({color:0x20252a,metalness:.05,roughness:.58}),30,.09,134);studioFloor.rotation.x=-Math.PI/2;studioFloor.castShadow=false;studio.add(studioFloor);studio.add(floorReflection);const outdoorFog=scene.fog,outdoorBackground=scene.background;
+ function setQuality(quality,coarse){reflectionEnabled=quality!=='low'&&!coarse;reflectionInterval=quality==='high'?70:150;reflectionTarget.setSize?.(quality==='high'?768:384,quality==='high'?512:256);}
  function setShowroom(visible){sun.color.set(visible?'#fff0d8':'#b2cdf4');hemisphereLight.color.set(visible?'#d8e5f2':'#a1c9ed');hemisphereLight.groundColor.set(visible?'#675742':'#101c2a');world.visible=!visible;studio.visible=visible;sky.visible=!visible;scene.fog=visible?new THREE.FogExp2('#11151a',.038):outdoorFog;scene.background=visible?new THREE.Color('#11151a'):outdoorBackground;floorReflection.visible=visible;lastReflection=-Infinity;}
  const inset = material('#343b3c', .55, .3); instanceBoxes('Presentation pad reveals', [[21.1, .096, 134, .04, .01, 12.8], [38.9, .096, 134, .04, .01, 12.8], [30, .096, 127.6, 17.8, .01, .04], [30, .096, 140.4, 17.8, .01, .04]], inset, false);
  const warmLight = cyanLight; instanceBoxes('Inset presentation lights', [[22, .10, 134, .035, .012, 8], [38, .10, 134, .035, .012, 8]], warmLight, false);
@@ -299,6 +302,7 @@ export function createWorld(scene, renderer) {
  for(let i=0;i<100;i++){
   let x,z,h,w,d;if(i<signature.length){[x,z,h,w,d]=signature[i];}else{const a=seeded(i*11+8)*TAU,r=205+seeded(i*11+9)*420;x=Math.sin(a)*r;z=Math.cos(a)*r;h=25+Math.pow(seeded(i*11+10),1.5)*120;w=12+seeded(i+85)*22;d=12+seeded(i+86)*22;}
   if(z>110&&z<205&&x>-35&&x<110)continue;const a=(Math.floor(seeded(i+40)*4)*Math.PI/2);
+  obstacles.push({x,z,halfX:w/2,halfZ:d/2,height:h,angle:a});
   cityMass.push([x,h/2,z,w,h,d,a]);cityMass.push([x+w*.12,h*.89,z-d*.08,w*.58,h*.24,d*.58,a]);cityPlinths.push([x,2,z,w+8,4,d+8,a]);cityCrowns.push([x,h+1,z,w+1,.8,d+1,a]);
   const lights=i%4===0?redSpines:cyanSpines;lights.push([x-w*.5-.1,h*.52,z-d*.5-.12,.16,h*.96,.18,a],[x+w*.5+.1,h*.52,z+d*.5+.12,.16,h*.96,.18,a]);
   if(i%3===0)lights.push([x,h+3.5,z,.18,6,.18]);
@@ -317,12 +321,12 @@ export function createWorld(scene, renderer) {
  // Sculptural energy infrastructure in the infield, clear of gates and driving line.
  const facilities=[[-77,18,34],[-42,51,18],[85,30,28],[-15,-69,24]];
  const reactors=[],reactorRibs=[],reactorBands=[],reactorPools=[];
- for(const [x,z,h]of facilities){reactors.push([x,h*.5,z,8,h,8],[x,1.1,z,15,2.2,15]);for(let j=0;j<4;j++){const a=j*TAU/4;reactorRibs.push([x+Math.sin(a)*5,h*.5,z+Math.cos(a)*5,.3,h+.8,.3]);}reactorBands.push([x,h*.72,z-4.15,8,.18,.12],[x,h*.72,z+4.15,8,.18,.12],[x-4.15,h*.72,z,.12,.18,8],[x+4.15,h*.72,z,.12,.18,8]);reactorPools.push([x,.021,z,28,28]);}
+ for(const [x,z,h]of facilities){obstacles.push({x,z,halfX:4,halfZ:4,height:h});reactors.push([x,h*.5,z,8,h,8],[x,1.1,z,15,2.2,15]);for(let j=0;j<4;j++){const a=j*TAU/4;reactorRibs.push([x+Math.sin(a)*5,h*.5,z+Math.cos(a)*5,.3,h+.8,.3]);}reactorBands.push([x,h*.72,z-4.15,8,.18,.12],[x,h*.72,z+4.15,8,.18,.12],[x-4.15,h*.72,z,.12,.18,8],[x+4.15,h*.72,z,.12,.18,8]);reactorPools.push([x,.021,z,28,28]);}
  instanceBoxes('Infield power modules',reactors,cityMaterial,false);instanceBoxes('Infield exoskeleton ribs',reactorRibs,material('#547381',.3,.6),false);instanceBoxes('Reactor status bands',reactorBands,redLight,false);lightPools(reactorPools,'#cf163d',.15);
  // Local luminous volumes soften fixtures without an expensive full-screen bloom.
  const haloEntries=lampHeads.map(e=>[e[0],e[1],e[2],e[3]*3,e[4]*4,e[5]*1.2,e[6]]);instanceBoxes('Soft fixture halos',haloEntries,cyanGlow,false);
  const panelJoints=[];for(let x=-320;x<=320;x+=24)panelJoints.push([x,-.045,0,.035,.01,640]);for(let z=-320;z<=320;z+=24)panelJoints.push([0,-.045,z,640,.01,.035]);instanceBoxes('Campus deck panel seams',panelJoints,material('#0d1c2a',.4,.4),false);
 
  function nearest(x, z) { let min = Infinity, idx = 0; for (let i = 0; i < N; i += 2) { const d = (center[i].x - x) ** 2 + (center[i].z - z) ** 2; if (d < min) { min = d; idx = i; } } return { distance: Math.sqrt(min), index: idx, t: idx / N, point: center[idx] }; }
- return { world, curve, center, gates, flightRings, setGate, setShowroom, nearest, sun, sky, spawn: { x: start.x - tan.x * 7, z: start.z - tan.z * 7, yaw }, garage: { x: 30, z: 134, yaw: -Math.PI * .17 }, trackWidth: width };
+ return { world, obstacles, curve, center, gates, flightRings, setGate, setShowroom, setQuality, nearest, sun, sky, spawn: { x: start.x - tan.x * 7, z: start.z - tan.z * 7, yaw }, garage: { x: 30, z: 134, yaw: -Math.PI * .17 }, trackWidth: width };
 }

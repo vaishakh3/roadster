@@ -1,108 +1,89 @@
 # Roadster · Flight Lab
 
-A self-contained, real-time 3D driving and flight game inspired by the October 2026 Tesla Roadster concept reveal. Built with Three.js, original procedural geometry and synthesized optional audio. No remote asset/CDN requests, analytics, external accounts or paid assets are required by the game itself.
+A browser driving and flight playground inspired by the revealed 2026 Roadster. Original Three.js geometry, six-axis flight, an afterdark circuit, and a 90-second stunt challenge. Landscape-first on phones, with simple assisted controls by default and optional manual flight. The AFTER HOURS visual identity uses condensed motorsport typography, silver instruments, signal red and unboxed session choices. No accounts, API keys, analytics, or paid assets.
 
-## Play
+## Play or develop
 
-Download this repository and open `Roadster-Flight-Lab.html` in a WebGL 2 capable browser on a computer. The standalone HTML contains the entire game and does not need a server. For devices that cannot execute downloaded HTML, serve the project over HTTP as described below.
-
-For the editable modular source, run `npm start` and open http://localhost:4173. A Python 3 installation is needed by that convenience command; any static HTTP server works. Runtime Three.js modules and the studio lighting are bundled locally.
-
-## Install and build
-
-Requirements: Node.js 20 or newer and npm. Python 3 is optional, for the convenience server.
+Open `Roadster-Flight-Lab.html` directly in a WebGL 2 browser to play the self-contained build. For development, use Node.js 20+:
 
 ```sh
 npm ci
-npm test
-npm run build
 npm start
 ```
 
-`npm run build` regenerates `Roadster-Flight-Lab.html` and creates `dist/`. The standalone file and `dist/index.html` are byte-identical. Deploy the contents of `dist/` to any static host, preserving the included third-party license files. The build does not require credentials or environment variables.
-
-For rendered browser checks on a compatible Linux host:
+Open http://127.0.0.1:4173. The runtime uses locally bundled Three.js and studio lighting; it makes no external asset requests.
 
 ```sh
+npm test
 npm run build
-npm run test:browser
 ```
 
-The browser check uses the development-only `playwright-core` and `@sparticuz/chromium` packages, starts a temporary server on port 4178, and writes local screenshots and a JSON report. The other scripts under `tests/` provide optional showroom, lighting, night, and geometry render checks.
+The build writes a standalone `Roadster-Flight-Lab.html` and an identical `dist/index.html`, with third-party license notices in `dist/`.
 
-### Controls
+## Deploy on Vercel
 
-Ground:
-- W/A/S/D or arrow keys: throttle, steering, brake/reverse
-- Shift: extra cold-gas forward boost
-- Space: handbrake drift
+Import this GitHub repository and select the branch containing this upgrade. The included `vercel.json` sets the build command to `npm run build` and output directory to `dist`. No environment variables or backend are needed. After reviewing a preview deployment, merge the upgrade branch to use the default production branch.
 
-Flight:
-- H: launch, request powered assisted landing, or cancel landing
-- W / S or up/down arrows: pitch nose down / up
-- A / D or left/right arrows: yaw left / right
-- Q / E: roll left / right
-- Space / Z: climb / descend
-- Shift: forward cold-gas thrust along the actual nose direction
-- B: airbrake
-- F: toggle assisted flight / acro
-- Hold X: level the car and arrest spin using remaining cold gas
+## Three ways to play
 
-Both:
-- C: cycle chase, cockpit and cinematic cameras
-- R: recover to track; preserves air reserve and top speed, adds a 3-second circuit penalty
-- P / Escape: pause
-- Touch: driving pedals/steering change to a yaw/pitch stick, roll pair, climb/descent, thrust, airbrake, ASSIST and held LEVEL controls in flight. CAM, LAUNCH/LAND and reset remain available.
+- **Circuit:** clear all 12 gates in sequence. Brake before corners, use cold-gas thrust on straights, and chase a personal best saved on the device. Recovery adds a three-second penalty.
+- **Flight rush:** 90 seconds to score. A complete airborne rotation starts at 500 points. Consecutive rotations raise the multiplier by 0.5, up to 4×. A safe landing banks the combo and adds 250 points. A crash, recovery, or timeout loses unbanked points. Air gates award 200 points and restore 20% gas. Bronze: 1,000; silver: 3,000; gold: 6,000. Best score is saved locally.
+- **Free flight:** an untimed playground with contextual guidance, ordered air gates, and full assisted/acro control.
 
-Climb to at least 30 m for a first flip, and higher for acro or chained stunts. Hold pitch or roll through a full turn. Assisted flight levels the car when rotational commands are released; acro retains attitude and angular inertia. Both use actual body-oriented thrust. Lift cannot point upward when inverted, so flips cost altitude. Hold X / LEVEL to recover, then H to land. Landing inverted or too fast causes an impact and disables propulsion until R / reset.
+The garage offers front, profile and rear views plus a stowed/deployed aero preview. Photo mode pauses the simulation and lets you orbit the car and save an image. Finished runs can be saved as a PNG score card. Both downloads happen locally; the game never posts to social media.
 
-Circuit mode requires all 12 gates in order. Free Flight has seven ordered airborne gates and scored 360-degree loops, rolls and yaw spins. Each complete rotation earns 500 points; each air gate earns 200 points and a 20% reserve bonus. All thrusters share a finite reserve. Upright low-speed grounded coasting/braking refills it for game balance. An empty reserve disables propulsion and leaves ballistic descent. A local personal-best circuit time persists in browser storage when available. Sound is off until explicitly enabled.
+## Simple controls (default)
 
-## Rendering and design
+The car accelerates automatically to cruising speed. You steer and choose when to brake, boost or fly. The pilot assists through the same physical thrusters; it never teleports, rotates the model directly or invents stunt points.
 
-- Approximately 193,000-triangle car, batched to 83 meshes, with continuous crease-controlled body surfaces, physically transmitting coated bronze glass and a sculpted cabin, five-spoke/aero-sector wheels, brakes, flush panel seams, triangular headlamps, thin tail optics, a substantial active wing, four upper nozzles and four lower turbines
-- Clearcoat PBR paint, bundled HDR studio reflections, restrained satin planar showroom reflection and near-field rectangular studio lights, tire contact shadows, directional sun shadows, an atmospheric night sky, layered futuristic architecture, illuminated circuit edges and wet-look asphalt, plus a separate neutral design-studio garage
-- Body-oriented white vapour columns with short blue-white cores, paired reaction-control jets, expanding trails and near-ground clouds, working night headlights, tire marks, true driver-eye cockpit, speed-sensitive chase camera, responsive HUD and circuit minimap
-- Fixed-step physics, speed-dependent steering, tire slip, handbrake, supported-surface suction grip, brake/reverse, drag, quaternion-based six-axis flight, assisted/acro handling and oriented-body floor contact
-- Automatic render-resolution reduction during gameplay on slower devices, plus HIGH/LOW overrides; showroom front, profile and rear camera selectors
+| Action | Keyboard | Touch |
+| --- | --- | --- |
+| Steer / yaw | A / D or ← / → | Left thumb pad |
+| Brake | S / ↓ / B | BRAKE |
+| Boost / depart after landing | Shift | BOOST |
+| Launch / assisted landing | H | LAUNCH / LAND |
+| One complete barrel roll | Space | ROLL (available above 24 m) |
+| Pause / settings | P / Escape | Ⅱ |
 
-## Reference and fidelity notes
+Launch climbs automatically to 32 m. Roll stabilizes after a full turn; landing slows the car and banks your combo. The car parks after landing to refill. Hold BOOST to drive again. Watch your reserve and land early; assistance cannot create fuel.
 
-Reference material reviewed: official Tesla product photos, official event transcript and demonstration stills. Full moving-video playback buffered in the research browser, so animation timing is not claimed to be measured.
+On phones and touch tablets, portrait displays **ROTATE TO DRIVE**. Turning upright during a run clears input and pauses the clock and simulation. Returning to landscape waits for an explicit Resume. The game does not depend on browser orientation-lock support.
 
-- Official product page: https://www.tesla.com/roadster
-- Official full reveal: https://www.youtube.com/watch?v=qt5p-_tE8d0
-- Official front photo: https://digitalassets.tesla.com/tesla-contents/image/upload/f_auto,q_auto/Roadster-03-Carousel-Slide-1-Desktop.jpg
-- Official rear photo: https://digitalassets.tesla.com/tesla-contents/image/upload/f_auto,q_auto/Roadster-01-Hero-Desktop.jpg
-- Official body/wing photo: https://digitalassets.tesla.com/tesla-contents/image/upload/f_auto,q_auto/Roadster-04-World-Desktop.jpg
-- Official closed-car shape photo: https://digitalassets.tesla.com/tesla-contents/image/upload/f_auto,q_auto/Roadster-08-End-Desktop.jpg
-- Official interior photo: https://digitalassets.tesla.com/tesla-contents/image/upload/f_auto,q_auto/Roadster-03-Carousel-Slide-4-Desktop.jpg
-- Official flying rear view: https://digitalassets.tesla.com/tesla-contents/image/upload/f_auto,q_auto/Roadster-06-Gravity-Desktop.jpg
-- Official fan/nozzle photo: https://digitalassets.tesla.com/tesla-contents/image/upload/f_auto,q_auto/Roadster-07-Augments-Desktop.jpg
+Camera, recovery, sound, quality, fullscreen, photo mode and control style live in pause. **CONTROLS · MANUAL** unlocks the full flight deck: W/S pitch, A/D yaw, Q/E roll, Space/Z lift, Shift thrust, B airbrake, X stabilize, F assist/acro. On the ground, manual mode uses W/S pedals and Space handbrake; holding the brake at rest engages reverse after a short delay. C changes camera and R recovers. Touch controls reveal the corresponding sticks and buttons.
 
-The cabin is a two-seat Roadster interpretation based on the public interior photograph. It is not claimed to reproduce the single-seat Rocket configuration.
+Climb above 30 m before a first roll. Hold the roll input through a complete turn, release it, level the car, then request landing. Thrust follows the car's real orientation; inverted lift cannot hold it up. A hard or inverted landing causes an impact. Major buildings and track barriers are solid; the vehicle uses a simplified rounded collision footprint.
 
-This is an original visual interpretation, not a licensed CAD model, certified performance simulation or pixel-perfect replica. Dimensions, steering, force levels, flight stabilization, air consumption and recharge are game choices. Ground suction currently works on the flat proving-ground surface; inverted wall driving, fully simulated aerodynamic surfaces, structural damage and opening doors are outside this build. Scenery is visual and non-colliding; the support/collision plane is the flat proving ground. The game is not affiliated with Tesla.
+Reserve is finite. Upright, slow grounded coasting/braking refills it as a game mechanic. Recovery does not refill the tank. Low reserve calls for an early landing.
+
+## Handling and rendering
+
+Ground handling preserves world momentum when steering, limits cornering with a simplified tyre friction circle, reduces grip on loose surfaces, and gives braking priority over throttle/boost. These are physically motivated game parameters, not measured Tesla vehicle data.
+
+## Rendering and mobile behavior
+
+The reference-informed car has a flatter canopy, bronze glazing, wedge body, active rear wing, detailed aero wheels, four rear nozzles, suction fans and a modeled interior. Roughly 133,000 triangles including the interior, down from roughly 193,000 in the prior model. This is original procedural geometry, not licensed manufacturer CAD.
+
+Rendering uses a screen pixel budget, automatic resolution adjustment, reduced mobile particles, optional high/low quality, and no planar floor reflection on coarse-pointer devices. Hidden tabs stop rendering and pause a run. The cockpit interior is hidden in external gameplay views. HUD legends are rebuilt only when control mode changes; the minimap refreshes at 10 Hz.
+
+The game uses `100dvh`, safe-area insets, independent pointer ownership, pointer cancellation cleanup, and nonselectable controls including their labels. Phones use a single landscape control layout; portrait pauses play and shows a rotate prompt. Help and result dialogs can scroll on small screens. Sound is optional and starts only after the player enables it.
 
 ## Validation
 
-`npm test` runs 25 pure physics checks and the integration/endurance/geometry suite, including actual 360 rotations, all three signed rotation axes, body-relative forces, reserve depletion, crash lockout, safe landing, reset/pause/blur and multitouch cancellation. `npm run test:browser` runs actual headless Chromium WebGL render/input checks and creates `tests/browser-qa-report.json` locally. `tests/QA.md` describes additional integration coverage and remaining limits. Mobile checks emulate viewport and touch behavior in Chromium; physical iOS Safari and physical mobile GPU performance have not been verified.
+`npm test` covers independent physics, integration/endurance, scoring, collision and input behavior. CI runs tests and the static build for pushes and pull requests.
 
-## Files
+For browser verification, build and start the server, then open http://127.0.0.1:4173/tests/browser.html and select **Run checks**. This exercises the actual bundled build and WebGL renderer, a complete roll-and-land scoring run, pause/photo/restart transitions, synthetic multitouch pointer events, portrait lifecycle transitions, and both simple/manual decks across four landscape/desktop sizes. Optional `npm run test:browser` launches the same harness headlessly (Chrome on macOS, bundled Chromium on Linux, or `CHROME_PATH`).
 
-- `main.js`: orchestration, controls, game states, rendering, camera, HUD and particles
-- `physics.js`: independent vehicle state and fixed-step dynamics
-- `car.js`: original detailed car geometry and animation handles
-- `interior.js`: sculpted seats, dashboard, yoke, console and interior materials
-- `world.js`: circuit and procedural environment
-- `studio-light.js`, `assets/`: bundled CC0 studio HDRI and source attribution
-- `style.css`, `index.html`: responsive UI
-- `vendor/`: bundled Three.js dependency and MIT license
-- `Roadster-Flight-Lab.html`: generated standalone playable build
-- `dist/`: generated static hosting payload (created by the build and ignored by Git)
+See [tests/QA.md](tests/QA.md) for the verified scope and remaining device checks. A desktop browser viewport is not a physical mobile GPU benchmark.
 
-## License
+## Design references and limits
 
-Original game code and generated geometry retain their existing `UNLICENSED` status; no open-source license is granted. See `LICENSE`. Three.js is MIT-licensed; its license is preserved in `vendor/THREE-LICENSE.txt`. No Tesla image assets are embedded in this game. Studio lighting uses Poly Haven’s Studio Small 09 by Sergej Majboroda (CC0): https://polyhaven.com/a/studio_small_09. Source and license are preserved in `assets/LICENSE.txt` and the hosted `ASSET-LICENSE.txt`.
+- [Official Tesla Roadster page](https://www.tesla.com/roadster)
+- [Front view](https://digitalassets.tesla.com/tesla-contents/image/upload/f_auto,q_auto/Roadster-03-Carousel-Slide-1-Desktop.jpg)
+- [Rear view](https://digitalassets.tesla.com/tesla-contents/image/upload/f_auto,q_auto/Roadster-01-Hero-Desktop.jpg)
+- [Deployed aero](https://digitalassets.tesla.com/tesla-contents/image/upload/f_auto,q_auto/Roadster-04-World-Desktop.jpg)
 
-Browser QA helper uses playwright-core and a Linux headless Chromium package (development dependencies only). Run npm run test:browser on a compatible Linux test host.
+This game is not affiliated with Tesla. Vehicle geometry, dimensions, flight endurance, acceleration, control forces and recharge are game approximations. The interior is a two-seat interpretation, rather than the one-seat Rocket trim. Wall driving, opening doors, deformable damage and online leaderboards are not implemented. Building collisions use simplified footprints; the flat ground is the only landable support surface.
+
+Original code retains its existing `UNLICENSED` status; see `LICENSE`. Three.js is MIT licensed (`vendor/THREE-LICENSE.txt`). The bundled Poly Haven Studio Small 09 HDRI by Sergej Majboroda is CC0 (`assets/LICENSE.txt`). No Tesla promotional images are bundled in the game.
+
+Typography: Barlow Condensed by Jeremy Tribby / The Barlow Project and IBM Plex Mono by IBM are bundled under the SIL Open Font License. Exact licenses are in `assets/fonts/`, copied into `dist/` and embedded in the standalone HTML. No runtime font CDN requests are made.

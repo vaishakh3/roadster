@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>Roadster responsive review</title
+  ><style>
+    body {
+      margin: 24px;
+      background: #121318;
+      color: #eee;
+      font: 12px monospace;
+    }
+    nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 12px;
+      background: #eee;
+      border: 0;
+      cursor: pointer;
+    }
+    iframe {
+      border: 0;
+      display: block;
+      width: 844px;
+      height: 390px;
+    }
+  </style>
+  <nav>
+    <button data-size="1280,720">Desktop</button
+    ><button data-size="844,390">Landscape phone</button
+    ><button data-size="568,320">Small phone</button
+    ><button data-size="390,844">Portrait phone</button
+    ><button id="reload">Reload game</button>
+  </nav>
+  <iframe title="Game preview" src="../dist/"></iframe>
+  <script>
+    const frame = document.querySelector("iframe");
+    document.querySelectorAll("[data-size]").forEach(
+      (b) =>
+        (b.onclick = () => {
+          const [w, h] = b.dataset.size.split(",");
+          frame.style.width = w + "px";
+          frame.style.height = h + "px";
+        }),
+    );
+    document.querySelector("#reload").onclick = () =>
+      frame.contentWindow.location.reload();
+  </script>
+</html>
