@@ -2064,3 +2064,70 @@ button:hover {
     gap: 8px;
   }
 }
+/* Resume stays immediately reachable; settings occupy the second landscape column. */
+body[data-phase="paused"] .dialog-card {
+  display: flex;
+  flex-direction: column;
+}
+body[data-phase="paused"] #dialog-label {
+  order: -4;
+}
+body[data-phase="paused"] #dialog-title {
+  order: -3;
+}
+body[data-phase="paused"] #resume {
+  order: -2;
+  margin: 0 0 12px;
+}
+@media (max-height: 600px) and (orientation: landscape) {
+  body[data-phase="paused"] .dialog-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 28px;
+    width: min(740px, 100%);
+    align-items: start;
+    padding: 12px 0;
+  }
+  body[data-phase="paused"] #dialog-label {
+    grid-area: 1 / 1;
+    margin: 0;
+  }
+  body[data-phase="paused"] #dialog-title {
+    grid-area: 2 / 1;
+    margin: 9px 0 12px;
+  }
+  body[data-phase="paused"] #resume {
+    grid-area: 3 / 1;
+    min-height: 44px;
+    margin: 0 0 12px;
+  }
+  body[data-phase="paused"] #dialog-content {
+    grid-area: 4 / 1;
+    max-height: 80px;
+    overflow: auto;
+    font-size: 10px;
+    line-height: 1.6;
+    margin: 0 0 8px;
+    touch-action: pan-y;
+  }
+  body[data-phase="paused"] #restart {
+    grid-area: 5 / 1;
+    margin: 0;
+    min-height: 38px;
+  }
+  body[data-phase="paused"] #garage {
+    grid-area: 6 / 1;
+    min-height: 38px;
+    margin: 0;
+  }
+  body[data-phase="paused"] #control-style {
+    grid-area: 1 / 2 / 3 / 3;
+    align-self: end;
+    margin-bottom: 12px;
+  }
+  body[data-phase="paused"] #pause-tools {
+    grid-area: 3 / 2 / 7 / 3;
+    gap: 0 14px;
+    margin: 0;
+  }
+}

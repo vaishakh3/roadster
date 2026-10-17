@@ -350,6 +350,13 @@ button.onclick = async () => {
                   controls[j].outerHTML.slice(0, 70),
               );
           }
+          click("pause");
+          const resumeRect = d.getElementById("resume").getBoundingClientRect();
+          assert(
+            resumeRect.top >= 0 && resumeRect.bottom <= height,
+            "Resume immediately visible without scrolling",
+          );
+          click("resume");
         });
       }
     }
