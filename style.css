@@ -2429,3 +2429,84 @@ body[data-phase="playing"] #shade {
 .start-actions {
   grid-template-columns: 1fr;
 }
+
+/* Unboxed route trace: only the driven line and upcoming stunt markers. */
+.journey {
+  width: clamp(160px, 28vw, 350px);
+  margin-top: 0;
+}
+.journey-track {
+  display: none;
+}
+#race-map {
+  display: block;
+  width: 100%;
+  height: 78px;
+  overflow: visible;
+  filter: drop-shadow(0 2px 3px #00131dcc);
+}
+#race-map polyline {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#map-base {
+  stroke: #eaf4ef6b;
+  stroke-width: 4;
+}
+#map-travelled {
+  stroke: var(--mint);
+  stroke-width: 4;
+}
+#map-stunts {
+  fill: var(--mint);
+  stroke: #102b34;
+  stroke-width: 1.5;
+}
+#map-finish {
+  fill: #f6f1df;
+  stroke: #102b34;
+  stroke-width: 1.5;
+}
+#map-player circle {
+  fill: #102b34;
+  stroke: var(--mint);
+  stroke-width: 1.5;
+}
+#map-player path {
+  fill: #fff;
+}
+#map-percent {
+  font-weight: 400;
+  color: var(--mint);
+  margin-left: auto;
+}
+.journey-label {
+  white-space: nowrap;
+}
+.journey-label #destination {
+  display: none;
+}
+@media (max-width: 900px), (max-height: 550px) {
+  .journey {
+    width: clamp(145px, 29vw, 260px);
+  }
+  #race-map {
+    height: 62px;
+    margin-top: -7px;
+  }
+}
+@media (max-width: 650px) {
+  .journey {
+    width: 150px;
+    min-width: 135px;
+  }
+  #race-map {
+    height: 53px;
+    margin-top: -7px;
+  }
+  .journey-label {
+    font-size: 10px;
+    gap: 5px;
+  }
+}

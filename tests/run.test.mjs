@@ -11,7 +11,16 @@ import {
   nextWarning,
   formatTime,
 } from "../run.js";
-import { rampSurface, PathHistory } from "../stunts.js";
+import {
+  rampSurface,
+  rampContact,
+  launchFlight,
+  flightPose,
+  PathHistory,
+} from "../stunts.js";
+import { flightActuators, FLIGHT_PORTS } from "../propulsion.js";
+import { createTerrainChunk } from "../terrain.js";
+import { FrameBudget } from "../quality.js";
 import { createControls, requiresLandscape } from "../controls.js";
 let count = 0;
 const test = (name, fn) => {
@@ -74,7 +83,7 @@ test("Missing a bridge creates an immediate explainable failure", () => {
   assert(s.failed);
   assert.equal(s.reason, "THE BRIDGE WAS OUT");
 });
-test("Takeoff before each of the four bridges is feasible with reserve supplied on approach", () => {
+test("Takeoff before each bridge is feasible with reserve supplied on approach", () => {
   for (const gap of GAPS) {
     const s = createRun();
     s.d = gap.start - 150;
@@ -194,7 +203,7 @@ test("An imminent barrier warning takes priority over a later ramp", () => {
   s.y = 5;
   assert.equal(nextWarning(s).kind, "ramp");
 });
-test("All ten ramps carry the car along the rendered deck and land one automatic stunt", () => {
+test("All thirteen ramps carry the car along the rendered deck and land one automatic stunt", () => {
   for (const c of COURSES)
     for (const r of c.ramps)
       for (const hz of [30, 60, 120]) {
@@ -211,7 +220,7 @@ test("All ten ramps carry the car along the rendered deck and land one automatic
           stepRun(s, { boost: true }, 1 / hz);
           if (s.attachedRamp >= 0) {
             gripFrames++;
-            assert(Math.abs(s.y - rampSurface(r, s.d).height) < 0.001);
+            assert(Math.abs(s.y - rampContact(r, s.d).height) < 0.001);
           }
           maxAngle = Math.max(maxAngle, s.stuntAngle);
         }
@@ -243,6 +252,160 @@ test("Entering beside a high ramp lip cannot teleport the car to its top", () =>
   advance(s, {}, 0.1);
   assert.equal(s.launches, 0);
   assert.equal(s.y, 0);
+});
+test("Ramp support keeps both axles and bumper above the rendered curve", () => {
+  for (const c of COURSES)
+    for (const r of c.ramps)
+      for (let d = r.d - r.length; d <= r.d; d += 0.5) {
+        const p = rampContact(r, d);
+        for (const z of [-2.25, -1.48, 1.48, 2.25]) {
+          const localY = Math.abs(z) > 2 ? 0.17 : 0;
+          const forward = -z * Math.cos(p.pitch) + localY * Math.sin(p.pitch);
+          const y =
+            p.height - z * Math.sin(p.pitch) + localY * Math.cos(p.pitch);
+          if (d + forward <= r.d && d + forward >= r.d - r.length)
+            assert(
+              y >= rampSurface(r, d + forward).height + 0.024 - 0.008,
+              `${r.d} bumper at ${d}`,
+            );
+        }
+      }
+});
+test("Ramp fly holds, lateral inputs, braking and dropped frames never penetrate a deck", () => {
+  for (const c of COURSES)
+    for (const r of c.ramps)
+      for (const hz of [12, 24, 60, 120])
+        for (const mode of [0, 1, 2]) {
+          const s = createRun({ ...c, obstacles: [], gates: [] });
+          Object.assign(s, { d: r.d - r.length - 20, x: r.x, speed: 65 });
+          while (s.d < r.land + 2 && !s.failed) {
+            stepRun(
+              s,
+              {
+                fly: mode === 0,
+                boost: mode !== 2,
+                brake: mode === 2,
+                steer: mode === 1 ? Math.sin(s.time * 4) : 0,
+              },
+              1 / hz,
+            );
+            if (
+              s.d >= r.d - r.length &&
+              s.d <= r.d &&
+              Math.abs(s.x - r.x) < (r.width || 7) / 2 - 1.12
+            )
+              assert(
+                s.y >= rampSurface(r, s.d).height - 0.01,
+                `${c.id}/${r.d}/${hz}/${mode}/${s.d}/${s.y}`,
+              );
+            assert(Number.isFinite(s.y) && Number.isFinite(s.rampPitch));
+          }
+          assert(!s.failed);
+        }
+});
+test("Entering the side of a high ramp is rejected outside its full vehicle footprint", () => {
+  const s = createRun(),
+    r = s.course.ramps[1];
+  Object.assign(s, { d: r.d - 12, x: 5.2, speed: 27 });
+  advance(s, { steer: -1, brake: true }, 0.3);
+  assert(s.x > r.x + r.width / 2 + 1.1);
+  assert.equal(s.y, 0);
+  assert.equal(s.launches, 0);
+});
+test("Automatic flips clear the rear bumper, brake rotation, and touch down gently", () => {
+  for (const c of COURSES)
+    for (const r of c.ramps) {
+      const f = launchFlight(r, 70);
+      assert.equal(flightPose(f, 0, r.d + 4, 70).angle, 0);
+      let positive = false,
+        negative = false;
+      for (let i = 1; i <= 100; i++) {
+        const p = flightPose(f, 0.02, r.d + ((r.land - r.d) * i) / 100, 70);
+        positive ||= f.angularAcceleration > 1;
+        negative ||= f.angularAcceleration < -1;
+        assert(p.y >= 0);
+      }
+      assert(positive && negative);
+      assert(Math.abs(f.angularVelocity) < 0.001);
+      const land = flightPose(f, 0, r.land, 70);
+      assert(Math.abs(land.vy) < 1.6);
+      assert.equal(land.y, 0);
+    }
+});
+test("Lift comes from below; suction holds ramps; inverted flight only uses attitude couples", () => {
+  const s = createRun();
+  Object.assign(s, { airborne: true, lifting: true, liftAcceleration: 12 });
+  const lift = flightActuators(s);
+  assert(lift.lift > 0.5);
+  FLIGHT_PORTS.forEach((port, i) => {
+    if (lift.ports[i] > 0) assert.deepEqual(port.exhaust, [0, -1, 0]);
+  });
+  s.lifting = false;
+  assert.equal(
+    flightActuators(s).lift,
+    0,
+    "Freefall must not display upward propulsion",
+  );
+  Object.assign(s, { airborne: false, lifting: false, attachedRamp: 0 });
+  const grip = flightActuators(s);
+  assert.equal(grip.grip, 1);
+  assert(grip.ports.every((p) => p === 0));
+  Object.assign(s, {
+    airborne: true,
+    attachedRamp: -1,
+    stuntKind: "flip",
+    flight: { angularAcceleration: 14 },
+  });
+  const inverted = flightActuators(s, Math.PI, 0);
+  assert.equal(inverted.lift, 0);
+  let fy = 0,
+    torque = 0;
+  FLIGHT_PORTS.forEach((p, i) => {
+    const f = -p.exhaust[1] * inverted.ports[i];
+    fy += f;
+    torque -= p.position[2] * f;
+  });
+  assert(Math.abs(fy) < 0.001);
+  assert(torque > 0);
+  s.flight.angularAcceleration = -14;
+  assert(flightActuators(s, Math.PI).pitch < 0);
+  s.failed = true;
+  assert(flightActuators(s).ports.every((p) => p === 0));
+});
+test("Terrain faces point upward on both banks at both detail levels", () => {
+  for (const side of [-1, 1])
+    for (const low of [false, true]) {
+      const g = createTerrainChunk({
+        start: 0,
+        end: 240,
+        side,
+        canyon: true,
+        roadX: (d) => Math.sin(d / 100) * 20,
+        roadY: () => 22,
+        low,
+      });
+      const p = g.attributes.position,
+        idx = g.index;
+      for (let i = 0; i < idx.count; i += 3) {
+        const a = idx.getX(i),
+          b = idx.getX(i + 1),
+          c = idx.getX(i + 2);
+        const abx = p.getX(b) - p.getX(a),
+          abz = p.getZ(b) - p.getZ(a),
+          acx = p.getX(c) - p.getX(a),
+          acz = p.getZ(c) - p.getZ(a);
+        assert(abz * acx - abx * acz > 0);
+      }
+    }
+});
+test("Adaptive resolution is bounded, gradual and ignores background pauses", () => {
+  const budget = new FrameBudget();
+  let ratio = 1.25;
+  for (let i = 0; i < 600; i++) ratio = budget.sample(1 / 30, ratio, 1.25);
+  assert.equal(ratio, 0.8);
+  assert.equal(budget.sample(1, ratio, 1.25), 0.8);
+  for (let i = 0; i < 3600; i++) ratio = budget.sample(1 / 60, ratio, 1.25);
+  assert.equal(ratio, 1.15);
 });
 test("Ground hazards trigger a visible directional impact and damage only once", () => {
   for (const kind of ["cargo", "rubble", "drums"]) {
@@ -332,7 +495,12 @@ test("Slingshot strips reward ground contact once and decay after use", () => {
 });
 test("Course records preserve independent best time, score, badges and fastest ghost", () => {
   const s = createRun();
-  Object.assign(s, { finished: true, time: 60, score: 1000, gates: 18 });
+  Object.assign(s, {
+    finished: true,
+    time: 60,
+    score: 1000,
+    gates: s.course.gates.length,
+  });
   const ghost = [
     [0, 0, 0, 0],
     [60, 3600, 0, 0],

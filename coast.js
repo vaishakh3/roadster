@@ -1,4 +1,9 @@
 import * as THREE from "./vendor/three.module.js";
+import {
+  boulderGeometry,
+  createTerrainChunk,
+  terrainHeight,
+} from "./terrain.js";
 import { rampSurface } from "./stunts.js";
 import { addSetpieces } from "./setpieces.js";
 import {
@@ -50,6 +55,10 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     amber = new THREE.MeshBasicMaterial({ color: 0xffa55c }),
     violet = new THREE.MeshBasicMaterial({ color: 0xaf8cff });
   const asphalt = roadMaterial(night);
+  const terrainLods = [],
+    rockLods = [],
+    instanceWindows = [];
+  let lowQuality = false;
   const dynamics = new Set(),
     object = new THREE.Object3D();
   function mesh(g, m, parent = root) {
@@ -115,13 +124,14 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
     for (let i = 0; i < pos.length; i += 3)
-      uvs.push(pos[i] * 0.25, pos[i + 2] * 0.25);
+      uvs.push((i % 12 < 3 || i % 12 === 6 ? x1 : x2) * 0.5, pos[i + 2] * 0.5);
     g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
     g.setIndex(idx);
     g.computeVertexNormals();
     return mesh(g, m);
   }
   function instances(g, m, items) {
+    items = [...items].sort((a, b) => a.d - b.d);
     const out = new THREE.InstancedMesh(g, m, items.length);
     items.forEach((p, i) => {
       object.position.copy(
@@ -136,6 +146,16 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       if (p.color) out.setColorAt(i, new THREE.Color(p.color));
     });
     out.computeBoundingSphere();
+    if (items.length > 30 && items.at(-1).d - items[0].d > 800) {
+      out.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      instanceWindows.push({
+        mesh: out,
+        distances: items.map((p) => p.d),
+        matrices: out.instanceMatrix.array.slice(),
+        colors: out.instanceColor?.array.slice(),
+        key: "",
+      });
+    }
     out.receiveShadow = true;
     root.add(out);
     return out;
@@ -436,7 +456,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       box(0.6, 0.6, 0.2, glow, side * 7, 5, 0, signGroup);
     }
     sign(
-      r.height >= 14 ? "SKY RAMP / AUTO FLIP" : "MAG RAMP / AUTO STUNT",
+      `${r.height >= 14 ? "SKY" : "GRIP"} RAMP / AUTO ${r.stunt === "roll" ? "ROLL" : "FLIP"}`,
       0,
       5.4,
       0,
@@ -493,79 +513,25 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   let rockSurface;
   // Continuous eroded terrain: close cliffs, horizontal strata and distant ridgelines.
   if (!night) {
-    const cols = 64,
-      rows = 360,
-      width = canyon ? 550 : 900;
-    for (const side of [-1, 1]) {
-      const pos = [],
-        colors = [],
-        idx = [],
-        base = new THREE.Color(canyon ? 0x652918 : 0x334f50),
-        top = new THREE.Color(canyon ? 0xbc7446 : 0x89937a);
-      for (let j = 0; j <= rows; j++) {
-        const d = -500 + (j * (length + 1800)) / rows;
-        for (let i = 0; i <= cols; i++) {
-          const t = i / cols,
-            offset = (canyon ? 39 : 75) + t * width;
-          const n =
-            Math.sin(d * 0.012 + offset * 0.017) * 0.45 +
-            Math.sin(d * 0.031 - offset * 0.036) * 0.2 +
-            Math.sin(d * 0.069 + offset * 0.093) * 0.08;
-          const ridge = Math.sin(d * 0.003 + side * 2) * 0.5 + 0.5;
-          let y;
-          if (canyon) {
-            const rise = 1 - Math.exp(-t * 28);
-            y =
-              roadY(d) -
-              1 +
-              rise * (34 + ridge * 58 + n * 28) +
-              Math.sin(t * 20) * 15;
-            y +=
-              Math.sin(d * 0.041 + offset * 0.13) * 3.2 +
-              Math.sin(d * 0.13 - offset * 0.19) * 1.3;
-          } else {
-            const rise = Math.sin(Math.min(1, t * 1.6) * Math.PI * 0.8);
-            y = -14 + rise * (35 + ridge * 125 + n * 70);
-            y +=
-              Math.sin(d * 0.016) * 8 + Math.sin(d * 0.083 + offset * 0.12) * 3;
-            if (side === 1) y = (y + 14) * 0.48 - 14;
-          }
-          const x =
-            roadX(d) + side * (offset + Math.sin(d * 0.019) * 10 * (1 - t));
-          pos.push(x, y, -d);
-          const band = canyon
-            ? 0.48 + 0.23 * Math.sin(y * 0.28) + n * 0.12
-            : Math.min(1, Math.max(0, (y + 10) / 100));
-          const c = base.clone().lerp(top, Math.min(1, Math.max(0, band)));
-          const noise = 0.88 + 0.12 * Math.sin(d * 0.1 + i * 2.7);
-          c.multiplyScalar(noise);
-          colors.push(c.r, c.g, c.b);
-        }
+    rockSurface = rockMaterial(canyon);
+    for (const side of [-1, 1])
+      for (let start = -480; start < length + 1200; start += 240) {
+        const params = { start, end: start + 240, side, canyon, roadX, roadY };
+        const near = createTerrainChunk(params),
+          far = createTerrainChunk({ ...params, low: true });
+        const terrain = mesh(near, rockSurface);
+        terrain.castShadow = false; // Fine surface shading; no distant terrain shadow pass.
+        terrainLods.push({ mesh: terrain, near, far, center: start + 120 });
       }
-      for (let j = 0; j < rows; j++)
-        for (let i = 0; i < cols; i++) {
-          const a = j * (cols + 1) + i,
-            b = a + 1,
-            c = a + cols + 1,
-            e = c + 1;
-          if (side === 1) idx.push(a, c, b, b, c, e);
-          else idx.push(a, b, c, b, e, c);
-        }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-      g.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-      g.setIndex(idx);
-      g.computeVertexNormals();
-      const rockMat = rockMaterial(canyon);
-      rockSurface = rockMat;
-      const terrain = mesh(g, rockMat);
-      terrain.castShadow = true;
-    }
     if (canyon) {
       const cactus = mat(0x465b3a);
       const plants = [];
-      ribbon(-45, 45, -0.35, mat(0x80513a), -200, length + 300, false);
-      for (const d of [600, 2010, 3340]) {
+      const ground = rockMaterial(false);
+      ground.vertexColors = false;
+      ground.color.setHex(0x9e805d);
+      ground.roughness = 1;
+      ribbon(-45, 45, -0.35, ground, -200, length + 300, false);
+      for (const d of [600, 2010, 3340, length - 1000]) {
         const g = groupAt(d),
           curve = new THREE.CatmullRomCurve3([
             new THREE.Vector3(-42, -35, 0),
@@ -604,7 +570,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
         arch.castShadow = true;
       }
 
-      for (let i = 0; i < 85; i++) {
+      for (let i = 0; i < Math.ceil(length / 49); i++) {
         const d = i * 49,
           side = i % 2 ? 1 : -1;
         plants.push({
@@ -615,35 +581,44 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
         });
       }
       instances(
-        new THREE.CylinderGeometry(0.18, 0.27, 4.6, 5),
+        new THREE.CylinderGeometry(0.18, 0.27, 4.6, 12),
         cactus,
-        plants.map((p) => ({ ...p, y: -11.7 })),
+        plants.map((p) => ({
+          ...p,
+          y:
+            terrainHeight(p.d, Math.abs(p.x), Math.sign(p.x), true, roadY) -
+            roadY(p.d) +
+            2.3 * p.scale[1],
+        })),
       );
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < Math.ceil(length / 210); i++) {
         const d = i * 210 + 180,
           g = groupAt(d, (i % 2 ? 1 : -1) * 23);
-        g.position.y -= 14;
-        box(0.32, 1.6, 0.32, cactus, 0.8, 2, 0, g);
-        box(0.95, 0.3, 0.3, cactus, 0.42, 1.3, 0, g);
+        g.position.y -= 0.35;
+        const stem = mesh(
+          new THREE.CylinderGeometry(0.17, 0.27, 4.6, 12),
+          cactus,
+          g,
+        );
+        stem.position.y = 2.3;
+        for (const side of [-1, 1]) {
+          const top = side > 0 ? 3.2 : 2.4;
+          const curve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0, 1.4, 0),
+            new THREE.Vector3(side * 0.58, 1.5, 0),
+            new THREE.Vector3(side * 0.83, 1.8, 0),
+            new THREE.Vector3(side * 0.83, top, 0),
+          ]);
+          mesh(new THREE.TubeGeometry(curve, 12, 0.16, 8, false), cactus, g);
+          const tip = mesh(new THREE.SphereGeometry(0.16, 8, 6), cactus, g);
+          tip.position.set(side * 0.83, top, 0);
+        }
       }
     }
   }
   if (!night) {
-    const geo = new THREE.IcosahedronGeometry(1, 3),
-      p = geo.attributes.position,
-      colors = [];
-    const stoneColor = new THREE.Color(canyon ? 0x9b7252 : 0x687265);
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i),
-        y = p.getY(i),
-        z = p.getZ(i),
-        n =
-          1 + 0.14 * Math.sin(x * 8 + y * 7) + 0.08 * Math.sin(z * 11 - y * 9);
-      p.setXYZ(i, x * n, y * n, z * n);
-      colors.push(stoneColor.r, stoneColor.g, stoneColor.b);
-    }
-    geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-    geo.computeVertexNormals();
+    const geo = boulderGeometry(28, 20),
+      lowGeo = boulderGeometry(14, 10);
     const rocks = [];
     for (let i = 0; i < 430; i++) {
       const d = (i * (length + 400)) / 430 - 160,
@@ -655,19 +630,63 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       rocks.push({
         d,
         x,
-        y: canyon ? -0.8 + h * 0.62 : -roadY(d) - 5 + h * 0.35,
+        y: canyon ? -0.35 + h * 0.37 : -roadY(d) - 5 + h * 0.35,
         rotation: i * 2.399,
         scale: [4 + n * 6, h, 5 + n * 10],
       });
     }
     const stoneMat = rockMaterial(canyon);
+    stoneMat.color.setHex(canyon ? 0xb38d6c : 0x7d8877);
     for (let d = -300; d < length + 600; d += 300) {
       const items = rocks.filter((p) => p.d >= d && p.d < d + 300);
-      if (items.length) instances(geo, stoneMat, items);
+      if (items.length) {
+        const rocks = instances(geo, stoneMat, items);
+        rockLods.push({ mesh: rocks, near: geo, far: lowGeo, center: d + 150 });
+      }
+    }
+    const gravel = [];
+    for (let i = 0; i < 900; i++) {
+      const d = (i * (length + 180)) / 900 - 80,
+        side = i % 2 ? 1 : -1,
+        n = Math.abs(Math.sin(i * 71.7));
+      const x = side * (canyon ? 12 + n * 12 : 55 + n * 9),
+        h = 0.12 + n * 0.35;
+      gravel.push({
+        d,
+        x,
+        y: canyon ? -0.28 + h * 0.4 : -roadY(d) - 5,
+        rotation: i * 1.6,
+        scale: [h * 1.7, h, h * 2.3],
+      });
+    }
+    for (let d = -300; d < length + 300; d += 300) {
+      const items = gravel.filter((p) => p.d >= d && p.d < d + 300);
+      if (items.length) instances(lowGeo, stoneMat, items);
+    }
+    if (canyon) {
+      const mesa = boulderGeometry(32, 28, true),
+        mesaLow = boulderGeometry(16, 14, true);
+      for (let i = 0; i < Math.ceil(length / 155); i++) {
+        const d = 170 + i * 155,
+          side = i % 2 ? -1 : 1,
+          offset = 43 + (i % 4) * 13,
+          h = 15 + (i % 5) * 6;
+        const m = instances(mesa, stoneMat, [
+          {
+            d,
+            x: side * offset,
+            y:
+              terrainHeight(d, offset, side, true, roadY) - roadY(d) + h * 0.45,
+            rotation: i * 1.7,
+            scale: [9 + (i % 3) * 4, h, 12 + (i % 3) * 3],
+          },
+        ]);
+        rockLods.push({ mesh: m, near: mesa, far: mesaLow, center: d });
+      }
     }
     if (coast) {
       const crowns = [];
-      for (let i = 0; i < 190; i++) {
+      for (let i = 0; i < Math.ceil(length / 24); i++) {
         const d = i * 24 - 150,
           x = -92 - (i % 4) * 12,
           h = 6 + (i % 5) * 1.3;
@@ -709,7 +728,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   }
   const rotors = [];
   if (coast)
-    for (let i = 0; i < 13; i++) {
+    for (let i = 0; i < Math.ceil(length / 285); i++) {
       const d = i * 285 + 100,
         x = roadX(d) + (i % 2 ? 1 : -1) * (170 + (i % 3) * 60),
         h = 65 + (i % 4) * 8;
@@ -780,10 +799,11 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       sign("PACIFIC / FREIGHT", 0, 26, 1.6, g, 18, 2, "#b3a1ff");
     }
 
-    for (let i = 0; i < 540; i++) {
-      const d = (i % 180) * 25 - 60,
+    const containerRows = Math.ceil(length / 25) + 3;
+    for (let i = 0; i < containerRows * 3; i++) {
+      const d = (i % containerRows) * 25 - 60,
         side = i % 2 ? 1 : -1,
-        tier = Math.floor(i / 180),
+        tier = Math.floor(i / containerRows),
         x = side * (22 + (i % 3) * 5),
         y = 1.6 + tier * 3.2;
       containers.push({
@@ -814,7 +834,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     );
     instances(new THREE.BoxGeometry(0.06, 2.85, 0.13), metal, ribs);
     const facade = cityMaterial();
-    for (let i = 0; i < 32; i++) {
+    for (let i = 0; i < Math.ceil(length / 145); i++) {
       const d = i * 145 - 200,
         side = i % 2 ? 1 : -1,
         x = side * (110 + (i % 5) * 38),
@@ -837,7 +857,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
         );
       }
     }
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < Math.ceil(length / 480); i++) {
       const d = i * 480 + 200,
         g = groupAt(d, (i % 2 ? 1 : -1) * 58);
       for (const s of [-1, 1]) {
@@ -1000,12 +1020,12 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   const hemi = new THREE.HemisphereLight(
     night ? 0x7fabc7 : 0xd5e9fa,
     canyon ? 0x8d6040 : 0x40555c,
-    night ? 0.48 : 0.65,
+    night ? 0.42 : 0.48,
   );
   root.add(hemi);
   const sun = new THREE.DirectionalLight(
     night ? 0x9fc3ef : 0xffdfac,
-    night ? 1.1 : 3.6,
+    night ? 1.1 : 3.4,
   );
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -1281,6 +1301,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     }
     mesh(g, m).castShadow = true;
   }
+  const landscapeLods = [...terrainLods, ...rockLods];
   const districts = [];
   root.updateMatrixWorld(true);
   for (const o of root.children) {
@@ -1302,6 +1323,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     roadY,
     emit,
     setQuality(low) {
+      lowQuality = low;
       renderer.shadowMap.enabled = true;
       sun.castShadow = true;
       const size = low ? 1024 : 2048;
@@ -1312,6 +1334,39 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       }
     },
     update(s, dt, time) {
+      // Draw only the nearby span of long instance rows. Copy a precomputed
+      // matrix slice once per 80 m; no rebuilding, new meshes or per-frame GC.
+      for (const batch of instanceWindows) {
+        const bucket = Math.floor(s.d / 80),
+          key = bucket + ":" + lowQuality;
+        if (batch.key === key) continue;
+        batch.key = key;
+        const start = batch.distances.findIndex((d) => d >= bucket * 80 - 220);
+        let end = batch.distances.findIndex(
+          (d) => d > bucket * 80 + (lowQuality ? 1000 : 1500),
+        );
+        if (end < 0) end = batch.distances.length;
+        const count = start < 0 ? 0 : Math.max(0, end - start),
+          m = batch.mesh;
+        m.count = count;
+        if (!count) continue;
+        m.instanceMatrix.array.set(
+          batch.matrices.subarray(start * 16, end * 16),
+        );
+        m.instanceMatrix.clearUpdateRanges();
+        m.instanceMatrix.addUpdateRange(0, count * 16);
+        m.instanceMatrix.needsUpdate = true;
+        if (batch.colors) {
+          m.instanceColor.array.set(batch.colors.subarray(start * 3, end * 3));
+          m.instanceColor.clearUpdateRanges();
+          m.instanceColor.addUpdateRange(0, count * 3);
+          m.instanceColor.needsUpdate = true;
+        }
+      }
+      for (const tile of landscapeLods) {
+        const near = Math.abs(tile.center - s.d) < (lowQuality ? 280 : 520);
+        tile.mesh.geometry = near ? tile.near : tile.far;
+      }
       for (const b of districts)
         b.o.visible =
           b.end > s.d - 180 && b.start < s.d + (night ? 1100 : 1400);
@@ -1385,6 +1440,10 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
             for (const v of Object.values(m)) if (v?.isTexture) textures.add(v);
           }
       });
+      for (const t of landscapeLods) {
+        gs.add(t.near);
+        gs.add(t.far);
+      }
       for (const g of gs) g.dispose();
       for (const m of ms) m.dispose();
       for (const t of textures) if (!t.userData.shared) t.dispose();

@@ -1,60 +1,48 @@
-# Stunt and scenery refinement verification — 17 October 2026
+# Terrain, flight and extended routes — 17 October 2026
 
-## Build and scope
+## Release checks
 
-The production bundle was exercised locally with real WebGL in the Codex browser. Hosted and standalone HTML are identical, with no runtime asset/API requests.
+- **43 simulation/input/geometry checks passed.**
+- **60 production-browser checks passed, zero failures.**
+- **13 rendered ramp checks passed.** Full steering and boost were applied during ascent. Minimum measured wheel/bumper clearance was 1.8–2.0 cm, with correction outlets and landing lift active on every ramp.
+- All three extended courses completed through the production keyboard handlers with every gate and full vehicle condition; fastest-run ghosts appeared on replay.
+- Build and whitespace checks passed. Standalone and hosted HTML are identical: **2,589,016 bytes**, **1,377,727 bytes gzip**. All graphics, fonts and sound remain local to the bundle; there are no runtime asset/API requests.
 
-- `npm test`: **36 passed**.
-- Production browser harness: **56 passed, 0 failed**.
-- Three complete rendered races through production keyboard handlers: **all passed**, including saved ghost playback.
-- Build and whitespace checks passed.
-- Standalone/hosted HTML: **2,574,751 bytes**; gzip: **1,372,484 bytes**.
-- Previous build: 6,961,050 bytes; gzip: 4,554,257 bytes. The compressed payload is approximately **70% smaller**.
-- Five runtime textures/HDR: 969,396 bytes versus 4,288,030 bytes, **77.39% smaller**. Original-resolution sources and license provenance remain in the repository.
+## Longer courses and route map
 
-## Venue switching
+| Course     | Length |  Added | Rendered run | Gates | Hull | Peak draw calls |
+| ---------- | -----: | -----: | -----------: | ----: | ---: | --------------: |
+| Breakwater | 5.4 km | 1.8 km |      72.29 s | 26/26 |  3/3 |             202 |
+| Redshift   | 5.7 km | 1.8 km |      78.38 s | 26/26 |  3/3 |             202 |
+| Nightshift | 6.0 km | 1.8 km |      81.17 s | 28/28 |  3/3 |             198 |
 
-Measured selection through its first rendered frame at 844 × 390, nine switches (three rounds across all venues), in the same local desktop browser. These are local timing samples, not guarantees for other hardware or network conditions.
+A separate continuous Nightshift run finished in 81.18 simulation seconds with all 28 gates and full condition; the desktop browser animation-frame counter averaged 120 frames/second at 844×390. This is not a phone measurement.
 
-| Metric                        | Previous build | Prepared venue worlds |
-| ----------------------------- | -------------: | --------------------: |
-| Minimum                       |        67.4 ms |                2.2 ms |
-| Median                        |        85.7 ms |                6.4 ms |
-| Maximum                       |       140.0 ms |               13.0 ms |
-| Locally cached initialization |         497 ms |                677 ms |
+These are automated boosted runs, not average human completion times. Each final leg adds gates, hazards, reserve pads and a ramp. The live route trace shows the driven path, player position, percentage, finish and stunt markers. Route records now use layout version 3; old times/ghosts are excluded while earned paints, medals and badges survive.
 
-Geometry and shader preparation now happen behind the loading screen. Switching reuses a bounded set of three worlds; it does not construct or dispose geometry on every click. During the measured switches the new build retained 150 geometries and 15 textures without growth. More districts upload as they are first visited during racing. This trades some resident geometry and initial preparation time for much faster selection. Image decode/transfer costs are reduced separately by the compact assets.
+## Ramp and thruster corrections
 
-## Complete rendered routes
+The original centre-point support and steering bank could place rendered wheels under a ramp even when simulation height was correct. Support now samples the wheelbase, catches downward deck crossings, rejects entry through tall sides and aligns the car with the actual deck normal. Flip rotation waits until the vehicle clears the lip. Tests cover all ramps at multiple frame rates, fly held on entry, steering, braking, side entry, finite states and gentle landing.
 
-| Course     | Time    | Gates   | Condition | Score  | Peak draw calls |
-| ---------- | ------- | ------- | --------- | ------ | --------------- |
-| Breakwater | 48.03 s | 18 / 18 | 3 / 3     | 24,768 | 180             |
-| Redshift   | 54.23 s | 18 / 18 | 3 / 3     | 24,146 | 195             |
-| Nightshift | 57.12 s | 20 / 20 | 3 / 3     | 25,253 | 201             |
+Underbody outlets previously depended only on the manual Fly button. Separate actuator state now drives downward lift jets, opposing perimeter correction jets, rear acceleration jets and suction fans. Automatic landing activates underside lift; rotation deceleration uses the opposing outlets. No collective belly thrust fires through an inverted coast or unpowered freefall. Cold-gas plumes follow the vehicle's orientation. The model includes corner nozzles, underfloor plenums/impellers and the existing rear cassette.
 
-The deterministic test driver uses the actual keyboard handlers and a 60 Hz simulation step. It is excluded from the shipped game. These results demonstrate route feasibility and rendering/input integration, not human enjoyment or phone frame rates.
+Primary references: [Tesla Roadster](https://www.tesla.com/roadster) and [Tesla — The Ramp](https://www.youtube.com/watch?v=7p5LxFdc-Qg). These verify suction and perimeter cold-gas propulsion. Exact nozzle coordinates and control laws are an original game interpretation. This remains an assisted arcade racer, not manufacturer CAD or a full rigid-body simulation. Reference images are not distributed in the game.
 
-A separate continuous Nightshift run finished in 57.14 simulation seconds with all 20 gates and full condition. The local desktop animation-frame counter averaged 120 frames/second at 844 × 390. This is a desktop diagnostic, not a mobile benchmark.
+## Visual and performance work
 
-## Verified behavior
+- Smooth indexed boulders, stratified mesas, eroded terrain tiles, correctly planted rounded cacti and scanned gravel replace faceted rocks and stepped pillars.
+- Terrain winding and normals agree on both banks. Instance transforms are included in rock texture coordinates, fixing the stretched sandstone on scaled boulders.
+- Road-local tire wear, granular asphalt normals, variable wet-road roughness and revised ambient/direct illumination improve surface separation. Updated venue thumbnails are captures of the actual game.
+- Near/far geometry levels and district culling limit terrain cost. Long instance rows submit only a nearby precomputed matrix span; geometry is not rebuilt while driving.
+- Tire-groove shading removes **48,640 triangles** from the car, retaining a smooth silhouette and tread detail. The racing car has **96,273 triangles** excluding its hidden showroom interior.
+- AUTO graphics uses bounded resolution adaptation with two-second observation windows and slower recovery. The phone ceiling is 1.25 device pixels/CSS pixel and the floor is 0.8; explicit HIGH/LOW remain available. Shadows stay at 1024 on low/mobile quality.
 
-- All ten curved ramps follow the same surface equation in the simulation and renderer. Each launches and lands one automatic stunt at 30, 60 and 120 Hz.
-- Braking in the air preserves the authored safe landing zone. Steering and boost remain independent throughout. Completed flips reset to an exact zero height and upright pose.
-- Entering alongside a high ramp lip cannot teleport a grounded car onto its top. A collision cancels the clean-stunt bonus. Imminent hazard warnings override a later ramp hint.
-- World-space ribbon samples retain past positions through steering reversals, expire after boost release, and clear on retry/teleport.
-- A fatal collision keeps the car visible, recoils and rotates it, then opens results after 0.95 seconds. Race time/distance stop at impact. Inputs clear and the results screen offers a retry.
-- Moving cargo, rockfall, drums, sweepers, traffic and low gantries use the authored collision footprints and shared moving poses. Traffic stops before gaps.
-- Shift, arrows and Space work together. Independent synthetic touch pointers survive unrelated pointer cancellation. Selection, context menus and touch scrolling are suppressed.
-- Pause/focus/orientation recovery, finishing, scoring, all venue selectors/arrows, World Tour progression, paint unlocks and personal ghosts pass.
-- Layout version 2 replaces incompatible old ghost/time comparisons while retaining earned paints, medals and mastery badges.
+Sampled 844×390 scenes after geometry/instance optimization submitted approximately **170k–337k triangles** and **124–189 draw calls**, versus 349k–493k triangles earlier in this refinement. These samples precede a small cactus geometry improvement and are not a device-wide maximum. Browser frame intervals were approximately 8.3–8.6 ms on this desktop GPU, not a mobile benchmark. Real frame pacing, GPU time and thermal behavior on phones are not inferred from those numbers.
 
-## Visual and layout review
+Venue selection through the first rendered frame: **4.7–8.3 ms**, median **6.8 ms**, across nine local switches. Cached initialization measured **1,080 ms**. All nine switches retained 155 geometries and 15 textures; additional district resources upload on first use during racing. Worlds and assets are reused across selection.
 
-Reviewed coastal storm galleries, the canyon arch and sky ramp, an in-flight backflip, night dock trusses, moving cargo, curved boost ribbons and impact animation. Venue thumbnails are new captures of the actual game. Landings have guide markings; cargo has amber outlines; headlights and streetlight pools light the wet port. The final regression run produced no graphics errors or warnings.
+## Layout and device limits
 
-Layout checks cover 1280 × 720 desktop, 844 × 390 / 667 × 375 / 568 × 320 landscape, and 390 × 844 / 320 × 568 portrait. Critical HUD and controls remain in bounds without overlap; all tour results/actions fit the smallest landscape viewport. Portrait pauses play and requires deliberate resume after rotation. QA records are isolated in memory and never overwrite personal progress.
+Validated 1280×720 desktop; 844×390, 667×375 and 568×320 landscape; and 390×844 and 320×568 portrait. HUD/map/controls remain in bounds without critical overlap. Portrait pauses and requires deliberate resume. Simultaneous Shift/arrows/Space and independent synthetic touch pointers pass; selection, context menus and touch scrolling remain suppressed. QA records are isolated from personal progress.
 
-## Remaining device validation
-
-Physical iPhone Safari and Android Chrome testing is still needed for sustained multitouch, browser chrome/safe areas, thermal behavior, battery and frame pacing. Desktop timings must not be treated as phone benchmarks. Local progress does not sync across devices; fullscreen support varies by browser. This is an assisted arcade racer, and the magnetic adhesion and automatic stunts are fictional mechanics, not claims about an actual Tesla demonstration.
+Physical iPhone Safari and Android Chrome still need sustained multitouch, safe-area/browser-chrome, thermal and battery testing. Desktop emulation cannot establish phone frame rates. Automated complete runs establish feasibility, not human enjoyment. Local records do not sync across devices.

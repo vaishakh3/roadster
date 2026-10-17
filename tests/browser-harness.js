@@ -166,7 +166,12 @@ document.getElementById("run").onclick = async () => {
   });
   check("Finish awards a medal and ends the run once", () => {
     g.start();
-    g.setState({ d: 3599, time: 62, gates: 14, score: 4000 });
+    g.setState({
+      d: g.course.length - 1,
+      time: 62,
+      gates: g.course.goldGates,
+      score: 4000,
+    });
     step(0.1);
     ok(g.phase === "results");
     ok(d.getElementById("result-rank").textContent === "GOLD");
@@ -245,6 +250,10 @@ document.getElementById("run").onclick = async () => {
       ok(d.getElementById("motion-label").textContent.includes("BACKFLIP"));
     },
   );
+  check("Flight correction outlets fire during an automatic stunt", () => {
+    ok(g.carPose.ports.some((p) => p.visible));
+    ok(g.carPose.actuation.pitch !== 0);
+  });
   key("keydown", "ShiftLeft");
   key("keydown", "ArrowRight");
   step(0.12);
@@ -260,6 +269,51 @@ document.getElementById("run").onclick = async () => {
       JSON.stringify({ y: g.state.y, pose: g.carPose }),
     );
   });
+  g.start();
+  g.setState({
+    d: 380,
+    y: 4,
+    airborne: true,
+    lifting: true,
+    liftAcceleration: 16,
+  });
+  g.step(0);
+  check("Manual flight visibly activates underbody lift ports", () => {
+    ok(
+      g.carPose.ports.filter((p) => p.name.endsWith("lift") && p.visible)
+        .length === 4,
+    );
+  });
+  g.start();
+  g.setState({ d: ramp.d - ramp.length - 2, speed: 65 });
+  let minClearance = Infinity;
+  while (g.state.d < ramp.d && !g.state.failed) {
+    g.step(1 / 30);
+    minClearance = Math.min(minClearance, g.carPose.rampClearance);
+  }
+  check("Rendered wheel/bumper contacts stay above the curved ramp", () =>
+    ok(minClearance >= 0, "minimum clearance " + minClearance),
+  );
+  g.start();
+  g.setState({ d: g.course.length * 0.5 });
+  g.step(0);
+  check(
+    "Live route map shows the current position and all stunt locations",
+    () => {
+      ok(d.getElementById("map-percent").textContent === "50%");
+      ok(
+        d.getElementById("map-stunts").childElementCount ===
+          g.course.ramps.length,
+      );
+      ok(d.getElementById("map-travelled").getAttribute("points").length > 50);
+      ok(
+        d
+          .getElementById("race-map")
+          .getAttribute("aria-label")
+          .includes("50% complete"),
+      );
+    },
+  );
   g.start();
   g.setState({ d: 307, x: -4.4, speed: 76, hull: 1 });
   step(0.1);
@@ -420,7 +474,7 @@ document.getElementById("run").onclick = async () => {
       () => {
         for (const el of [
           ...d.querySelectorAll(
-            ".hud-top,.speed-block,.reserve-block,#warning,#race-target,#touch-controls button",
+            "#race-map,.hud-top,.speed-block,.reserve-block,#warning,#race-target,#touch-controls button",
           ),
         ]) {
           if (!el.getClientRects().length) continue;
@@ -441,6 +495,9 @@ document.getElementById("run").onclick = async () => {
       `${width}×${height}: critical text and controls do not overlap`,
       () => {
         const els = [
+          "#race-map",
+          ".timer-block",
+          ".score-block",
           ".speed-block",
           ".reserve-block",
           "#warning",
@@ -620,4 +677,102 @@ document.getElementById("routes").onclick = async () => {
   }
   report.textContent += `\nRendered route verification: ${failed} failed.\n`;
   document.title = `World Tour routes: ${failed} failed`;
+};
+
+document.getElementById("budget").onclick = async () => {
+  report.textContent = "Profiling rendered 844 × 390 phone layout…\n";
+  stage.replaceChildren();
+  const frame = document.createElement("iframe");
+  frame.style.cssText = "width:844px;height:390px";
+  frame.src = "../dist/?qa=1";
+  stage.append(frame);
+  for (let i = 0; i < 400 && !frame.contentWindow.__breakwater; i++)
+    await wait(50);
+  const g = frame.contentWindow.__breakwater;
+  if (!g) {
+    report.textContent += "FAIL boot";
+    return;
+  }
+  g.freeze();
+  for (const c of COURSES) {
+    g.home();
+    g.selectCourse(c.id);
+    g.start();
+    for (const d of [380, c.ramps[1].d - 30, c.length - 400]) {
+      g.setState({ d, x: 0, y: 0, speed: 65 });
+      g.step(0);
+      let frames = 0,
+        total = 0,
+        previous = performance.now();
+      for (let i = 0; i < 90; i++) {
+        await new Promise(requestAnimationFrame);
+        const now = performance.now();
+        if (i > 15) {
+          total += now - previous;
+          frames++;
+        }
+        previous = now;
+      }
+      report.textContent += `${c.id} @ ${d}m: ${g.drawCalls} draws / ${g.triangles} triangles / DPR ${g.pixelRatio} / ${(total / frames).toFixed(2)} ms browser-frame interval / ${JSON.stringify(g.memory)}\n`;
+    }
+  }
+  report.textContent +=
+    "Profile complete. Desktop GPU at phone viewport; physical mobile GPU/thermal testing remains necessary.\n";
+};
+
+document.getElementById("envelopes").onclick = async () => {
+  report.textContent = "Checking rendered vehicle clearance on all 13 ramps…\n";
+  stage.replaceChildren();
+  const frame = document.createElement("iframe");
+  frame.style.cssText = "width:844px;height:390px";
+  frame.src = "../dist/?qa=1";
+  stage.append(frame);
+  for (let i = 0; i < 400 && !frame.contentWindow.__breakwater; i++)
+    await wait(50);
+  const g = frame.contentWindow.__breakwater,
+    w = frame.contentWindow;
+  if (!g) {
+    report.textContent += "FAIL boot";
+    return;
+  }
+  g.freeze();
+  let failures = 0;
+  for (const c of COURSES) {
+    g.home();
+    g.selectCourse(c.id);
+    for (const r of c.ramps) {
+      g.start();
+      g.setState({ d: r.d - r.length - 3, speed: 70, time: 15, x: r.x });
+      let clearance = Infinity,
+        correction = false,
+        landingThrust = false;
+      const down = (code) =>
+        w.dispatchEvent(
+          new w.KeyboardEvent("keydown", { code, bubbles: true }),
+        );
+      down("ShiftLeft");
+      down("ArrowRight");
+      while (g.state.d < r.land + 3 && !g.state.failed) {
+        g.step(1 / 30);
+        const pose = g.carPose;
+        if (g.state.attachedRamp >= 0)
+          clearance = Math.min(clearance, pose.rampClearance);
+        if (g.state.flight) {
+          correction ||= pose.ports.some(
+            (p) => p.visible && p.name.endsWith("attitude"),
+          );
+          if (g.state.d > r.land - 25)
+            landingThrust ||= pose.actuation.lift > 0;
+        }
+        if (g.state.d > r.d - r.length * 0.25) g.clear();
+        if (Math.floor(g.state.d) % 12 < 3) await wait(0);
+      }
+      g.clear();
+      const pass =
+        clearance >= 0 && correction && landingThrust && !g.state.failed;
+      failures += !pass;
+      report.textContent += `${pass ? "PASS" : "FAIL"} ${c.id} ramp ${r.d}: minimum wheel/bumper clearance ${(clearance * 100).toFixed(1)} cm; attitude jets ${correction}; landing lift ${landingThrust}\n`;
+    }
+  }
+  report.textContent += `All-ramp rendered contact checks complete: ${failures} failures.\n`;
 };

@@ -58,20 +58,31 @@ export function roadMaterial(wet) {
   material.customProgramCacheKey = () => "scanned-road-" + wet;
   material.onBeforeCompile = (shader) => {
     shader.vertexShader =
-      "varying vec3 vRoad;\n" +
+      "varying vec3 vRoad; varying vec2 vRoadUv;\n" +
       shader.vertexShader.replace(
         "#include <worldpos_vertex>",
-        "#include <worldpos_vertex>\nvRoad=(modelMatrix*vec4(transformed,1.)).xyz;",
+        "#include <worldpos_vertex>\nvRoad=(modelMatrix*vec4(transformed,1.)).xyz;vRoadUv=uv;",
       );
     shader.fragmentShader =
-      "varying vec3 vRoad;\n" +
+      "varying vec3 vRoad; varying vec2 vRoadUv;\n" +
       shader.fragmentShader.replace(
         "#include <color_fragment>",
         `#include <color_fragment>
-      float tireLine=pow(abs(sin(vRoad.x*.48+sin(vRoad.z*.006)*.3)),18.);
+      float tireLine=pow(abs(sin(vRoadUv.x*1.9)),24.);
       float repaired=step(.94,sin(vRoad.z*.079+sin(vRoad.x*.4)));
-      diffuseColor.rgb=mix(vec3(.045),diffuseColor.rgb*2.6,.82)*(1.-tireLine*.11-repaired*.055);`,
+      float grain=.5+.5*sin(vRoad.z*.31+sin(vRoad.x*.43));
+      diffuseColor.rgb=mix(vec3(.035),diffuseColor.rgb*2.2,.88)*(1.-tireLine*.17-repaired*.08)*(.94+grain*.12);`,
       );
+  };
+  const compile = material.onBeforeCompile;
+  material.onBeforeCompile = (shader) => {
+    compile(shader);
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <roughnessmap_fragment>",
+      `#include <roughnessmap_fragment>
+      float puddle=smoothstep(.4,.8,sin(vRoad.z*.075+sin(vRoad.x*.6))*sin(vRoad.x*.3+vRoad.z*.023));
+      roughnessFactor=mix(roughnessFactor,${wet ? ".10" : ".85"},puddle*${wet ? ".8" : ".25"});`,
+    );
   };
   return material;
 }
@@ -84,14 +95,22 @@ export function rockMaterial(canyon) {
     side: THREE.DoubleSide,
   });
   if (!surfaces.rock) return material;
-  material.customProgramCacheKey = () => "scanned-rock-" + canyon;
+  material.customProgramCacheKey = () => "world-strata-rock-v2-" + canyon;
   material.onBeforeCompile = (shader) => {
     shader.uniforms.rockScan = { value: surfaces.rock };
     shader.vertexShader =
       "varying vec3 vStone;varying vec3 vStoneNormal;\n" +
       shader.vertexShader.replace(
         "#include <worldpos_vertex>",
-        "#include <worldpos_vertex>\nvStone=(modelMatrix*vec4(transformed,1.)).xyz;vStoneNormal=normalize(mat3(modelMatrix)*normal);",
+        `#include <worldpos_vertex>
+        vec4 stonePosition=vec4(transformed,1.);vec3 stoneNormal=normal;
+        #ifdef USE_INSTANCING
+        stonePosition=instanceMatrix*stonePosition;
+        mat3 stoneInstance=mat3(instanceMatrix);
+        stoneNormal/=vec3(dot(stoneInstance[0],stoneInstance[0]),dot(stoneInstance[1],stoneInstance[1]),dot(stoneInstance[2],stoneInstance[2]));
+        stoneNormal=stoneInstance*stoneNormal;
+        #endif
+        vStone=(modelMatrix*stonePosition).xyz;vStoneNormal=normalize(mat3(modelMatrix)*stoneNormal);`,
       );
     shader.fragmentShader =
       "varying vec3 vStone;varying vec3 vStoneNormal;uniform sampler2D rockScan;\n" +
@@ -99,17 +118,17 @@ export function rockMaterial(canyon) {
         "#include <color_fragment>",
         `#include <color_fragment>
       vec3 blend=pow(abs(normalize(vStoneNormal)),vec3(4.));blend/=max(.001,blend.x+blend.y+blend.z);
-      vec3 scan=texture2D(rockScan,vStone.zy*.12).rgb*blend.x+texture2D(rockScan,vStone.xz*.12).rgb*blend.y+texture2D(rockScan,vStone.xy*.12).rgb*blend.z;
+      vec3 scan=texture2D(rockScan,vStone.zy*.42).rgb*blend.x+texture2D(rockScan,vStone.xz*.42).rgb*blend.y+texture2D(rockScan,vStone.xy*.42).rgb*blend.z;
       float detail=dot(scan,vec3(.299,.587,.114));
-      diffuseColor.rgb*=mix(.52,1.45,detail);
-      ${canyon ? "diffuseColor.rgb*=.95+.05*sin(vStone.y*.55+sin(vStone.z*.025));" : ""}`,
+      diffuseColor.rgb*=mix(.48,1.65,detail);
+      ${canyon ? "float strata=sin(vStone.y*1.8+sin(vStone.z*.04)*2.);float fineStrata=sin(vStone.y*8.+sin(vStone.x*.15));diffuseColor.rgb*=.9+.08*strata+.035*fineStrata;" : ""}`,
       );
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <normal_fragment_maps>",
       `#include <normal_fragment_maps>
       vec3 sx=dFdx(-vViewPosition),sy=dFdy(-vViewPosition);
       vec3 r1=cross(sy,normal),r2=cross(normal,sx);float det=dot(sx,r1);
-      normal=normalize(abs(det)*normal-sign(det)*(dFdx(detail)*r1+dFdy(detail)*r2)*.55);`,
+      normal=normalize(abs(det)*normal-sign(det)*(dFdx(detail)*r1+dFdy(detail)*r2)*.16);`,
     );
   };
   return material;

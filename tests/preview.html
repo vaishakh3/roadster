@@ -61,7 +61,9 @@
     ><button data-view="flip">Mid flip</button>
     <button data-view="crash">Crash</button
     ><button data-view="trail">Trail turn</button>
-    <button data-view="gallery">Gallery</button
+    <button data-view="landing">Landing arrest</button
+    ><button data-view="contact">On ramp</button
+    ><button data-view="gallery">Gallery</button
     ><button data-view="cargo">Cargo</button>
   </nav>
   <p id="status">
@@ -200,6 +202,17 @@
             g.step(0.01);
             for (let i = 0; i < 12; i++) g.step(0.05);
           }
+          if (v === "landing") {
+            const r = g.course.ramps[1];
+            g.setState({ d: r.d - 0.1, y: r.height, speed: 70, time: 20 });
+            g.step(0.01);
+            while (g.state.d < r.land - 15 && g.state.flight) g.step(1 / 60);
+          }
+          if (v === "contact") {
+            const r = g.course.ramps[1];
+            g.setState({ d: r.d - r.length - 5, speed: 65, time: 20 });
+            while (g.state.d < r.d - r.length * 0.3) g.step(1 / 60);
+          }
           if (v === "crash") {
             const o = g.course.obstacles[0];
             g.setState({ d: o.d - 3, x: o.x, speed: 76, hull: 1 });
@@ -305,7 +318,7 @@
       const g = frame.contentWindow.__breakwater;
       if (g)
         document.querySelector("#status").textContent =
-          `${g.phase} · X ${g.state.x.toFixed(2)} · Y ${g.state.y.toFixed(2)} · Speed ${(g.state.speed * 3.6).toFixed(0)} · draws ${g.drawCalls} · steer ${g.input.steer} · boost ${g.input.boost} · fly ${g.input.fly}`;
+          `${g.phase} · X ${g.state.x.toFixed(2)} · Y ${g.state.y.toFixed(2)} · Speed ${(g.state.speed * 3.6).toFixed(0)} · draws ${g.drawCalls} · tris ${g.triangles} · DPR ${g.pixelRatio} · steer ${g.input.steer} · boost ${g.input.boost} · fly ${g.input.fly}`;
     }, 100);
   </script>
 </html>

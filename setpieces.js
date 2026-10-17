@@ -77,32 +77,6 @@ export function addSetpieces({
       }
     }
   } else if (course.theme === "canyon") {
-    const stone = [0xa76b45, 0xc48753, 0x91583b, 0xd39a62].map(
-      (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.97 }),
-    );
-    // Eroded, stepped pillars break the skyline and establish near/far scale.
-    for (let i = 0; i < 24; i++) {
-      const d = 170 + i * 155,
-        side = i % 2 ? -1 : 1;
-      const g = groupAt(d, side * (39 + (i % 4) * 12));
-      const height = 20 + (i % 5) * 9,
-        radius = 9 + (i % 3) * 5;
-      for (let tier = 0; tier < 5; tier++) {
-        const h = height / 5,
-          r = radius * (1 - tier * 0.12);
-        const rock = mesh(
-          new THREE.CylinderGeometry(r * 0.83, r, h, 9, 1),
-          stone[(i + tier) % 4],
-          g,
-        );
-        rock.position.set(
-          Math.sin(i + tier) * 1.4,
-          h * (tier + 0.5) - 1,
-          Math.cos(tier) * 2,
-        );
-        rock.rotation.y = i * 0.61 + tier * 0.12;
-      }
-    }
     for (const t of course.tunnels) {
       for (let d = t.start - 8; d <= t.end + 8; d += 20) {
         const g = truss(d, 10.3, 25, m.amber);

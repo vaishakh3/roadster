@@ -2,7 +2,7 @@
  * Steering and lift are independent of thrust, including during takeoff/landing.
  * The assisted route heading keeps the controls simple; this is not a vehicle simulator. */
 import { COURSES, getCourse, hazardPose } from "./courses.js";
-import { rampSurface, launchFlight, flightPose } from "./stunts.js";
+import { rampContact, launchFlight, flightPose } from "./stunts.js";
 export const LENGTH = COURSES[0].length;
 export const ROAD_HALF = 10;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -55,6 +55,7 @@ export function createRun(course = COURSES[0]) {
     events: [],
     roll: 0,
     rollTime: 0,
+    rollAcceleration: 0,
     streak: 0,
     bestChain: 0,
     gapRescue: false,
@@ -62,6 +63,8 @@ export function createRun(course = COURSES[0]) {
     padTime: 0,
     launches: 0,
     rampPitch: 0,
+    flightPitch: 0,
+    liftAcceleration: 0,
     attachedRamp: -1,
     flight: null,
     stuntAngle: 0,
@@ -120,6 +123,9 @@ function tick(s, raw, dt) {
   // Air and road retain the same lateral authority. Boost never consumes steering.
   const targetVx = steer * (s.y > 0.5 ? 12.5 : 11.5);
   s.vx += (targetVx - s.vx) * (1 - Math.exp(-dt * 9));
+  const prevX = s.x,
+    prevY = s.y,
+    prevRamp = s.attachedRamp;
   s.x += s.vx * dt;
   if (Math.abs(s.x) > ROAD_HALF - 1.15) {
     s.x = Math.sign(s.x) * (ROAD_HALF - 1.15);
@@ -140,21 +146,41 @@ function tick(s, raw, dt) {
   s.d += s.speed * dt;
   s.topSpeed = Math.max(s.topSpeed, s.speed);
   const gap = inGap(s.d, s.course);
-  // Adhesion follows the same curved deck as the renderer. Steering stays live.
-  const rampIndex = s.course.ramps.findIndex(
-    (r) =>
-      s.d >= r.d - (r.length || 10) &&
-      s.d <= r.d &&
-      Math.abs(s.x - r.x) < (r.width || 7) / 2,
-  );
+  // Capture the front axle on entry; never let a lateral entry pass through
+  // the deck. A high side impact is pushed outside instead of teleported up.
+  let rampIndex = -1;
+  for (const [i, r] of s.course.ramps.entries()) {
+    if (s.d < r.d - (r.length || 10) - 1.48 || s.d > r.d) continue;
+    const half = (r.width || 7) / 2,
+      margin = 1.12;
+    const surface = rampContact(r, s.d);
+    if (prevRamp === i && !s.flight) {
+      s.x = clamp(s.x, r.x - half + margin, r.x + half - margin);
+      if (Math.abs(s.x - r.x) >= half - margin - 0.001) s.vx *= 0.35;
+      rampIndex = i;
+      break;
+    }
+    if (Math.abs(s.x - r.x) >= half + margin) continue;
+    const above = prevY >= surface.height - 0.6;
+    const canCapture = !s.flight && above && s.y <= surface.height + 0.6;
+    if (canCapture) {
+      s.x = clamp(s.x, r.x - half + margin, r.x + half - margin);
+      rampIndex = i;
+      break;
+    }
+    if (!above && surface.height > 0.65) {
+      const side = prevX < r.x ? -1 : prevX > r.x ? 1 : s.vx >= 0 ? -1 : 1;
+      s.x = r.x + side * (half + margin + 0.03);
+      s.x = clamp(s.x, -ROAD_HALF + 1.15, ROAD_HALF - 1.15);
+      s.vx = side * Math.min(2, Math.abs(s.vx));
+    }
+  }
   const ramp = rampIndex >= 0 ? s.course.ramps[rampIndex] : null;
-  const surface = ramp ? rampSurface(ramp, s.d) : { height: 0, pitch: 0 };
-  const attached =
-    ramp &&
-    !s.flight &&
-    (s.attachedRamp === rampIndex || Math.abs(s.y - surface.height) <= 0.6);
+  const surface = ramp ? rampContact(ramp, s.d) : { height: 0, pitch: 0 };
+  const attached = !!ramp && !s.flight;
   s.attachedRamp = attached ? rampIndex : -1;
   s.rampPitch = attached ? surface.pitch : 0;
+  s.liftAcceleration = 0;
   if (attached) {
     s.y = surface.height;
     s.vy = 0;
@@ -162,10 +188,12 @@ function tick(s, raw, dt) {
     s.airborne = false;
   } else if (s.flight) {
     const f = s.flight,
-      p = flightPose(f, dt, s.d);
+      p = flightPose(f, dt, s.d, s.speed);
     s.y = p.y;
     s.vy = p.vy;
     s.stuntAngle = p.angle;
+    s.flightPitch = p.pitch;
+    s.liftAcceleration = f.acceleration;
     s.stuntKind = f.kind;
     s.lifting = false;
     if (p.done) {
@@ -173,6 +201,7 @@ function tick(s, raw, dt) {
       s.vy = 0;
       s.flight = null;
       s.stuntAngle = 0;
+      s.flightPitch = 0;
       s.landingAge = 0;
       if (f.clean) {
         s.stunts++;
@@ -187,10 +216,32 @@ function tick(s, raw, dt) {
       event(s, "land", "TOUCHDOWN");
     }
   } else {
-    if (s.lifting) s.vy += clamp((5.8 - s.y) * 13 - s.vy * 5, -18, 24) * dt;
-    else if (s.y > 0 || gap) s.vy -= 9.81 * dt;
+    if (s.lifting) {
+      s.liftAcceleration = clamp((5.8 - s.y) * 13 - s.vy * 5, -9.81, 24);
+      s.vy += s.liftAcceleration * dt;
+    } else if (s.y > 0 || gap) s.vy -= 9.81 * dt;
     s.y += s.vy * dt;
   }
+  if (!attached && !s.flight)
+    for (const [i, r] of s.course.ramps.entries()) {
+      if (
+        s.d < r.d - (r.length || 10) ||
+        s.d > r.d ||
+        Math.abs(s.x - r.x) > (r.width || 7) / 2 - 1.12
+      )
+        continue;
+      const support = rampContact(r, s.d);
+      if (
+        prevY >= rampContact(r, prevD).height - 0.6 &&
+        s.y <= support.height
+      ) {
+        s.y = support.height;
+        s.vy = 0;
+        s.attachedRamp = i;
+        s.rampPitch = support.pitch;
+        s.lifting = false;
+      }
+    }
   if (!attached && !s.flight && !gap && s.y <= 0) {
     if (s.airborne && s.vy < -3) {
       event(s, "land", "TOUCHDOWN");
@@ -200,7 +251,7 @@ function tick(s, raw, dt) {
     s.vy = 0;
     s.stuntAngle = 0;
   }
-  s.airborne = !attached && (s.y > 0.25 || gap);
+  s.airborne = s.attachedRamp < 0 && (s.y > 0.25 || gap);
   if (s.airborne) s.airtime += dt;
   // Flight stays available at the final bridge even after an imperfect run.
   // Amber approach strips are also reserve stations; the warning announces the refill.
@@ -208,7 +259,7 @@ function tick(s, raw, dt) {
     const g = GAPS[i];
     if (prevD < g.start - 145 && s.d >= g.start - 145) {
       s.energy = Math.max(s.energy, 65);
-      event(s, "approach", "MAG RAMP AHEAD · AIM FOR THE MINT STRIP");
+      event(s, "approach", "GRIP RAMP AHEAD · AIM FOR THE MINT STRIP");
     }
     if (prevD <= g.end && s.d > g.end && s.y > -0.5) {
       s.passedGaps.add(i);
@@ -246,13 +297,14 @@ function tick(s, raw, dt) {
       prevD <= r.d &&
       s.d > r.d &&
       Math.abs(s.x - r.x) < (r.width || 7) / 2 &&
-      Math.abs(s.y - (r.height || 1.5)) < 1.5 &&
+      (prevRamp === i || Math.abs(s.y - rampContact(r, r.d).height) < 0.6) &&
       !s.flight &&
       !s.processed.has("r" + i)
     ) {
       s.processed.add("r" + i);
       s.flight = launchFlight(r, s.speed);
-      s.y = r.height || 1.5;
+      s.y = s.flight.height;
+      s.flightPitch = s.flight.startPitch;
       s.vy = s.flight.vy;
       s.attachedRamp = -1;
       s.rampPitch = 0;
@@ -264,7 +316,9 @@ function tick(s, raw, dt) {
       event(
         s,
         "launch",
-        r.height >= 14 ? "SKY RAMP · AUTO FLIP" : "LAUNCH · AUTO STUNT",
+        r.height >= 14
+          ? `SKY RAMP · AUTO ${r.stunt === "roll" ? "ROLL" : "FLIP"}`
+          : "LAUNCH · AUTO STUNT",
       );
     }
   }
@@ -345,8 +399,14 @@ function tick(s, raw, dt) {
   }
   if (s.rollTime > 0) {
     s.rollTime = Math.max(0, s.rollTime - dt);
-    s.roll = (1 - s.rollTime / 0.9) * Math.PI * 2;
-    if (!s.rollTime) s.roll = 0;
+    const p = 1 - s.rollTime / 0.9;
+    s.roll = Math.PI * 2 * p * p * p * (10 + p * (-15 + 6 * p));
+    s.rollAcceleration =
+      (Math.PI * 2 * 60 * p * (1 - p) * (1 - 2 * p)) / (0.9 * 0.9);
+    if (!s.rollTime) {
+      s.roll = 0;
+      s.rollAcceleration = 0;
+    }
   }
   const sector = Math.min(2, Math.floor(s.d / (LENGTH / 3)));
   if (sector !== s.sector) {
@@ -383,13 +443,13 @@ export function nextWarning(s) {
       kind: "ramp",
       title:
         s.attachedRamp >= 0
-          ? "MAGNETIC GRIP"
+          ? "SUCTION GRIP"
           : ramp.height >= 14
             ? "SKY RAMP"
             : "STUNT RAMP",
       detail:
         s.attachedRamp >= 0
-          ? "HOLD YOUR LINE · AUTO FLIP"
+          ? `HOLD YOUR LINE · AUTO ${ramp.stunt === "roll" ? "ROLL" : "FLIP"}`
           : "TAKE THE MINT LANE · AUTO STUNT",
     };
   const gap = s.course.gaps.find((g) => s.d > g.start - 175 && s.d < g.end);

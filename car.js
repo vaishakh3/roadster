@@ -1,23 +1,33 @@
 import * as THREE from './vendor/three.module.js';
 import { createInterior } from './interior.js';
+import { addFlightHardware } from './propulsion-mesh.js';
 
 /** Original Roadster-inspired concept model.
  * The model points down -Z. All measurements are in meters. */
 export function createCar() {
   const car = new THREE.Group();
   car.name = 'Roadster';
-  const paint = new THREE.MeshPhysicalMaterial({color: 0xeeefec, metalness:.42, roughness:.20, clearcoat:1, clearcoatRoughness:.075, side:THREE.DoubleSide});
+  const paint = new THREE.MeshPhysicalMaterial({color: 0xeeefec, metalness:.42, roughness:.24, envMapIntensity:1.2, clearcoat:1, clearcoatRoughness:.075, side:THREE.DoubleSide});
   const black = new THREE.MeshStandardMaterial({color:0x080b0d, metalness:.3, roughness:.43, side:THREE.DoubleSide});
   const intakeVoid=new THREE.MeshStandardMaterial({color:0x010203,metalness:0,roughness:1,side:THREE.DoubleSide});
   const frontBand=new THREE.MeshPhysicalMaterial({color:0x363c42,metalness:.15,roughness:.23,clearcoat:1,clearcoatRoughness:.08,side:THREE.DoubleSide});
   const carbon = new THREE.MeshStandardMaterial({color:0x10171b, metalness:.62, roughness:.33, side:THREE.DoubleSide});
   carbon.onBeforeCompile=shader=>{shader.vertexShader='varying vec3 vCarbonPosition;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvCarbonPosition=position;');shader.fragmentShader='varying vec3 vCarbonPosition;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\nvec2 weaveUv=vec2(vCarbonPosition.x+vCarbonPosition.z,vCarbonPosition.y+vCarbonPosition.z)*160.;float weave=mod(floor(weaveUv.x)+floor(weaveUv.y),2.);float strand=.5+.5*sin((weave>.5?weaveUv.x:weaveUv.y)*6.283185);diffuseColor.rgb*=.84+strand*.22;');};
   const rubber = new THREE.MeshStandardMaterial({color:0x111315, roughness:.86});
+  rubber.onBeforeCompile=shader=>{
+    shader.vertexShader='varying vec3 vTyre;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvTyre=position;');
+    shader.fragmentShader='varying vec3 vTyre;\n'+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+      float a=atan(vTyre.y,vTyre.z);float shoulder=1.-smoothstep(.085,.125,abs(vTyre.x));
+      float ribs=smoothstep(.84,.98,cos(vTyre.x*150.));
+      float cuts=smoothstep(.89,.99,cos(a*48.+abs(vTyre.x)*30.));
+      diffuseColor.rgb*=1.-shoulder*(ribs*.35+cuts*.3);`);
+  };
   const alloy = new THREE.MeshStandardMaterial({color:0x9aabae, metalness:.96, roughness:.22, side:THREE.DoubleSide});
   const darkAlloy = new THREE.MeshStandardMaterial({color:0x252e32, metalness:.92, roughness:.3, side:THREE.DoubleSide});
   const chrome = new THREE.MeshStandardMaterial({color:0xbac6c7, metalness:1, roughness:.15});
   const brake = new THREE.MeshStandardMaterial({color:0x70251b, metalness:.55, roughness:.35});
-  const glass = new THREE.MeshPhysicalMaterial({color:0x24333c, metalness:.12, roughness:.075, transmission:.28, thickness:.05, ior:1.5, attenuationColor:0x8da6b1, attenuationDistance:1.6, clearcoat:.6, clearcoatRoughness:.10, side:THREE.DoubleSide, envMapIntensity:1.0, iridescence:.015, iridescenceIOR:1.24, iridescenceThicknessRange:[220,260]});
+  const glass = new THREE.MeshPhysicalMaterial({color:0x24333c, metalness:.12, roughness:.065, transmission:.28, thickness:.05, ior:1.5, attenuationColor:0x8da6b1, attenuationDistance:1.6, clearcoat:.6, clearcoatRoughness:.10, side:THREE.DoubleSide, envMapIntensity:1.25, iridescence:.015, iridescenceIOR:1.24, iridescenceThicknessRange:[220,260]});
   const headlamp = new THREE.MeshStandardMaterial({color:0xe4f9ff, emissive:0xc4e9ff, emissiveIntensity:3.5, roughness:.14, side:THREE.DoubleSide});
   const tail = new THREE.MeshStandardMaterial({color:0xb5060c, emissive:0xff0816, emissiveIntensity:2.3, roughness:.17});
   const amber = new THREE.MeshStandardMaterial({color:0xffae46, emissive:0xff760c, emissiveIntensity:1.8});
@@ -207,12 +217,8 @@ export function createCar() {
     const spin=new THREE.Group();pivot.add(spin);
     const profile=[new THREE.Vector2(.306,-.139),new THREE.Vector2(.339,-.138),new THREE.Vector2(.371,-.124),new THREE.Vector2(.389,-.097),new THREE.Vector2(.395,-.055),new THREE.Vector2(.395,.055),new THREE.Vector2(.389,.097),new THREE.Vector2(.371,.124),new THREE.Vector2(.339,.138),new THREE.Vector2(.306,.139)];
     const tire=mesh(new THREE.LatheGeometry(profile,64),rubber,spin);tire.rotation.z=Math.PI/2;
-    // Tread channels and sidewall bead sit on the curved rubber, not on its silhouette.
-    for(const x of [-.062,-.021,.021,.062])torus(.394,.002,black,x,0,0,'x',spin);
-    for(let j=0;j<48;j++)for(const lane of [-1,1]) {
-      const a=j/48*Math.PI*2;
-      line([[lane*.025,Math.sin(a)*.395,Math.cos(a)*.395],[lane*.098,Math.sin(a+.06)*.39,Math.cos(a+.06)*.39]],black,.0012,spin);
-    }
+    // Tread grooves are shaded at tyre scale instead of 400 tiny tube meshes.
+    // This preserves the curved silhouette and removes 48k racing triangles.
     const out=side*.141;cyl(.313,.04,darkAlloy,side*.072,0,0,'x',spin,80);
     torus(.312,.007,alloy,out,0,0,'x',spin);torus(.296,.002,chrome,out+side*.003,0,0,'x',spin);
     cyl(.259,.018,darkAlloy,side*.079,0,0,'x',pivot,72);
@@ -286,11 +292,7 @@ export function createCar() {
     poly([[x,.113,2.24],[x,.13,2.516],[x,.371,2.488],[x,.355,2.30]],carbon);
     line([[x,.133,2.51],[x,.37,2.485]],darkAlloy,.0025);
   }
-  // Distinct downward cold-gas outlets under each rocker, visible during flight.
-  for(const side of [-1,1])for(const z of [-.96,1.0]){
-    cyl(.045,.065,darkAlloy,side*.94,.188,z,'y',car,40);torus(.043,.004,alloy,side*.94,.155,z,'y');
-    const vapour=new THREE.Mesh(new THREE.ConeGeometry(.18,1.3,24,8,true),new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,uniforms:{time:{value:0}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'varying vec2 vUv;uniform float time;void main(){float wave=.65+.35*sin(vUv.x*42.+vUv.y*29.-time*17.);float fade=smoothstep(0.,.35,vUv.y)*(1.-smoothstep(.87,1.,vUv.y));gl_FragColor=vec4(.90,.95,1.,fade*wave*.28);}'}));vapour.geometry.translate(0,-.65,0);vapour.position.set(side*.94,.15,z);vapour.visible=false;car.add(vapour);liftJets.push(vapour);
-  }
+  const flightHardware=addFlightHardware(car,{carbon,alloy,darkAlloy,black});
   // Broad active airfoil with folded polygon endplates, not a wire spoiler.
   const wing=new THREE.Group();wing.name='Active rear wing';wing.position.set(0,.49,2.02);car.add(wing);
   for(const side of [-1,1]){
@@ -355,7 +357,7 @@ export function createCar() {
   }
   for(const wheel of wheels){batchRigid(wheel.spin);batchRigid(wheel.pivot);}
   batchRigid(wing);
-  batchRigid(car,new Set([...brakeLights,...thrusterJets,...liftJets]));
-  car.userData={interior,setDetail:detailed=>{const t=detailed?.20:0;if(glass.transmission!==t){glass.transmission=t;glass.needsUpdate=true;}interior.visible=!!detailed;},wheels,brakeLights,thrusterJets,liftJets,wing,paintMaterial:paint,glassMaterial:glass,headlightMaterial:headlamp};
+  batchRigid(car,new Set([...brakeLights,...thrusterJets,...flightHardware.jets]));
+  car.userData={interior,setDetail:detailed=>{const t=detailed?.20:0;if(glass.transmission!==t){glass.transmission=t;glass.side=detailed?THREE.DoubleSide:THREE.FrontSide;glass.needsUpdate=true;}interior.visible=!!detailed;},wheels,brakeLights,thrusterJets,flightHardware,wing,paintMaterial:paint,glassMaterial:glass,headlightMaterial:headlamp};
   return car;
 }

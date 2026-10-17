@@ -60,11 +60,11 @@ export const COURSES = [
     location: "NORTH ATLANTIC",
     subtitle: "The road ends. Your run doesn’t.",
     description:
-      "Cross the open ocean. Thread the traffic. Fly four broken bridges to the lighthouse.",
+      "Cross the open ocean. Thread the traffic. Fly five broken bridges to the lighthouse.",
     theme: "coast",
     length: 3600,
     difficulty: "FLOW",
-    tags: "SEA BRIDGES / MAG RAMPS / FLIGHT",
+    tags: "SEA BRIDGES / GRIP RAMPS / FLIGHT",
     sectors: ["THE CAUSEWAY", "OPEN WATER", "THE LAST LIGHT"],
     gold: 65,
     silver: 76,
@@ -361,6 +361,47 @@ export const COURSES = [
     ],
   },
 ];
+// An additional authored 1.8 km final leg: recovery, slalom, sky ramp and
+// a last technical sequence. Existing stunt dimensions remain unchanged.
+for (const c of COURSES) {
+  const end = c.length;
+  c.length += 1800;
+  c.gold += 32;
+  c.silver += 39;
+  c.goldGates += 5;
+  c.gaps.push({ start: end + 810, end: end + 925 });
+  c.ramps.push({
+    d: end + 790,
+    x: 0,
+    length: 76,
+    height: 10,
+    width: 8,
+    land: end + 970,
+    stunt: c.theme === "port" ? "roll" : "flip",
+  });
+  c.pads.push({ d: end + 650, x: 0 }, { d: end + 1500, x: 3.7 });
+  c.gates.push(
+    ...gates([
+      [end + 150, 0],
+      [end + 440, -3.7],
+      [end + 610, 0],
+      [end + 850, 0, 14.5],
+      [end + 1050, 3.7],
+      [end + 1280, -3.7],
+      [end + 1480, 3.7],
+      [end + 1720, 0],
+    ]),
+  );
+  c.obstacles.push(
+    c.theme === "canyon" ? rubble(end + 310, 4.5) : drum(end + 310, 4.5),
+    barrier(end + 530, -4.6),
+    c.theme === "coast" ? sweep(end + 1170, 2) : beam(end + 1170),
+    c.theme === "port" ? cargo(end + 1370) : rubble(end + 1370, -4.6),
+    barrier(end + 1610, 4.7, 5.5),
+  );
+  if (c.theme !== "coast")
+    c.tunnels.push({ start: end + 1120, end: end + 1220 });
+}
 for (const c of COURSES)
   for (const o of c.obstacles)
     if (o.speed) {
@@ -388,7 +429,7 @@ export function badgesFor(s) {
     s.finished && s.gates === s.course.gates.length,
   ];
 }
-export const LAYOUT_VERSION = 2;
+export const LAYOUT_VERSION = 3;
 export function saveResult(records, s, ghost = []) {
   if (!s.finished) return { records, record: false };
   const old = records[s.course.id] || {},

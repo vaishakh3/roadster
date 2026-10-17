@@ -135,8 +135,24 @@
           <div class="journey">
             <div class="journey-label">
               <span id="distance">3.6 KM TO GO</span
-              ><span id="destination">BREAKWATER ↗</span>
+              ><span id="destination">BREAKWATER ↗</span
+              ><b id="map-percent">0%</b>
             </div>
+            <svg
+              id="race-map"
+              viewBox="0 0 240 78"
+              role="img"
+              aria-label="Route progress"
+            >
+              <polyline id="map-base" />
+              <polyline id="map-travelled" />
+              <g id="map-stunts"></g>
+              <circle id="map-finish" r="3.5" />
+              <g id="map-player">
+                <circle r="8" />
+                <path d="M-4,-4 L5,0 -4,4 Z" />
+              </g>
+            </svg>
             <div class="journey-track"><i id="progress"></i><b></b><b></b></div>
           </div>
           <div class="score-block">

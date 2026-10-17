@@ -1,5 +1,8 @@
 import * as THREE from "./vendor/three.module.js";
 import { createRaceEffects } from "./effects.js";
+import { rampSurface } from "./stunts.js";
+import { FrameBudget } from "./quality.js";
+import { flightActuators } from "./propulsion.js";
 import { createCar } from "./car.js";
 import { loadVisualAssets } from "./surfaces.js";
 import {
@@ -75,6 +78,7 @@ let soundOn = storage.get("breakwater-sound", true),
     "breakwater-reduced",
     matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
+const frameBudget = new FrameBudget();
 let qualityLow = false,
   lastHud = 0,
   initialized = false;
@@ -221,9 +225,57 @@ function selectCourse(id) {
         (115 - (d / course.length) * 100).toFixed(1),
     );
   $("route-line").setAttribute("points", points.join(" "));
+  buildRaceMap();
   refreshBest();
   updateVisuals(0, true);
   hud(true);
+}
+const mapPoint = (d) => [
+  12 + (Math.min(course.length, Math.max(0, d)) / course.length) * 216,
+  39 + (roadX(d, course) / (course.curve[0] + course.curve[2])) * 26,
+];
+let mapSamples = [];
+function buildRaceMap() {
+  mapSamples = [];
+  for (let d = 0; d < course.length; d += 35)
+    mapSamples.push({ d, p: mapPoint(d) });
+  mapSamples.push({ d: course.length, p: mapPoint(course.length) });
+  $("map-base").setAttribute(
+    "points",
+    mapSamples.map((s) => s.p.join(",")).join(" "),
+  );
+  const end = mapPoint(course.length);
+  $("map-finish").setAttribute("cx", end[0]);
+  $("map-finish").setAttribute("cy", end[1]);
+  $("map-stunts").replaceChildren(
+    ...course.ramps.map((r) => {
+      const node = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "circle",
+        ),
+        p = mapPoint(r.d);
+      node.setAttribute("cx", p[0]);
+      node.setAttribute("cy", p[1]);
+      node.setAttribute("r", 2.6);
+      return node;
+    }),
+  );
+}
+function updateRaceMap() {
+  const p = mapPoint(run.d),
+    points = mapSamples.filter((s) => s.d < run.d).map((s) => s.p);
+  points.push(p);
+  $("map-travelled").setAttribute(
+    "points",
+    points.map((p) => p.join(",")).join(" "),
+  );
+  $("map-player").setAttribute("transform", `translate(${p[0]},${p[1]})`);
+  const percent = Math.min(100, Math.floor((run.d / course.length) * 100));
+  $("map-percent").textContent = percent + "%";
+  $("race-map").setAttribute(
+    "aria-label",
+    `${course.name} route, ${percent}% complete, ${Math.max(0, course.length - run.d).toFixed(0)} metres remaining. Mint dots mark stunt ramps.`,
+  );
 }
 function refreshBest() {
   const best = records[course.id];
@@ -417,6 +469,7 @@ function hud(force = false) {
   $("distance").textContent =
     `${Math.max(0, (course.length - run.d) / 1000).toFixed(1)} KM TO GO`;
   $("progress").style.width = (run.d / course.length) * 100 + "%";
+  updateRaceMap();
   $("multiplier").textContent =
     run.chain > 1 ? "×" + Math.min(run.chain, 4) : "";
   $("energy").textContent = Math.round(run.energy) + "%";
@@ -436,7 +489,7 @@ function hud(force = false) {
     : run.flight
       ? "AUTO " + (run.stuntKind === "roll" ? "BARREL ROLL" : "BACKFLIP")
       : run.attachedRamp >= 0
-        ? "MAGNETIC GRIP"
+        ? "SUCTION GRIP"
         : run.padTime > 0
           ? "SLINGSHOT"
           : run.boosting
@@ -481,6 +534,10 @@ function hud(force = false) {
     button.classList.toggle("pressed", !!held);
   });
 }
+const rampNormal = new THREE.Vector3(),
+  rampForward = new THREE.Vector3(),
+  rampRight = new THREE.Vector3(),
+  rampBasis = new THREE.Matrix4();
 function updateVisuals(dt, snap = false) {
   const hero =
     phase === "home" || (phase === "paused" && previousPhase === "home");
@@ -494,17 +551,37 @@ function updateVisuals(dt, snap = false) {
   const stuntBank =
     !reduced && run.flight && run.stuntKind === "roll" ? run.stuntAngle : 0;
   const bank =
-    stuntBank - run.vx * 0.014 + (run.rollTime > 0 && !reduced ? run.roll : 0);
+    stuntBank -
+    run.vx * (run.attachedRamp >= 0 ? 0.002 : 0.009) +
+    (run.rollTime > 0 && !reduced ? run.roll : 0);
   car.rotation.set(
     run.airborne
-      ? flip + clamp(run.vy * 0.014, -0.13, 0.13)
+      ? flip +
+          (run.flight ? run.flightPitch : clamp(run.vy * 0.014, -0.13, 0.13))
       : Math.atan((coast.roadY(run.d + 2) - coast.roadY(run.d - 2)) / 4) +
           (run.boosting ? -0.018 : 0) +
           run.rampPitch,
-    heading - run.vx * 0.022,
+    heading - run.vx * (run.attachedRamp >= 0 ? 0.003 : 0.022),
     bank,
     "YXZ",
   );
+  if (run.attachedRamp >= 0) {
+    const grade =
+      (coast.roadY(run.d + 0.2) - coast.roadY(run.d - 0.2)) / 0.4 +
+      Math.tan(run.rampPitch);
+    rampNormal.set(0, 1, grade).normalize();
+    rampForward
+      .set(
+        roadSlope(run.d, course) + run.vx / Math.max(27, run.speed),
+        grade,
+        -1,
+      )
+      .normalize();
+    rampRight.crossVectors(rampForward, rampNormal).normalize();
+    rampForward.crossVectors(rampNormal, rampRight).normalize().negate();
+    rampBasis.makeBasis(rampRight, rampNormal, rampForward);
+    car.quaternion.setFromRotationMatrix(rampBasis);
+  }
   if (!hero) {
     const impact = Math.max(0, 1 - run.crashAge / 1.05),
       jolt = Math.sin(run.crashAge * 22) * impact;
@@ -525,8 +602,8 @@ function updateVisuals(dt, snap = false) {
         car.rotation.z += run.crashDirection * t * 0.22;
       }
     }
-    if (!reduced && run.landingAge < 0.35)
-      car.position.y -= Math.sin((run.landingAge / 0.35) * Math.PI) * 0.13;
+    if (!reduced && run.attachedRamp < 0 && run.landingAge < 0.35)
+      car.position.y -= Math.sin((run.landingAge / 0.35) * Math.PI) * 0.055;
     if (flip) car.position.y += 0.65 * (1 - Math.cos(flip));
   }
   const d = car.userData;
@@ -544,10 +621,19 @@ function updateVisuals(dt, snap = false) {
     jet.scale.z = 1.8 + Math.sin(clock * 43) * 0.25;
     jet.material.uniforms.time.value = clock;
   }
-  for (const jet of d.liftJets) {
-    jet.visible = !run.failed && run.lifting;
-    if (jet.material.uniforms) jet.material.uniforms.time.value = clock;
-  }
+  const actuation = flightActuators(run, car.rotation.x, car.rotation.z);
+  d.actuation = actuation;
+  d.flightHardware.jets.forEach((jet, i) => {
+    const power = actuation.ports[i];
+    jet.visible = power > 0.035;
+    jet.scale.setScalar(
+      jet.name.endsWith("lift") ? 0.85 + power * 1.2 : 0.6 + power * 0.9,
+    );
+    jet.material.uniforms.power.value = power;
+    jet.material.uniforms.time.value = clock;
+  });
+  for (const fan of d.flightHardware.fans)
+    fan.rotation.y += dt * (actuation.grip ? 95 : run.airborne ? 12 : 30);
   car.visible = true;
   coast.update(run, phase === "playing" ? dt : 0, clock);
   effects.update(
@@ -642,6 +728,7 @@ function updateVisuals(dt, snap = false) {
   camera.updateProjectionMatrix();
 }
 function applyQuality() {
+  frameBudget.reset();
   qualityLow =
     quality === "low" || (quality === "auto" && (coarse() || innerWidth < 900));
   renderer.setPixelRatio(
@@ -670,7 +757,8 @@ function resize() {
 }
 function frame(now) {
   requestAnimationFrame(frame);
-  const dt = Math.min(0.05, Math.max(0, (now - lastTime) / 1000));
+  const frameSeconds = Math.max(0, (now - lastTime) / 1000);
+  const dt = Math.min(0.05, frameSeconds);
   lastTime = now;
   if (!initialized || document.hidden || orientationBlocked) return;
   if (!frozen) {
@@ -697,6 +785,15 @@ function frame(now) {
       !frozen,
   );
   renderer.render(scene, camera);
+  if (quality === "auto" && !frozen && phase === "playing" && countdown <= 0) {
+    const ceiling = Math.min(devicePixelRatio || 1, qualityLow ? 1.25 : 1.75);
+    const ratio = frameBudget.sample(
+      frameSeconds,
+      renderer.getPixelRatio(),
+      ceiling,
+    );
+    if (ratio !== renderer.getPixelRatio()) renderer.setPixelRatio(ratio);
+  }
 }
 function saveCard() {
   const c = document.createElement("canvas");
@@ -984,10 +1081,34 @@ async function boot() {
           return effects.trails;
         },
         get carPose() {
+          car.updateMatrixWorld(true);
+          const ramp =
+            run.attachedRamp >= 0 ? course.ramps[run.attachedRamp] : null;
+          let clearance = Infinity;
+          if (ramp)
+            for (const x of [-1.05, 1.05])
+              for (const z of [-2.25, -1.48, 1.48, 2.25]) {
+                const p = car.localToWorld(
+                    new THREE.Vector3(x, Math.abs(z) > 2 ? 0.17 : 0, z),
+                  ),
+                  d = -p.z;
+                if (d >= ramp.d - ramp.length && d <= ramp.d)
+                  clearance = Math.min(
+                    clearance,
+                    p.y - coast.roadY(d) - rampSurface(ramp, d).height - 0.025,
+                  );
+              }
           return {
+            rampClearance: clearance,
+
             position: car.position.toArray(),
             rotation: [car.rotation.x, car.rotation.y, car.rotation.z],
             visible: car.visible,
+            actuation: car.userData.actuation,
+            ports: car.userData.flightHardware.jets.map((j) => ({
+              name: j.name,
+              visible: j.visible,
+            })),
           };
         },
         get preparedVenues() {
@@ -1010,6 +1131,12 @@ async function boot() {
         },
         get input() {
           return controls.read();
+        },
+        get triangles() {
+          return renderer.info.render.triangles;
+        },
+        get pixelRatio() {
+          return renderer.getPixelRatio();
         },
         get drawCalls() {
           return renderer.info.render.calls;
