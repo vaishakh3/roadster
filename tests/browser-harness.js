@@ -1,382 +1,264 @@
-const report = document.querySelector("#report"),
-  button = document.querySelector("#run");
-button.onclick = async () => {
-  button.disabled = true;
-  report.textContent = "Loading production build…\n";
-  const out = [],
-    errors = [];
-  let frame;
-  const assert = (condition, message) => {
-    if (!condition) throw new Error(message);
-  };
-  const test = async (name, fn) => {
-    try {
-      await fn();
-      out.push("PASS " + name);
-    } catch (e) {
-      out.push("FAIL " + name + ": " + e.message);
-    }
-    report.textContent = out.join("\n");
-  };
-  const saved = new Map(
-    ["roadster-flight-lab-best", "roadster-rush-best"].map((k) => [
-      k,
-      localStorage.getItem(k),
-    ]),
-  );
+const report = document.getElementById("report"),
+  stage = document.getElementById("stage");
+let pass = 0,
+  fail = 0;
+const check = (label, fn) => {
   try {
-    frame = document.createElement("iframe");
-    frame.style.cssText = "width:1440px;height:900px;transform:scale(.5)";
-    frame.src = "../dist/index.html?qa=1";
-    document.querySelector("#stage").replaceChildren(frame);
-    await new Promise((resolve, reject) => {
-      frame.onload = resolve;
-      frame.onerror = reject;
-    });
-    const w = frame.contentWindow,
-      d = w.document,
-      g = w.__roadster;
-    assert(g, "Game initialized");
-    g.freeze(true);
-    w.addEventListener("error", (e) => errors.push(e.message));
-    const tick = (seconds) => {
-      for (let i = 0; i < Math.ceil(seconds * 120); i++) g.step(1 / 120);
-      g.renderFrame(0.06);
-    };
-    const key = (code, type = "keydown") =>
-      w.dispatchEvent(
-        new w.KeyboardEvent(type, { code, bubbles: true, cancelable: true }),
-      );
-    const click = (id) => d.getElementById(id).click();
-    const mode = (value) => d.querySelector(`[data-mode="${value}"]`).click();
-    const pointer = (el, type, id, x = 0, y = 0) =>
-      el.dispatchEvent(
-        new w.PointerEvent(type, {
-          pointerId: id,
-          pointerType: "touch",
-          clientX: x,
-          clientY: y,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-    await test("Production WebGL starts and renders geometry", () => {
-      assert(g.getState().phase === "intro", "Garage visible");
-      assert(g.getState().renderer.triangles > 1000, "Geometry rendered");
-    });
-    click("control-style"); // Exercise the complete manual input path first.
-    await test("Keyboard driving, steering and braking", () => {
-      click("start");
-      tick(3.1);
-      key("KeyW");
-      tick(2);
-      key("KeyW", "keyup");
-      const speed = g.getState().state.speed;
-      assert(speed > 20, "Throttle accelerates");
-      key("KeyA");
-      tick(0.4);
-      key("KeyA", "keyup");
-      key("KeyS");
-      tick(0.7);
-      key("KeyS", "keyup");
-      assert(g.getState().state.speed < speed, "Brakes reduce speed");
-    });
-    await test("Pause clears held inputs and freezes game time", () => {
-      key("KeyW");
-      click("pause");
-      const t = g.getState().elapsed;
-      tick(2);
-      assert(g.getState().elapsed === t, "Clock frozen");
-      assert(g.getState().input.throttle === 0, "Input released");
-      click("resume");
-    });
-    await test("Photo mode freezes simulation and returns to run", () => {
-      click("photo");
-      assert(g.getState().phase === "photo", "Photo mode opened");
-      const t = g.getState().elapsed;
-      tick(2);
-      assert(g.getState().elapsed === t, "Photo clock frozen");
-      assert(
-        !d.querySelector("#photo-panel").classList.contains("hidden"),
-        "Photo controls visible",
-      );
-      click("exit-photo");
-      assert(g.getState().phase === "playing", "Returned to play");
-    });
-    await test("Actual launch → climb → full roll → landing banks a combo", () => {
-      click("pause");
-      click("garage");
-      mode("stunt");
-      click("start");
-      tick(3.1);
-      click("touch-hover");
-      key("Space");
-      tick(5.7);
-      key("Space", "keyup");
-      assert(g.getState().state.y > 25, "Climbed above 25 m");
-      key("KeyE");
-      let t = 0;
-      while (g.getState().state.tricks.total < 1 && t < 3.5) {
-        tick(0.05);
-        t += 0.05;
-      }
-      key("KeyE", "keyup");
-      tick(0.5);
-      assert(g.getState().state.tricks.total >= 1, "A full roll completed");
-      assert(g.getState().challenge.pending >= 500, "Unbanked combo recorded");
-      assert(
-        g.getState().challenge.score === 0,
-        "Points not prematurely banked",
-      );
-      key("KeyX");
-      tick(0.7);
-      key("KeyX", "keyup");
-      click("touch-hover");
-      t = 0;
-      while (
-        !g.getState().state.grounded &&
-        !g.getState().state.crashed &&
-        t < 20
-      ) {
-        tick(0.1);
-        t += 0.1;
-      }
-      const s = g.getState();
-      assert(
-        !s.state.crashed,
-        "Landed without a crash; reserve " + s.state.charge.toFixed(1),
-      );
-      assert(s.challenge.score >= 750, "Landing banks rotation + bonus");
-    });
-    await test("Rush timer ends once and restart clears the run", () => {
-      tick(95);
-      assert(g.getState().phase === "finished", "Time limit produced results");
-      assert(g.getState().challenge.ended, "Scoring locked");
-      assert(
-        !d.getElementById("save-result").classList.contains("hidden"),
-        "Score card available",
-      );
-      click("restart");
-      assert(
-        g.getState().challenge.score === 0 &&
-          g.getState().challenge.pending === 0,
-        "Scores reset",
-      );
-      assert(g.getState().countdown > 0, "Fresh countdown");
-    });
-    await test("Independent simultaneous pointers, cancellation and no text selection", () => {
-      tick(3.1);
-      const go = d.querySelector('[data-control="throttle"]'),
-        left = d.querySelector('[data-control="left"]');
-      pointer(go, "pointerdown", 201);
-      pointer(left, "pointerdown", 202);
-      assert(
-        g.getState().input.throttle === 1 && g.getState().input.steer === 1,
-        "Both inputs held",
-      );
-      pointer(left, "pointercancel", 202);
-      assert(
-        g.getState().input.throttle === 1 && g.getState().input.steer === 0,
-        "Only cancelled input released",
-      );
-      pointer(go, "pointerup", 201);
-      assert(g.getState().input.throttle === 0, "Throttle released");
-      assert(
-        w.getComputedStyle(d.body).userSelect === "none",
-        "Selection disabled",
-      );
-      assert(
-        !d.dispatchEvent(new w.Event("selectstart", { cancelable: true })),
-        "Selection event cancelled",
-      );
-      assert(
-        !d.dispatchEvent(new w.Event("contextmenu", { cancelable: true })),
-        "Long press menu cancelled",
-      );
-    });
-    await test("Simple controls: tap launch, roll and land; no manual flight axes", () => {
-      click("pause");
-      click("control-style");
-      click("garage");
-      mode("stunt");
-      click("start");
-      tick(3.1);
-      assert(g.getState().easyControls, "Simple pilot enabled");
-      click("touch-hover");
-      tick(5);
-      assert(g.getState().state.y > 28, "Auto climb reaches safe altitude");
-      assert(
-        !d.getElementById("easy-stunt").disabled,
-        "Roll enabled: " + JSON.stringify(g.getState().state),
-      );
-      click("easy-stunt");
-      tick(4.5);
-      assert(
-        g.getState().state.rolls === 1,
-        "Exactly one real roll: " +
-          JSON.stringify({
-            rolls: g.getState().state.rolls,
-            y: g.getState().state.y,
-            charge: g.getState().state.charge,
-            phase: g.getState().phase,
-            crashed: g.getState().state.crashed,
-          }),
-      );
-      click("touch-hover");
-      let duration = 0;
-      while (
-        !g.getState().state.grounded &&
-        !g.getState().state.crashed &&
-        duration < 20
-      ) {
-        tick(0.1);
-        duration += 0.1;
-      }
-      const landed = g.getState();
-      assert(
-        !landed.state.crashed && landed.challenge.score >= 750,
-        "Safe landing banks points",
-      );
-      tick(0.1);
-      const reserve = g.getState().state.charge;
-      tick(2);
-      assert(g.getState().state.charge > reserve, "Parked landing refills");
-    });
-    for (const [width, height] of [
-      [390, 844],
-      [375, 667],
-      [320, 568],
-    ]) {
-      await test(`Portrait ${width}×${height}: rotate prompt pauses input and run`, async () => {
-        key("ShiftLeft");
-        frame.style.width = width + "px";
-        frame.style.height = height + "px";
-        await new Promise((r) => setTimeout(r, 120));
-        const before = g.getState();
-        assert(
-          before.orientationBlocked && before.phase === "paused",
-          "Portrait blocks and pauses",
-        );
-        assert(
-          d.querySelector("#game-shell").inert,
-          "Game cannot receive interaction",
-        );
-        assert(
-          w.getComputedStyle(d.querySelector("#rotate-screen")).display ===
-            "flex",
-          "Rotate prompt visible",
-        );
-        tick(2);
-        key("KeyH");
-        click("resume");
-        assert(
-          g.getState().elapsed === before.elapsed &&
-            g.getState().phase === "paused",
-          "Clock frozen and resume blocked",
-        );
-        assert(g.getState().input.boost === false, "Held input cleared");
-        frame.style.width = 844 + "px";
-        frame.style.height = 390 + "px";
-        await new Promise((r) => setTimeout(r, 120));
-        assert(
-          !g.getState().orientationBlocked && g.getState().phase === "paused",
-          "Landscape waits for deliberate resume",
-        );
-        click("resume");
-      });
-    }
-    const overlap = (a, b) =>
-      a.left < b.right - 1 &&
-      a.right > b.left + 1 &&
-      a.top < b.bottom - 1 &&
-      a.bottom > b.top + 1;
-    for (const [width, height] of [
-      [1440, 900],
-      [667, 375],
-      [844, 390],
-      [568, 320],
-    ]) {
-      for (const simple of [true, false]) {
-        if (g.getState().easyControls !== simple) click("control-style");
-        frame.style.width = width + "px";
-        frame.style.height = height + "px";
-        await new Promise((r) => setTimeout(r, 120));
-        await test(`Layout ${width}×${height} ${simple ? "simple" : "manual"}: actions fit and targets stay separate`, () => {
-          click("pause");
-          click("garage");
-          g.snapCamera();
-          assert(
-            d.documentElement.scrollWidth <= width,
-            "No horizontal overflow",
-          );
-          for (const id of ["start", "aero-preview"]) {
-            const r = d.getElementById(id).getBoundingClientRect();
-            assert(
-              r.top >= 0 &&
-                r.bottom <= height + 1 &&
-                r.left >= 0 &&
-                r.right <= width + 1,
-              id + " fits",
-            );
-          }
-          mode("free");
-          click("start");
-          g.hover();
-          tick(0.15);
-          g.snapCamera();
-          const controls = [
-            ...d.querySelectorAll(
-              "#touch-controls button,.mobile-utils button,#ground-stick,#flight-stick",
-            ),
-          ].filter(
-            (el) =>
-              el.getClientRects().length &&
-              w.getComputedStyle(el).visibility !== "hidden",
-          );
-          for (let i = 0; i < controls.length; i++) {
-            const r = controls[i].getBoundingClientRect();
-            assert(
-              r.top >= 0 &&
-                r.bottom <= height + 1 &&
-                r.left >= 0 &&
-                r.right <= width + 1,
-              (controls[i].ariaLabel || controls[i].id) + " fits",
-            );
-            for (let j = i + 1; j < controls.length; j++)
-              assert(
-                !overlap(r, controls[j].getBoundingClientRect()),
-                controls[i].outerHTML.slice(0, 70) +
-                  " overlaps " +
-                  controls[j].outerHTML.slice(0, 70),
-              );
-          }
-          click("pause");
-          const resumeRect = d.getElementById("resume").getBoundingClientRect();
-          assert(
-            resumeRect.top >= 0 && resumeRect.bottom <= height,
-            "Resume immediately visible without scrolling",
-          );
-          click("resume");
-        });
-      }
-    }
-    await test("No uncaught browser errors", () =>
-      assert(errors.length === 0, errors.join("; ")));
-    out.push(
-      "\n" +
-        out.filter((x) => x.startsWith("PASS")).length +
-        " passed; " +
-        out.filter((x) => x.startsWith("FAIL")).length +
-        " failed.",
-    );
+    fn();
+    pass++;
+    report.textContent += `PASS ${label}\n`;
   } catch (e) {
-    out.push("FATAL " + e.stack);
-  } finally {
-    for (const [k, v] of saved) {
-      if (v === null) localStorage.removeItem(k);
-      else localStorage.setItem(k, v);
-    }
-    report.textContent = out.join("\n");
-    button.disabled = false;
+    fail++;
+    report.textContent += `FAIL ${label}: ${e.message}\n`;
   }
+};
+const ok = (v, message = "Assertion failed") => {
+  if (!v) throw Error(message);
+};
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+document.getElementById("run").onclick = async () => {
+  pass = fail = 0;
+  report.textContent = "Running production build…\n";
+  stage.replaceChildren();
+  // Remove the one fixture record written by the first local QA run before QA persistence was isolated.
+  try {
+    const fixture = JSON.parse(localStorage.getItem("breakwater-best"));
+    if (fixture?.score === 7628 && fixture.time >= 62 && fixture.time < 62.2)
+      localStorage.removeItem("breakwater-best");
+  } catch {}
+  const frame = document.createElement("iframe");
+  frame.style.cssText = "width:1280px;height:720px;border:0";
+  frame.src = "../dist/?qa=1";
+  stage.append(frame);
+  for (let i = 0; i < 200 && !frame.contentWindow.__breakwater; i++)
+    await wait(50);
+  const w = frame.contentWindow,
+    d = w.document,
+    g = w.__breakwater;
+  if (!g) {
+    report.textContent += "FAIL game did not initialize";
+    return;
+  }
+  const key = (type, code) =>
+    w.dispatchEvent(
+      new w.KeyboardEvent(type, { code, bubbles: true, cancelable: true }),
+    );
+  const pointer = (type, el, id) =>
+    el.dispatchEvent(
+      new w.PointerEvent(type, {
+        pointerId: id,
+        pointerType: "touch",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  const step = (seconds) => {
+    for (let i = 0; i < Math.ceil(seconds * 120); i++) g.step(1 / 120);
+  };
+  g.freeze();
+  g.start();
+  g.setState({});
+  check("WebGL production scene has rendered", () =>
+    ok(g.drawCalls > 0 && d.getElementById("loading").hidden),
+  );
+  check("Shift + Right moves the car while boosting", () => {
+    key("keydown", "ShiftLeft");
+    key("keydown", "ArrowRight");
+    step(0.4);
+    ok(g.state.x > 3);
+    ok(g.state.boosting);
+    ok(g.input.steer === 1 && g.input.boost);
+  });
+  check("Shift + Left reverses steering without releasing Shift", () => {
+    key("keyup", "ArrowRight");
+    key("keydown", "ArrowLeft");
+    step(0.65);
+    ok(g.state.vx < -10);
+    ok(g.state.boosting);
+  });
+  check("Shift + Arrow + Space remain held through takeoff and landing", () => {
+    key("keydown", "Space");
+    step(0.6);
+    ok(g.state.airborne);
+    ok(g.input.steer === -1 && g.input.boost && g.input.fly);
+    key("keyup", "Space");
+    step(2);
+    ok(!g.state.airborne);
+    ok(g.input.steer === -1 && g.input.boost);
+  });
+  g.start();
+  g.setState({});
+  check("Three simultaneous touch controls work independently", () => {
+    pointer("pointerdown", d.querySelector("[data-control=left]"), 1);
+    pointer("pointerdown", d.querySelector("[data-control=fly]"), 2);
+    pointer("pointerdown", d.querySelector("[data-control=boost]"), 3);
+    step(0.5);
+    ok(g.state.x < -4 && g.state.y > 1 && g.state.boosting);
+    pointer("pointerup", d.querySelector("[data-control=fly]"), 2);
+    ok(g.input.steer === -1 && g.input.boost && !g.input.fly);
+  });
+  check("Pointer cancellation releases only the cancelled control", () => {
+    pointer("pointercancel", d.querySelector("[data-control=left]"), 1);
+    ok(g.input.steer === 0 && g.input.boost);
+    pointer("lostpointercapture", d.querySelector("[data-control=boost]"), 3);
+    ok(!g.input.boost);
+  });
+  check("Holding buttons cannot select the page or open the copy menu", () => {
+    ok(w.getComputedStyle(d.body).userSelect === "none");
+    ok(
+      w.getComputedStyle(d.querySelector("[data-control=fly]")).touchAction ===
+        "none",
+    );
+    const e = new w.Event("selectstart", { cancelable: true });
+    d.dispatchEvent(e);
+    ok(e.defaultPrevented);
+    const c = new w.Event("contextmenu", { cancelable: true });
+    d.dispatchEvent(c);
+    ok(c.defaultPrevented);
+  });
+  check("Pause freezes distance/time and clears held controls", () => {
+    key("keydown", "ShiftLeft");
+    g.pause();
+    const before = g.state.time;
+    step(2);
+    ok(g.state.time === before);
+    ok(!g.input.boost);
+    ok(g.phase === "paused");
+  });
+  check("Resume returns deliberate control, with no stuck key", () => {
+    d.getElementById("resume").click();
+    ok(g.phase === "playing" && !g.input.boost);
+  });
+  check("Failure presents a specific takeoff tip and a one-click retry", () => {
+    g.setState({ d: 655, y: 0, vy: 0, x: 0 });
+    step(3);
+    ok(g.phase === "results");
+    ok(d.getElementById("result-tip").textContent.includes("Hold FLY"));
+    d.getElementById("retry").click();
+    ok(g.phase === "playing" && g.state.d === 0 && g.state.hull === 3);
+  });
+  check("Finish awards a medal and ends the run once", () => {
+    g.setState({ d: 3599, time: 62, gates: 14, score: 4000 });
+    step(0.1);
+    ok(g.phase === "results");
+    ok(d.getElementById("result-rank").textContent === "GOLD");
+    const score = g.state.score;
+    step(2);
+    ok(g.state.score === score);
+  });
+  for (const [width, height] of [
+    [1280, 720],
+    [844, 390],
+    [667, 375],
+    [568, 320],
+  ]) {
+    frame.style.width = width + "px";
+    frame.style.height = height + "px";
+    await wait(90);
+    g.home();
+    check(
+      `${width}×${height}: start title and instructions have breathing room`,
+      () => {
+        const title = d.querySelector(".home-copy").getBoundingClientRect();
+        const brief = d.querySelector(".brief").getBoundingClientRect();
+        ok(
+          title.bottom + 8 <= brief.top,
+          `title bottom ${title.bottom}, instructions ${brief.top}`,
+        );
+        const start = d.getElementById("start").getBoundingClientRect();
+        ok(
+          start.right <= width && start.bottom <= height && start.height >= 44,
+        );
+      },
+    );
+    g.start();
+    g.setState({ d: 510 });
+    check(
+      `${width}×${height}: HUD and large controls remain inside viewport`,
+      () => {
+        for (const el of [
+          ...d.querySelectorAll(
+            ".hud-top,.speed-block,.reserve-block,#warning,#touch-controls button",
+          ),
+        ]) {
+          if (!el.getClientRects().length) continue;
+          const r = el.getBoundingClientRect();
+          ok(
+            r.left >= 0 &&
+              r.top >= 0 &&
+              r.right <= width + 1 &&
+              r.bottom <= height + 1,
+            el.className || el.id,
+          );
+          if (el.tagName === "BUTTON")
+            ok(r.width >= 44 && r.height >= 44, "touch target too small");
+        }
+      },
+    );
+    check(
+      `${width}×${height}: critical text and controls do not overlap`,
+      () => {
+        const els = [
+          ".speed-block",
+          ".reserve-block",
+          "#warning",
+          ...(width < 1000 ? [".steering", ".actions"] : ["#desktop-controls"]),
+        ].map((sel) => d.querySelector(sel));
+        for (let a = 0; a < els.length; a++)
+          for (let b = a + 1; b < els.length; b++) {
+            const x = els[a].getBoundingClientRect(),
+              y = els[b].getBoundingClientRect();
+            ok(
+              !(
+                x.left < y.right &&
+                x.right > y.left &&
+                x.top < y.bottom &&
+                x.bottom > y.top
+              ),
+              `${els[a].className} / ${els[b].className}`,
+            );
+          }
+      },
+    );
+    g.pause();
+    check(`${width}×${height}: pause buttons visible without scrolling`, () => {
+      for (const id of ["resume", "restart", "sound", "quality", "motion"]) {
+        const r = d.getElementById(id).getBoundingClientRect();
+        ok(r.top >= 0 && r.bottom <= height + 1 && r.height >= 44, id);
+      }
+    });
+  }
+  for (const [width, height] of [
+    [390, 844],
+    [320, 568],
+  ]) {
+    g.start();
+    g.setState({});
+    key("keydown", "ShiftLeft");
+    frame.style.width = width + "px";
+    frame.style.height = height + "px";
+    await wait(90);
+    check(
+      `${width}×${height}: portrait pauses play and shows readable rotation prompt`,
+      () => {
+        ok(g.blocked);
+        ok(!d.getElementById("rotate").hidden);
+        ok(g.phase === "paused");
+        ok(!g.input.boost);
+        ok(d.getElementById("hud").inert);
+        ok(d.getElementById("masthead").inert);
+      },
+    );
+    frame.style.width = "844px";
+    frame.style.height = "390px";
+    await wait(90);
+    check("Rotation back requires deliberate resume", () =>
+      ok(!g.blocked && g.phase === "paused"),
+    );
+  }
+  g.home();
+  frame.style.width = "844px";
+  frame.style.height = "390px";
+  report.textContent += `\n${pass} passed · ${fail} failed.\n`;
+  document.title = `Breakwater QA: ${pass} passed, ${fail} failed`;
 };

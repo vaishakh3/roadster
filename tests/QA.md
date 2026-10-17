@@ -1,36 +1,33 @@
-# Verification record
+# Breakwater verification — 17 October 2026
 
-Validation performed on October 17, 2026. This records the AFTER HOURS design, landscape-only mobile play and assisted default controls.
+This record applies to the new coastal sprint, not the retired Flight Lab interface.
 
-## Source checks
+## Gameplay and input
 
-`npm test`: **73 checks** — 25 physics, 31 integration/endurance/geometry, 9 scoring/performance/input/collision, and 8 pilot/handling/orientation checks.
+`npm test`: 20 checks. A deterministic controller completes all 18 gates with three condition segments in 50.51 seconds (21,020 points). This verifies that the route is feasible; it is not a claim about human difficulty or fun.
 
-- A physically driven circuit clears all 12 gates in about 31.27 seconds, with maximum track-center deviation of 2.26 m. Inputs are bounded; no teleportation.
-- Full pitch/roll/yaw rotations, orientation-dependent thrust, reserve depletion, landing and crash lockout; 20 randomized two-minute physics runs and finite geometry.
-- Tyre grip limits high-speed cornering; world momentum persists through steering. Loose surfaces brake and corner less effectively. Brake wins over simultaneous throttle and boost.
-- Simple controls accelerate to cruise speed, stop without unintended reverse, command a real roll, stabilize, land and park to refill. Pilot commands do not mutate position, attitude or stunt totals.
-- Roll guards cover altitude, fuel, active maneuvers and landing. Phones/touch tablets require landscape; large desktop portrait windows remain usable.
-- Independent pointer release/cancellation, pause/blur/restart, scoring and combo forfeiture, pixel budgets and scenery collisions.
+Coverage includes identical lateral authority during cruise/boost; simultaneous steering, flight and boost through takeoff/landing; steering during reward rolls; gravity/ceiling/landing; all four gaps and their reserve guarantees; swept obstacle contacts; collision immunity; gate scoring/deduplication/multiplier; braking priority; warnings; stable integration at 30/60/120 Hz; bounded reserve; independent key release; and landscape gating.
 
-## Production browser checks
+## Browser verification
 
-Run `npm run build` and `npm start`, then visit `/tests/browser.html` and click **Run checks**. The harness loads the bundled `dist/index.html?qa=1` with real WebGL and restores local best-score values afterward.
+The production-bundle harness uses WebGL and actual DOM handlers. 31 checks cover:
 
-**20 checks passed in the Codex browser:**
+- Shift + either arrow, changing direction without releasing boost, and holding steering/boost through takeoff and landing.
+- Three concurrent synthetic touch pointers; independent release, cancellation and lost capture.
+- Selection/context-menu suppression and touch-action rules.
+- Pause, resume, clear-input behavior, a bridge failure with specific instructions, instant retry, finish scoring and medal.
+- HUD bounds and critical non-overlap at 1280×720, 844×390, 667×375 and 568×320.
+- Visible pause controls of at least 44 px at those sizes; no title/instruction overlap on start screens.
+- Portrait prompts at 390×844 and 320×568, pausing time and input, inert gameplay, and deliberate resume after returning to landscape.
 
-- Production WebGL rendering; keyboard drive/steer/brake; pause clears input and freezes time; photo mode freezes and returns.
-- Actual manual launch → climb → full roll → recovery → landing banks 750 points.
-- Simple tap launch → auto climb → physical roll → assisted landing banks points, then parks and refills.
-- Rush timeout and restart; independent concurrent synthetic pointers; cancelled selection/context menus.
-- Portrait at 390×844, 375×667 and 320×568 pauses play, clears held boost, makes the game inert, displays the rotate prompt, blocks resume, and waits for deliberate resume after rotation.
-- Garage actions fit; touch buttons and sticks do not overlap in both simple and manual layouts at 1440×900, 844×390, 667×375 and 568×320.
-- No uncaught browser errors.
+A real-time rendered course driven through keyboard events completed all 18 gates and four jumps in 50.51 seconds, with all three condition segments intact (20,869 points).
 
-`/tests/preview.html` provides visible viewport presets for manual review. Desktop garage, phone garage, flight HUD, pause menu and rotate screen were visually reviewed. Fonts are bundled and the hosted/standalone HTML outputs are identical. Browser pointer events are synthetic; this is not a physical mobile-device benchmark. The optional command-line Playwright wrapper was not used in this session.
+Native keyboard verification in the Codex browser also held Shift+Right, then Shift+Left: the vehicle moved from X=0 to X=8.54 at 211 km/h, then back to X=−0.51 at 248 km/h. This exercised a real held key chord in addition to the synthetic harness.
 
-## Before public launch
+Visual review covers the start screen, driving/flight HUD, bridge warnings, pause, results and portrait prompt. QA state is isolated from persisted personal bests. The standalone and hosted builds are identical, with bundled fonts and no runtime network assets.
 
-Use a real iPhone/Safari and Android/Chrome for sustained multitouch, OS long-press behavior, performance/thermal behavior, orientation changes, safe-area/browser toolbar behavior, audio interruptions and image downloads. Test the eventual Vercel preview on those devices. No physical-device frame-rate or thermal claim is made. Deployment is left to the owner.
+## Launch limits
 
-The car is original procedural geometry, not manufacturer CAD. Flight and tyre parameters are game approximations. Ground support is flat; building/barrier collision footprints are simplified. These limits remain explicit in the README.
+Browser viewport tests do not measure a phone GPU or OS touch behavior. Before public launch, play sustained runs on actual iPhone/Safari and Android/Chrome: simultaneous thumbs, long presses, safe areas/browser bars, rotation, audio interruptions, image downloads, frame rate and thermal behavior. Test the eventual Vercel preview too. No physical-device frame-rate claim is made.
+
+This is assisted arcade driving, not six-axis simulation or measured Roadster physics. The reward roll is visual. There is one authored 3.6 km route and a local record, without online multiplayer or leaderboards.
