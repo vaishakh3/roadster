@@ -17,14 +17,14 @@ const result = await build({
 const html = await readFile("index.html", "utf8"),
   bundled = result.outputFiles[0].text;
 let js = bundled;
-for (const file of await readdir("assets/realism")) {
-  if (!/\.(jpg|hdr)$/.test(file)) continue;
-  const data = await readFile("assets/realism/" + file);
-  const mime = file.endsWith(".jpg")
-    ? "image/jpeg"
+for (const file of await readdir("assets/runtime")) {
+  if (!/\.(webp|hdr)$/.test(file)) continue;
+  const data = await readFile("assets/runtime/" + file);
+  const mime = file.endsWith(".webp")
+    ? "image/webp"
     : "application/octet-stream";
   js = js.replaceAll(
-    "assets/realism/" + file,
+    "assets/runtime/" + file,
     `data:${mime};base64,${data.toString("base64")}`,
   );
 }
@@ -57,6 +57,8 @@ const bundledLicenses =
   "\n\n" +
   (await readFile("assets/realism/LICENSE.txt", "utf8")) +
   "\n\n" +
+  (await readFile("assets/runtime/LICENSE.txt", "utf8")) +
+  "\n\n" +
   (await readFile("assets/LICENSE.txt", "utf8")) +
   "\n\n" +
   (await readFile("vendor/THREE-LICENSE.txt", "utf8"));
@@ -77,6 +79,7 @@ await mkdir("dist", { recursive: true });
 await writeFile("dist/index.html", standalone);
 await copyFile("vendor/THREE-LICENSE.txt", "dist/THREE-LICENSE.txt");
 await copyFile("assets/LICENSE.txt", "dist/ASSET-LICENSE.txt");
+await copyFile("assets/runtime/LICENSE.txt", "dist/RUNTIME-ASSETS-LICENSE.txt");
 await copyFile("assets/realism/LICENSE.txt", "dist/REALISM-ASSETS-LICENSE.txt");
 for (const file of ["Barlow-OFL.txt", "IBMPlexMono-OFL.txt"])
   await copyFile("assets/fonts/" + file, "dist/" + file);

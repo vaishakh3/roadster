@@ -2,6 +2,7 @@
  * Steering and lift are independent of thrust, including during takeoff/landing.
  * The assisted route heading keeps the controls simple; this is not a vehicle simulator. */
 import { COURSES, getCourse, hazardPose } from "./courses.js";
+import { rampSurface, launchFlight, flightPose } from "./stunts.js";
 export const LENGTH = COURSES[0].length;
 export const ROAD_HALF = 10;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -61,6 +62,15 @@ export function createRun(course = COURSES[0]) {
     padTime: 0,
     launches: 0,
     rampPitch: 0,
+    attachedRamp: -1,
+    flight: null,
+    stuntAngle: 0,
+    stuntKind: "",
+    stunts: 0,
+    crashAge: 10,
+    crashDirection: 1,
+    crashKind: "impact",
+    landingAge: 10,
   };
 }
 function event(s, type, text, points = 0) {
@@ -71,6 +81,10 @@ function finish(s, failed, reason) {
   s.failed = failed;
   s.finished = !failed;
   s.reason = reason;
+  if (failed) {
+    s.crashAge = 0;
+    s.crashKind = reason === "THE BRIDGE WAS OUT" ? "fall" : "impact";
+  }
   if (!failed)
     s.score += Math.round(
       Math.max(0, s.course.silver + 14 - s.time) * 60 + s.hull * 400,
@@ -88,6 +102,8 @@ export function stepRun(s, raw, frameDt) {
 }
 function tick(s, raw, dt) {
   s.time += dt;
+  s.crashAge += dt;
+  s.landingAge += dt;
   s.padTime = Math.max(0, s.padTime - dt);
   const {
     gaps: GAPS,
@@ -124,23 +140,67 @@ function tick(s, raw, dt) {
   s.d += s.speed * dt;
   s.topSpeed = Math.max(s.topSpeed, s.speed);
   const gap = inGap(s.d, s.course);
-  if (s.lifting) {
-    // Damped lift, then a gentle automatic ceiling. Releasing gives a predictable glide.
-    const liftAccel = clamp((5.8 - s.y) * 13 - s.vy * 5, -18, 24);
-    s.vy += liftAccel * dt;
-  } else if (s.y > 0 || gap) s.vy -= 9.81 * dt;
-  s.y += s.vy * dt;
-  const ramp = s.course.ramps.find(
-    (r) => s.d >= r.d - 10 && s.d < r.d && Math.abs(s.x - r.x) < 3.5,
+  // Adhesion follows the same curved deck as the renderer. Steering stays live.
+  const rampIndex = s.course.ramps.findIndex(
+    (r) =>
+      s.d >= r.d - (r.length || 10) &&
+      s.d <= r.d &&
+      Math.abs(s.x - r.x) < (r.width || 7) / 2,
   );
-  const floor = ramp ? (s.d - ramp.d + 10) * 0.15 : 0;
-  s.rampPitch = ramp && s.y < floor + 0.3 ? 0.15 : 0;
-  if (!gap && s.y <= floor) {
-    if (s.airborne && s.vy < -3) event(s, "land", "TOUCHDOWN");
-    s.y = floor;
+  const ramp = rampIndex >= 0 ? s.course.ramps[rampIndex] : null;
+  const surface = ramp ? rampSurface(ramp, s.d) : { height: 0, pitch: 0 };
+  const attached =
+    ramp &&
+    !s.flight &&
+    (s.attachedRamp === rampIndex || Math.abs(s.y - surface.height) <= 0.6);
+  s.attachedRamp = attached ? rampIndex : -1;
+  s.rampPitch = attached ? surface.pitch : 0;
+  if (attached) {
+    s.y = surface.height;
     s.vy = 0;
+    s.lifting = false;
+    s.airborne = false;
+  } else if (s.flight) {
+    const f = s.flight,
+      p = flightPose(f, dt, s.d);
+    s.y = p.y;
+    s.vy = p.vy;
+    s.stuntAngle = p.angle;
+    s.stuntKind = f.kind;
+    s.lifting = false;
+    if (p.done) {
+      s.y = 0;
+      s.vy = 0;
+      s.flight = null;
+      s.stuntAngle = 0;
+      s.landingAge = 0;
+      if (f.clean) {
+        s.stunts++;
+        s.score += 800;
+        event(
+          s,
+          "stunt",
+          f.kind === "roll" ? "BARREL ROLL · LANDED" : "BACKFLIP · LANDED",
+          800,
+        );
+      }
+      event(s, "land", "TOUCHDOWN");
+    }
+  } else {
+    if (s.lifting) s.vy += clamp((5.8 - s.y) * 13 - s.vy * 5, -18, 24) * dt;
+    else if (s.y > 0 || gap) s.vy -= 9.81 * dt;
+    s.y += s.vy * dt;
   }
-  s.airborne = s.y > floor + 0.25 || gap;
+  if (!attached && !s.flight && !gap && s.y <= 0) {
+    if (s.airborne && s.vy < -3) {
+      event(s, "land", "TOUCHDOWN");
+      s.landingAge = 0;
+    }
+    s.y = 0;
+    s.vy = 0;
+    s.stuntAngle = 0;
+  }
+  s.airborne = !attached && (s.y > 0.25 || gap);
   if (s.airborne) s.airtime += dt;
   // Flight stays available at the final bridge even after an imperfect run.
   // Amber approach strips are also reserve stations; the warning announces the refill.
@@ -148,7 +208,7 @@ function tick(s, raw, dt) {
     const g = GAPS[i];
     if (prevD < g.start - 145 && s.d >= g.start - 145) {
       s.energy = Math.max(s.energy, 65);
-      event(s, "approach", "BRIDGE OUT · HOLD FLY");
+      event(s, "approach", "MAG RAMP AHEAD · AIM FOR THE MINT STRIP");
     }
     if (prevD <= g.end && s.d > g.end && s.y > -0.5) {
       s.passedGaps.add(i);
@@ -185,16 +245,27 @@ function tick(s, raw, dt) {
     if (
       prevD <= r.d &&
       s.d > r.d &&
-      Math.abs(s.x - r.x) < 3.5 &&
-      s.y < 2 &&
+      Math.abs(s.x - r.x) < (r.width || 7) / 2 &&
+      Math.abs(s.y - (r.height || 1.5)) < 1.5 &&
+      !s.flight &&
       !s.processed.has("r" + i)
     ) {
       s.processed.add("r" + i);
-      s.vy = 12;
-      s.y = 1.5;
+      s.flight = launchFlight(r, s.speed);
+      s.y = r.height || 1.5;
+      s.vy = s.flight.vy;
+      s.attachedRamp = -1;
+      s.rampPitch = 0;
+      s.airborne = true;
       s.launches++;
       s.energy = Math.max(s.energy, 65);
-      event(s, "launch", "LAUNCH · HOLD FLY");
+      s.stuntKind = s.flight.kind;
+      s.stuntAngle = 0;
+      event(
+        s,
+        "launch",
+        r.height >= 14 ? "SKY RAMP · AUTO FLIP" : "LAUNCH · AUTO STUNT",
+      );
     }
   }
   for (let i = 0; i < OBSTACLES.length; i++) {
@@ -217,11 +288,15 @@ function tick(s, raw, dt) {
     ) {
       s.processed.add(key);
       s.hull--;
+      s.crashAge = 0;
+      s.crashDirection = s.x >= pose.x ? 1 : -1;
+      s.crashKind = "impact";
+      if (s.flight) s.flight.clean = false;
       s.chain = 0;
       s.speed *= 0.62;
       s.invulnerable = 1.25;
       s.score = Math.max(0, s.score - 100);
-      event(s, "hit", "IMPACT · KEEP GOING");
+      event(s, "hit", s.hull ? "IMPACT · KEEP GOING" : "IMPACT · RUN ENDED");
       if (!s.hull) {
         finish(s, true, "TOO MUCH DAMAGE");
         return;
@@ -246,11 +321,11 @@ function tick(s, raw, dt) {
     s.processed.add(key);
     if (prevD > g.d) continue;
     const caught =
-      Math.abs(s.x - g.x) < 3.25 && (g.y ? s.y > 2.5 && s.y < 8 : s.y < 3.1);
+      Math.abs(s.x - g.x) < 3.25 && (g.y ? Math.abs(s.y - g.y) < 4 : s.y < 3.1);
     if (caught) {
       const perfect =
         Math.abs(s.x - g.x) < 1.25 &&
-        (g.y ? Math.abs(s.y - 5.2) < 1.8 : s.y < 0.5);
+        (g.y ? Math.abs(s.y - (g.y + 0.4)) < 2.1 : s.y < 0.5);
       s.chain++;
       s.bestChain = Math.max(s.bestChain, s.chain);
       s.gates++;
@@ -259,7 +334,7 @@ function tick(s, raw, dt) {
       s.score += points;
       if (perfect) s.perfect++;
       event(s, "gate", perfect ? "PERFECT LINE" : "RECHARGED", points);
-      if (g.y && perfect) {
+      if (g.y && perfect && !s.flight) {
         s.rollTime = 0.9;
         s.roll = 0;
       }
@@ -281,8 +356,44 @@ function tick(s, raw, dt) {
   if (s.d >= LENGTH) finish(s, false, "CROSSING COMPLETE");
 }
 export function nextWarning(s) {
+  if (s.failed)
+    return {
+      kind: "hit",
+      title: s.crashKind === "fall" ? "MISSED THE ROAD" : "WRECKED",
+      detail: "RETRY IN A MOMENT",
+    };
+  if (s.flight)
+    return {
+      kind: "stunt",
+      title: s.stuntKind === "roll" ? "BARREL ROLL" : "BACKFLIP",
+      detail: "AUTO LANDING · KEEP STEERING",
+    };
+  const hazards = s.course.obstacles
+    .map((o) => ({ ...o, ...hazardPose(o, s.time) }))
+    .filter((o) => o.d > s.d - 4 && o.d - s.d < 160)
+    .sort((a, b) => a.d - b.d);
+  const o = hazards[0];
+  const urgentHazard =
+    o && o.d - s.d < 90 && s.y < o.h && s.y + 1.25 > (o.bottom || 0);
+  const ramp = s.course.ramps.find(
+    (r) => s.d > r.d - (r.length || 10) - 130 && s.d < r.d,
+  );
+  if (ramp && !urgentHazard)
+    return {
+      kind: "ramp",
+      title:
+        s.attachedRamp >= 0
+          ? "MAGNETIC GRIP"
+          : ramp.height >= 14
+            ? "SKY RAMP"
+            : "STUNT RAMP",
+      detail:
+        s.attachedRamp >= 0
+          ? "HOLD YOUR LINE · AUTO FLIP"
+          : "TAKE THE MINT LANE · AUTO STUNT",
+    };
   const gap = s.course.gaps.find((g) => s.d > g.start - 175 && s.d < g.end);
-  if (gap)
+  if (gap && !urgentHazard)
     return {
       kind: "gap",
       title: s.d < gap.start ? "BRIDGE OUT" : "STAY IN THE AIR",
@@ -291,32 +402,33 @@ export function nextWarning(s) {
           ? Math.ceil(gap.start - s.d) + " M · HOLD FLY"
           : "HOLD FLY UNTIL THE ROAD RETURNS",
     };
-  const hazards = s.course.obstacles
-    .map((o) => ({ ...o, ...hazardPose(o, s.time) }))
-    .filter((o) => o.d > s.d - 4 && o.d - s.d < 160)
-    .sort((a, b) => a.d - b.d);
-  const o = hazards[0];
   if (o)
     return {
       kind: o.kind,
       title:
         o.kind === "gantry"
           ? "STAY LOW"
-          : o.kind === "sweeper"
-            ? "MOVING BARRIER"
-            : o.kind === "traffic"
-              ? "TRAFFIC AHEAD"
-              : o.x < -2
-                ? "KEEP RIGHT"
-                : o.x > 2
-                  ? "KEEP LEFT"
-                  : "SPLIT AROUND",
+          : o.kind === "cargo"
+            ? "SWINGING CARGO"
+            : o.kind === "rubble"
+              ? "ROCKFALL"
+              : o.kind === "drums"
+                ? "ROADWORKS"
+                : o.kind === "sweeper"
+                  ? "MOVING BARRIER"
+                  : o.kind === "traffic"
+                    ? "TRAFFIC AHEAD"
+                    : o.x < -2
+                      ? "KEEP RIGHT"
+                      : o.x > 2
+                        ? "KEEP LEFT"
+                        : "SPLIT AROUND",
       detail:
         (o.kind === "gantry"
           ? "RELEASE FLY · "
-          : o.kind === "sweeper"
+          : o.kind === "sweeper" || o.kind === "cargo"
             ? "STEER OR FLY · "
-            : o.kind === "traffic"
+            : o.kind === "traffic" || o.kind === "rubble" || o.kind === "drums"
               ? "PASS OR FLY · "
               : "BARRIER · ") +
         Math.max(0, Math.ceil(o.d - s.d)) +

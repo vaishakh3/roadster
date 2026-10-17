@@ -19,6 +19,18 @@ export function driveInput(s) {
     else x = o.x >= 0 ? -6 : 6;
   }
   if (low) fly = false;
+  const ramp = c.ramps.find(
+    (r) => s.d > r.d - (r.length || 10) - 55 && s.d < r.d,
+  );
+  if (ramp && (!g || g.d >= ramp.d - (ramp.length || 10))) {
+    x = ramp.x;
+    fly = false;
+  }
+  if (s.flight) {
+    x = g?.x || 0;
+    fly = false;
+  }
+
   return {
     steer: Math.max(-1, Math.min(1, (x - s.x) * 2 - s.vx * 0.2)),
     fly,

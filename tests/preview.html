@@ -57,6 +57,12 @@
     ><button data-view="tunnel">Low clearance</button
     ><button data-view="last">Final sector</button
     ><button data-view="arch">Landmark</button>
+    <button data-view="ramp">Sky ramp</button
+    ><button data-view="flip">Mid flip</button>
+    <button data-view="crash">Crash</button
+    ><button data-view="trail">Trail turn</button>
+    <button data-view="gallery">Gallery</button
+    ><button data-view="cargo">Cargo</button>
   </nav>
   <p id="status">
     Frozen visual review. Use Play live for native keyboard checks.
@@ -108,6 +114,7 @@
       (b) =>
         (b.onclick = () => {
           const g = frame.contentWindow.__breakwater;
+          if (!g) return;
           g.home();
           g.selectCourse(b.dataset.arena);
           g.freeze();
@@ -174,6 +181,61 @@
               time: 18,
               speed: 65,
             });
+          if (v === "ramp")
+            g.setState({
+              d: g.course.ramps[1].d - g.course.ramps[1].length - 40,
+              speed: 70,
+              time: 20,
+            });
+          if (v === "gallery")
+            g.setState({
+              d: g.course.id === "redshift" ? 1040 : 180,
+              speed: 65,
+              time: 7,
+            });
+          if (v === "cargo") g.setState({ d: 1760, speed: 65, time: 26 });
+          if (v === "flip") {
+            const r = g.course.ramps[1];
+            g.setState({ d: r.d - 0.1, y: r.height, speed: 70, time: 20 });
+            g.step(0.01);
+            for (let i = 0; i < 12; i++) g.step(0.05);
+          }
+          if (v === "crash") {
+            const o = g.course.obstacles[0];
+            g.setState({ d: o.d - 3, x: o.x, speed: 76, hull: 1 });
+            for (let i = 0; i < 11; i++) g.step(0.05);
+          }
+          if (v === "trail") {
+            const w = frame.contentWindow;
+            g.setState({ d: 380, speed: 76 });
+            for (const code of ["ShiftLeft", "ArrowRight"])
+              w.dispatchEvent(
+                new w.KeyboardEvent("keydown", {
+                  code,
+                  bubbles: true,
+                  cancelable: true,
+                }),
+              );
+            for (let i = 0; i < 20; i++) g.step(1 / 60);
+            w.dispatchEvent(
+              new w.KeyboardEvent("keyup", {
+                code: "ArrowRight",
+                bubbles: true,
+              }),
+            );
+            w.dispatchEvent(
+              new w.KeyboardEvent("keydown", {
+                code: "ArrowLeft",
+                bubbles: true,
+                cancelable: true,
+              }),
+            );
+            for (let i = 0; i < 15; i++) g.step(1 / 60);
+            for (const code of ["ShiftLeft", "ArrowLeft"])
+              w.dispatchEvent(
+                new w.KeyboardEvent("keyup", { code, bubbles: true }),
+              );
+          }
           if (v === "last")
             g.setState({ d: g.course.length - 300, time: 48, speed: 70 });
           if (v === "results") {

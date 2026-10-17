@@ -1,4 +1,6 @@
 import * as THREE from "./vendor/three.module.js";
+import { rampSurface } from "./stunts.js";
+import { addSetpieces } from "./setpieces.js";
 import {
   surfaces,
   roadMaterial,
@@ -14,7 +16,7 @@ import {
 } from "./run.js";
 import { COURSES, hazardPose } from "./courses.js";
 
-/** Each course owns its geometry, textures and lights, so changing arena releases GPU memory. */
+/** Each prepared venue owns one reusable world; selection only changes visibility. */
 export function createCoast(scene, renderer, course = COURSES[0]) {
   const root = new THREE.Group();
   scene.add(root);
@@ -26,12 +28,16 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     roadY = (d) => routeY(d, course);
   const gap = (d) => inGap(d, course),
     length = course.length;
-  scene.fog = new THREE.FogExp2(course.fog, night ? 0.00165 : 0.00085);
-  scene.background = new THREE.Color(course.fog);
-  scene.environment = surfaces.environment || null;
-  scene.environmentIntensity = night ? 0.38 : canyon ? 0.75 : 0.85;
-  scene.environmentRotation.set(0, canyon ? 1.1 : 0.4, 0);
-  renderer.toneMappingExposure = night ? 0.95 : 0.94;
+  function activate() {
+    root.visible = true;
+    scene.fog = new THREE.FogExp2(course.fog, night ? 0.00165 : 0.00085);
+    scene.background = new THREE.Color(course.fog);
+    scene.environment = surfaces.environment || null;
+    scene.environmentIntensity = night ? 0.3 : canyon ? 0.75 : 0.85;
+    scene.environmentRotation.set(0, canyon ? 1.1 : 0.4, 0);
+    renderer.toneMappingExposure = night ? 0.95 : 0.94;
+  }
+  activate();
   const mat = (color, roughness = 0.8, metalness = 0) =>
     new THREE.MeshStandardMaterial({ color, roughness, metalness });
   const concrete = mat(night ? 0x344653 : canyon ? 0x99795e : 0xc4cbc3),
@@ -191,7 +197,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   const gateMeshes = [];
   course.gates.forEach((g, i) => {
     const group = groupAt(g.d, g.x);
-    group.position.y += g.y ? 6.3 : 3.3;
+    group.position.y += g.y ? g.y + 0.65 : 3.3;
     dynamics.add(group);
     const rim = mesh(new THREE.TorusGeometry(3.25, 0.15, 5, 6), teal, group);
     rim.rotation.z = Math.PI / 6;
@@ -227,6 +233,65 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
           box(0.06, 1.85, 0.08, edge, s * 1.34, 1.9, -1.1 + k * 0.7, g);
       }
       box(1.5, 0.12, 0.3, amber, 0, 2.4, -2.1, g);
+    } else if (o.kind === "cargo") {
+      box(o.w, 3.8, 3.6, teal, 0, 1.9, 0, g).castShadow = true;
+      for (let x = -2.4; x < 2.5; x += 0.45)
+        box(0.07, 3.7, 3.64, metal, x, 1.9, 0, g);
+      for (const side of [-1, 1]) {
+        box(0.05, 20.2, 0.05, metal, side * 2.1, 13.9, 0, g);
+        box(0.15, 0.15, 3.75, amber, side * 2.5, 0.18, 0, g);
+      }
+      box(5.1, 0.18, 0.05, amber, 0, 0.2, 1.84, g);
+      box(5.1, 0.15, 0.05, amber, 0, 3.6, 1.84, g);
+      for (const side of [-1, 1]) {
+        const stripe = box(0.22, 2.7, 0.05, amber, side * 0.65, 1.9, 1.85, g);
+        stripe.rotation.z = side * 0.48;
+      }
+      box(5, 0.7, 2.2, metal, 0, 23.4, 0, g);
+      const crane = groupAt(o.d);
+      for (const side of [-1, 1])
+        box(1.1, 24, 1.1, orange, side * 12, 12, 0, crane);
+      box(26, 1, 2, orange, 0, 24, 0, crane);
+      sign("MOVING LOAD / PASS OR FLY", 0, 22, 1.1, crane, 18, 1.3);
+    } else if (o.kind === "rubble") {
+      for (let j = 0; j < 7; j++) {
+        const b = mesh(
+          new THREE.DodecahedronGeometry(0.65 + (j % 3) * 0.25, 1),
+          concrete,
+          g,
+        );
+        b.position.set(
+          ((j % 3) - 1) * 1.6,
+          0.6 + (j > 4 ? 0.6 : 0),
+          Math.floor(j / 3) * 1.5 - 1.5,
+        );
+        b.scale.set(1.35, 1, 1.2);
+        b.rotation.set(j * 0.31, j * 0.72, j * 0.16);
+        b.castShadow = true;
+      }
+      box(o.w, 0.08, 5.2, dark, 0, 0.04, 0, g);
+      for (const side of [-1, 1])
+        box(0.12, 1.2, 0.12, amber, side * (o.w / 2 + 0.2), 0.6, 0, g);
+    } else if (o.kind === "drums") {
+      for (let j = 0; j < 6; j++) {
+        const x = ((j % 3) - 1) * 1.45,
+          z = Math.floor(j / 3) * 1.2 - 0.6;
+        const barrel = mesh(
+          new THREE.CylinderGeometry(0.54, 0.6, 1.3, 16),
+          orange,
+          g,
+        );
+        barrel.position.set(x, 0.65, z);
+        barrel.castShadow = true;
+        for (const y of [0.3, 0.93]) {
+          const band = mesh(
+            new THREE.CylinderGeometry(0.56, 0.6, 0.18, 16),
+            edge,
+            g,
+          );
+          band.position.set(x, y, z);
+        }
+      }
     } else if (o.kind === "gantry") {
       for (const s of [-1, 1]) box(0.7, 8.4, 0.8, orange, s * 10.2, 4.2, 0, g);
       box(20, 5.1, 2.5, metal, 0, 5.85, 0, g);
@@ -292,24 +357,94 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       }
   }
   for (const r of course.ramps) {
-    const g = groupAt(r.d, r.x);
+    const half = (r.width || 7) / 2,
+      len = r.length || 10,
+      positions = [],
+      uv = [],
+      idx = [];
+    const rampMaterial = roadMaterial(false);
+    rampMaterial.color.setHex(0x65868a);
+    for (let i = 0; i <= 48; i++) {
+      const d = r.d - len + (i / 48) * len,
+        y = rampSurface(r, d).height;
+      for (const side of [-1, 1]) {
+        const p = worldPos(d, r.x + side * half, y + 0.025);
+        positions.push(p.x, p.y, p.z);
+        uv.push((side + 1) * half * 0.3, d * 0.25);
+      }
+      if (i < 48) {
+        const a = i * 2;
+        idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      }
+      if (i % 4 === 0) {
+        const g = groupAt(d, r.x);
+        g.position.y += y;
+        for (const side of [-1, 1]) {
+          const rail = box(
+            0.22,
+            0.14,
+            (len / 48) * 4 + 0.2,
+            glow,
+            side * (half - 0.2),
+            0.12,
+            0,
+            g,
+          );
+          rail.rotation.x = rampSurface(r, d).pitch;
+          if (y > 1.5) {
+            box(0.35, y, 0.35, metal, side * (half - 0.4), -y / 2, 0, g);
+          }
+          const arrow = box(0.13, 0.04, 2.2, edge, side * 0.7, 0.08, 0, g);
+          arrow.rotation.y = side * 0.55;
+          arrow.rotation.x = rampSurface(r, d).pitch;
+        }
+        if (y > 2) box(half * 2, 0.35, 0.3, metal, 0, -0.65, 0, g);
+      }
+    }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute(
       "position",
-      new THREE.Float32BufferAttribute(
-        [
-          -3.5, 0, 10, 3.5, 0, 10, -3.5, 1.5, 0, 3.5, 0, 10, 3.5, 1.5, 0, -3.5,
-          1.5, 0,
-        ],
-        3,
-      ),
+      new THREE.Float32BufferAttribute(positions, 3),
     );
+    geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    geo.setIndex(idx);
     geo.computeVertexNormals();
-    mesh(geo, orange, g);
-    for (const x of [-3.2, 3.2]) {
-      const rail = box(0.15, 0.06, 10.1, amber, x, 0.79, 5, g);
-      rail.rotation.x = 0.15;
+    mesh(geo, rampMaterial).castShadow = true;
+    for (const side of [-1, 1]) {
+      ribbon(
+        r.x + side * 3.6 - 0.1,
+        r.x + side * 3.6 + 0.1,
+        0.055,
+        glow,
+        r.land - 4,
+        r.land + 17,
+        false,
+      );
+      ribbon(
+        side < 0 ? r.x - 3.6 : r.x + 1.8,
+        side < 0 ? r.x - 1.8 : r.x + 3.6,
+        0.055,
+        glow,
+        r.land - 4,
+        r.land - 3.7,
+        false,
+      );
     }
+    const signGroup = groupAt(r.d - len - 25);
+    for (const side of [-1, 1]) {
+      box(0.28, 5, 0.28, metal, side * 7, 2.5, 0, signGroup);
+      box(0.6, 0.6, 0.2, glow, side * 7, 5, 0, signGroup);
+    }
+    sign(
+      r.height >= 14 ? "SKY RAMP / AUTO FLIP" : "MAG RAMP / AUTO STUNT",
+      0,
+      5.4,
+      0,
+      signGroup,
+      12,
+      1.2,
+      "#a6ffdf",
+    );
   }
   // Lettering is world geometry, readable while approaching at speed.
   function sign(text, x, y, z, parent, w = 15, h = 2.4, color = "#b6ffe3") {
@@ -380,7 +515,11 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
           let y;
           if (canyon) {
             const rise = 1 - Math.exp(-t * 28);
-            y = 8 + rise * (34 + ridge * 58 + n * 28) + Math.sin(t * 20) * 15;
+            y =
+              roadY(d) -
+              1 +
+              rise * (34 + ridge * 58 + n * 28) +
+              Math.sin(t * 20) * 15;
             y +=
               Math.sin(d * 0.041 + offset * 0.13) * 3.2 +
               Math.sin(d * 0.13 - offset * 0.19) * 1.3;
@@ -425,7 +564,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     if (canyon) {
       const cactus = mat(0x465b3a);
       const plants = [];
-      ribbon(-45, 45, -14, mat(0x80513a), -200, length + 300, false);
+      ribbon(-45, 45, -0.35, mat(0x80513a), -200, length + 300, false);
       for (const d of [600, 2010, 3340]) {
         const g = groupAt(d),
           curve = new THREE.CatmullRomCurve3([
@@ -516,7 +655,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       rocks.push({
         d,
         x,
-        y: canyon ? -14 + h * 0.62 : -roadY(d) - 5 + h * 0.35,
+        y: canyon ? -0.8 + h * 0.62 : -roadY(d) - 5 + h * 0.35,
         rotation: i * 2.399,
         scale: [4 + n * 6, h, 5 + n * 10],
       });
@@ -761,6 +900,16 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       box(32, 0.15, 0.15, amber, 0, 14.5, 30.5, g);
     }
   const lamps = [];
+  const poolCanvas = document.createElement("canvas");
+  poolCanvas.width = poolCanvas.height = 64;
+  const poolContext = poolCanvas.getContext("2d");
+  const poolGradient = poolContext.createRadialGradient(32, 32, 0, 32, 32, 32);
+  poolGradient.addColorStop(0, "rgba(255,255,255,1)");
+  poolGradient.addColorStop(0.3, "rgba(255,255,255,.4)");
+  poolGradient.addColorStop(1, "rgba(255,255,255,0)");
+  poolContext.fillStyle = poolGradient;
+  poolContext.fillRect(0, 0, 64, 64);
+  const poolTexture = new THREE.CanvasTexture(poolCanvas);
   for (let d = 30; d < length; d += night ? 60 : 125) {
     const s = Math.floor(d / 60) % 2 ? 1 : -1,
       g = groupAt(d, s * 12);
@@ -772,8 +921,9 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
         new THREE.PlaneGeometry(12, 27),
         new THREE.MeshBasicMaterial({
           color: d % 120 ? 0x618eb2 : 0xa47df0,
+          map: poolTexture,
           transparent: true,
-          opacity: 0.055,
+          opacity: 0.12,
           depthWrite: false,
           blending: THREE.AdditiveBlending,
         }),
@@ -784,6 +934,26 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       lamps.push(glowPlane);
     }
   }
+  addSetpieces({
+    course,
+    mesh,
+    box,
+    beamBetween,
+    groupAt,
+    worldPos,
+    root,
+    materials: {
+      concrete,
+      edge,
+      dark,
+      orange,
+      metal,
+      teal,
+      glow,
+      amber,
+      violet,
+    },
+  });
   // Atmospheric sky, clouds and a glancing water highlight, all local shaders.
   const sky = mesh(
     new THREE.SphereGeometry(7000, 24, 16),
@@ -799,7 +969,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       vertexShader:
         "varying vec3 p;void main(){p=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}",
       fragmentShader: `varying vec3 p;uniform float uNight;uniform float uDesert;uniform sampler2D skyScan;uniform float hasScan;
-    float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}void main(){vec3 d=normalize(p);float h=max(0.,d.y);vec3 low=mix(vec3(.72,.79,.77),vec3(.85,.64,.45),uDesert);vec3 high=mix(vec3(.18,.38,.49),vec3(.25,.38,.47),uDesert);vec3 col=mix(low,high,smoothstep(0.,.7,h));vec2 uv=d.xz/(h+.15);float cloud=noise(uv*2.)*.55+noise(uv*5.)*.25+noise(uv*11.)*.15;col=mix(col,vec3(.88,.85,.73),smoothstep(.55,.75,cloud)*smoothstep(.03,.2,h)*.5);float glow=pow(max(0.,dot(d,normalize(vec3(-.6,.18,-1.)))),28.);col+=vec3(.35,.17,.02)*glow;vec3 nc=mix(vec3(.13,.21,.28),vec3(.015,.03,.075),smoothstep(0.,.7,h));float star=pow(hash(floor(d.xz/(h+.25)*1200.)),180.)*smoothstep(.12,.5,h);nc+=star*.6;if(hasScan>.5 && uNight<.5){vec2 uv=vec2(atan(d.z,d.x)/6.283185+.5,asin(clamp(d.y,-1.,1.))/3.141593+.5);uv.y=.76+clamp(d.y,0.,1.)*.23;vec3 realSky=texture2D(skyScan,uv).rgb;col=mix(col,realSky,smoothstep(.055,.24,d.y)*.88);}
+    float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}void main(){vec3 d=normalize(p);float h=max(0.,d.y);vec3 low=mix(vec3(.72,.79,.77),vec3(.85,.64,.45),uDesert);vec3 high=mix(vec3(.18,.38,.49),vec3(.25,.38,.47),uDesert);vec3 col=mix(low,high,smoothstep(0.,.7,h));vec2 uv=d.xz/(h+.15);float cloud=noise(uv*2.)*.55+noise(uv*5.)*.25+noise(uv*11.)*.15;col=mix(col,vec3(.88,.85,.73),smoothstep(.55,.75,cloud)*smoothstep(.03,.2,h)*.5);float glow=pow(max(0.,dot(d,normalize(vec3(-.6,.18,-1.)))),28.);col+=vec3(.35,.17,.02)*glow;vec3 nc=mix(vec3(.055,.085,.13),vec3(.006,.012,.03),smoothstep(0.,.7,h));float star=pow(hash(floor(d.xz/(h+.25)*1200.)),180.)*smoothstep(.12,.5,h);nc+=star*.6;if(hasScan>.5 && uNight<.5){vec2 uv=vec2(atan(d.z,d.x)/6.283185+.5,asin(clamp(d.y,-1.,1.))/3.141593+.5);uv.y=.76+clamp(d.y,0.,1.)*.23;vec3 realSky=texture2D(skyScan,uv).rgb;col=mix(col,realSky,smoothstep(.055,.24,d.y)*.88);}
     col=mix(col,nc,uNight);gl_FragColor=vec4(col,1.);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -830,12 +1000,12 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   const hemi = new THREE.HemisphereLight(
     night ? 0x7fabc7 : 0xd5e9fa,
     canyon ? 0x8d6040 : 0x40555c,
-    night ? 0.7 : 0.65,
+    night ? 0.48 : 0.65,
   );
   root.add(hemi);
   const sun = new THREE.DirectionalLight(
     night ? 0x9fc3ef : 0xffdfac,
-    night ? 1.5 : 3.6,
+    night ? 1.1 : 3.6,
   );
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -850,13 +1020,15 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   sun.shadow.bias = -0.0006;
   sun.shadow.normalBias = 0.05;
   root.add(sun, sun.target);
-  const headlights = new THREE.PointLight(
+  const headlights = new THREE.SpotLight(
     night ? 0xb5eaff : 0xffffff,
-    night ? 3 : 0,
-    22,
-    1.5,
+    night ? 95 : 0,
+    65,
+    0.48,
+    0.65,
+    1.35,
   );
-  root.add(headlights);
+  root.add(headlights, headlights.target);
   const dockLights = [];
   if (night)
     for (let i = 0; i < 3; i++) {
@@ -971,23 +1143,6 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   );
   shadow.rotation.x = -Math.PI / 2;
   dynamics.add(shadow);
-  const trails = [];
-  for (const s of [-1, 1]) {
-    const t = mesh(
-      new THREE.PlaneGeometry(0.16, 13),
-      new THREE.MeshBasicMaterial({
-        color: 0x9dffe2,
-        transparent: true,
-        opacity: 0.3,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        blending: THREE.AdditiveBlending,
-      }),
-    );
-    t.rotation.x = -Math.PI / 2;
-    dynamics.add(t);
-    trails.push({ t, s });
-  }
   const particlePool = Array.from({ length: 96 }, () => ({
     life: 0,
     pos: new THREE.Vector3(),
@@ -1136,6 +1291,10 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   }
   return {
     root,
+    activate,
+    reset() {
+      for (const p of particlePool) p.life = 0;
+    },
     sun,
     gateMeshes,
     worldPos,
@@ -1181,7 +1340,9 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       if (beamGroup) beamGroup.rotation.y = time * 0.17;
       sun.position.set(x - 65, y + 85, -s.d - 65);
       sun.target.position.set(x, y, -s.d - 20);
-      headlights.position.set(x, y + 2, -s.d - 6);
+      headlights.position.set(x, y + s.y + 1.1, -s.d - 2);
+      headlights.target.position.copy(worldPos(s.d + 28, s.x, 0.05));
+      headlights.intensity = night && !s.flight && !s.failed ? 95 : 0;
       dockLights.forEach((l, i) => {
         const d = Math.floor(s.d / 60) * 60 + 30 + i * 60,
           side = i % 2 ? 1 : -1;
@@ -1193,13 +1354,9 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       }
       shadow.position.set(x, y + 0.055, -s.d);
       shadow.visible = !gap(s.d);
-      shadow.material.opacity = Math.max(0.06, 0.64 - s.y / 12);
+      shadow.material.opacity = Math.max(0, 0.64 - s.y / 18);
       shadow.rotation.z = Math.atan(roadSlope(s.d));
-      shadow.scale.setScalar(1 + s.y * 0.06);
-      for (const { t, s: side } of trails) {
-        t.visible = s.boosting || s.padTime > 0;
-        t.position.set(x + side * 0.9, y + s.y + 0.45, -s.d + 8);
-      }
+      shadow.scale.setScalar(Math.min(2, 1 + s.y * 0.06));
       for (const { group, index } of gateMeshes) {
         group.visible =
           !s.processed.has("g" + index) &&

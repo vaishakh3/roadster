@@ -1,0 +1,97 @@
+Compact runtime textures — Poly Haven / CC0 1.0 Universal
+Derived 17 October 2026 from the unchanged originals in assets/realism/.
+
+License and voluntary credit
+============================
+These five media files are format/resolution derivatives of Poly Haven assets
+distributed under CC0 1.0 Universal (public-domain dedication). Commercial use,
+modification and redistribution are permitted. Attribution is appreciated but
+is not required. No third-party service was used to process these files.
+
+Official license statement: https://polyhaven.com/license
+CC0 deed: https://creativecommons.org/publicdomain/zero/1.0/
+CC0 legal code: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+Asphalt Track — Dimitrios Savva / Poly Haven
+https://polyhaven.com/a/asphalt_track
+  asphalt_color.webp     <- asphalt_track_diff_1k.jpg
+  asphalt_normal.webp    <- asphalt_track_nor_gl_1k.jpg
+  asphalt_roughness.webp <- asphalt_track_rough_1k.jpg
+
+Sandstone Cracks — Rob Tuytel / Poly Haven
+https://polyhaven.com/a/sandstone_cracks
+  sandstone_color.webp <- sandstone_cracks_diff_1k.jpg
+
+Venice Sunset — Greg Zaal / Poly Haven
+https://polyhaven.com/a/venice_sunset
+  venice_sunset_512.hdr <- venice_sunset_1k.hdr
+
+Derivation / encoding
+=====================
+Only resolution, normal-vector resampling and compression were changed. No
+paint-over, recoloring, exposure adjustment, relighting or invented texture
+content was applied. Original source downloads and their checksums remain in
+assets/realism/ and assets/realism/LICENSE.txt.
+
+The image encoder was the app's installed Python runtime, Pillow 12.3.0 with
+WebP support; NumPy 2.3.5 was used for vector resampling. The runtime is located
+at $HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3.
+Equivalent Pillow encoding operations, with method=6 and exact=True throughout:
+
+- asphalt_color.webp: original RGB, 1024 x 1024, WebP quality=82.
+- asphalt_normal.webp: original RGB data converted to vectors with
+  v = RGB / 127.5 - 1; average each 2 x 2 block in this linear vector space;
+  normalize each averaged vector; round(clamp((v + 1) * 127.5, 0, 255)) back to
+  uint8 RGB; save 512 x 512 with lossless=True and quality=100. No sRGB transfer
+  function is applied. The post-quantization vectors have lengths 0.9956–1.0048;
+  the 95th-percentile direction quantization error is 0.283 degrees.
+- asphalt_roughness.webp: convert to L, resize 512 x 512 with Pillow LANCZOS,
+  WebP quality=90. The encoded image decodes to neutral RGB grayscale.
+- sandstone_color.webp: original RGB resized 512 x 512 with Pillow LANCZOS,
+  WebP quality=94.
+
+The HDR was decoded with the repository's Three.js 0.180.0 HDRLoader using
+setDataType(FloatType). Every 2 x 2 group of radiance samples was averaged in
+linear floating-point RGB to form 512 x 256 pixels. No tone mapping, gamma or
+exposure adjustment was performed. Samples were re-encoded as Radiance RGBE
+with the standard FORMAT=32-bit_rle_rgbe header and per-scanline channel RLE.
+The encoder uses a shared exponent e = floor(log2(max(R,G,B))) + 1 and rounded
+RGB * 255 / 2^e bytes, matching HDRLoader's inverse channel scale. The file was
+re-parsed with the shipped HDRLoader and checked for the expected dimensions
+and finite radiance. Summed decoded RGB energy differs from the linear average
+by +0.0507% due to RGBE quantization. Averaging naturally lowers very small
+highlight peaks while preserving their integrated radiance.
+
+Sampling and integration
+========================
+- Use image/webp for embedded WebP data URLs and image/vnd.radiance (or the
+  existing binary HDR data URL MIME) for the HDR. The shipped HDRLoader can read
+  this HDR without any implementation changes.
+- asphalt_color and sandstone_color are color maps: use THREE.SRGBColorSpace.
+- asphalt_normal and asphalt_roughness are data maps: use THREE.NoColorSpace.
+  The normal map remains OpenGL (+Y); do not invert its green channel.
+- Keep corresponding map repeat/rotation/offset/flipY settings identical.
+  Use RepeatWrapping, mipmapped minification and anisotropy 4–8 where available.
+- Keep the HDR loader's linear color/type configuration, and use PMREM for the
+  shared scene environment. Retain one shared environment across venue changes.
+- These encodings trade invisible/distant microdetail for transfer and decode
+  cost. Normal/rock/roughness details are softer under close inspection than the
+  1K source. HDR highlights and small reflections are softer than the 1K source.
+  They are intended for the racing camera and the existing roughness values;
+  retain original source files for any future extreme close-up presentation.
+
+Media payload / SHA-256
+======================
+Total: 969,396 bytes (946.68 KiB), versus 4,288,030 bytes for the five source
+runtime assets: a 77.39% payload reduction before HTML/base64/gzip overhead.
+
+207074 bytes — asphalt_color.webp — 1024 x 1024
+6c55cf531aef333284bff7eff22c3bf0d047b48c3442138e5e2acd6082196c58
+272564 bytes — asphalt_normal.webp — 512 x 512
+77ca805006fa54b6f996888a284d9d46e6b85be8309a2ef708e18d767d851310
+2538 bytes — asphalt_roughness.webp — 512 x 512
+73265ca42d8d55e95ece10203ad46b124ab5c9f49ca2ff00607416cadf16ce89
+118254 bytes — sandstone_color.webp — 512 x 512
+b4bbbf880052e2faddb4a9bdd570c152619ef29281b297982b84a269940421cf
+368966 bytes — venice_sunset_512.hdr — 512 x 256
+67b4d87e63d2920cfe1f24d7806f270429509ae58560331bdc12cc67a0a3ec4f

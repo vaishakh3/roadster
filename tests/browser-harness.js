@@ -18,6 +18,36 @@ const ok = (v, message = "Assertion failed") => {
   if (!v) throw Error(message);
 };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+document.getElementById("benchmark").onclick = async () => {
+  report.textContent =
+    "Measuring selection through the first rendered frame…\n";
+  stage.replaceChildren();
+  const frame = document.createElement("iframe");
+  frame.style.cssText = "width:844px;height:390px;border:0";
+  const boot = performance.now();
+  frame.src = "../dist/?qa=1";
+  stage.append(frame);
+  for (let i = 0; i < 600 && !frame.contentWindow.__breakwater; i++)
+    await wait(50);
+  const g = frame.contentWindow.__breakwater;
+  if (!g) {
+    report.textContent += "FAIL initialization timed out";
+    return;
+  }
+  g.freeze();
+  report.textContent += `Ready in ${(performance.now() - boot).toFixed(0)} ms\n`;
+  for (let round = 0; round < 3; round++)
+    for (const c of COURSES) {
+      const t = performance.now();
+      g.selectCourse(c.id);
+      g.step(0);
+      await new Promise(requestAnimationFrame);
+      report.textContent += `${round + 1} ${c.name}: ${(performance.now() - t).toFixed(1)} ms; ${JSON.stringify(g.memory)}\n`;
+      await wait(100);
+    }
+  report.textContent +=
+    "Benchmark complete. Includes construction, shader preparation and a rendered frame; browser scheduling can vary.\n";
+};
 document.getElementById("run").onclick = async () => {
   pass = fail = 0;
   report.textContent = "Running production build…\n";
@@ -129,11 +159,13 @@ document.getElementById("run").onclick = async () => {
     g.setState({ d: 655, y: 0, vy: 0, x: 0 });
     step(3);
     ok(g.phase === "results");
-    ok(d.getElementById("result-tip").textContent.includes("Hold FLY"));
+    ok(/hold FLY/i.test(d.getElementById("result-tip").textContent));
+    ok(d.getElementById("result-tip").textContent.includes("mint ramp"));
     d.getElementById("retry").click();
     ok(g.phase === "playing" && g.state.d === 0 && g.state.hull === 3);
   });
   check("Finish awards a medal and ends the run once", () => {
+    g.start();
     g.setState({ d: 3599, time: 62, gates: 14, score: 4000 });
     step(0.1);
     ok(g.phase === "results");
@@ -174,13 +206,95 @@ document.getElementById("run").onclick = async () => {
       },
     );
   }
+  g.selectCourse("breakwater");
+  g.start();
+  g.setState({ d: 380, speed: 76 });
+  key("keydown", "ShiftLeft");
+  key("keydown", "ArrowRight");
+  step(0.22);
+  const savedTrail = g.trailHistory[0].at(-1);
+  key("keyup", "ArrowRight");
+  key("keydown", "ArrowLeft");
+  step(0.22);
+  check(
+    "Boost ribbons preserve world-space history through a steering reversal",
+    () => {
+      const path = g.trailHistory[0];
+      const kept = path.find((p) => p.time === savedTrail.time);
+      ok(kept && kept.x === savedTrail.x && kept.z === savedTrail.z);
+      ok(path.length > 12);
+      ok(path.at(-1).z < path[0].z);
+      ok(g.input.boost && g.input.steer === -1);
+    },
+  );
+  g.clear();
+  step(0.8);
+  check("Boost ribbons fade after release and reset on retry", () => {
+    ok(g.trailHistory.every((p) => p.length === 0));
+    g.start();
+    ok(g.trailHistory.every((p) => p.length === 0));
+  });
+  const ramp = g.course.ramps[1];
+  g.setState({ d: ramp.d - 0.1, y: ramp.height, speed: 70 });
+  step(0.6);
+  check(
+    "Sky ramp automatically rotates the car with a visible aerial HUD",
+    () => {
+      ok(g.state.flight && g.state.stuntAngle > 1);
+      ok(g.carPose.visible && Math.abs(g.carPose.rotation[0]) > 1);
+      ok(d.getElementById("motion-label").textContent.includes("BACKFLIP"));
+    },
+  );
+  key("keydown", "ShiftLeft");
+  key("keydown", "ArrowRight");
+  step(0.12);
+  check("Automatic stunt leaves boost and steering independent", () => {
+    ok(g.input.boost && g.input.steer === 1 && g.state.vx > 1);
+  });
+  g.clear();
+  for (let i = 0; i < 600 && g.state.flight; i++) g.step(1 / 120);
+  check("Automatic flip returns upright and awards one clean landing", () => {
+    ok(!g.state.flight && g.state.stunts === 1);
+    ok(
+      g.state.y === 0 && Math.abs(g.carPose.rotation[0]) < 0.1,
+      JSON.stringify({ y: g.state.y, pose: g.carPose }),
+    );
+  });
+  g.start();
+  g.setState({ d: 307, x: -4.4, speed: 76, hull: 1 });
+  step(0.1);
+  const crashPose = g.carPose.position;
+  check(
+    "A fatal collision shows the car and effect before opening results",
+    () => {
+      ok(g.state.failed && g.phase === "playing");
+      ok(g.carPose.visible);
+      ok(d.getElementById("warning-title").textContent === "WRECKED");
+      ok(d.getElementById("event").textContent.includes("RUN ENDED"));
+    },
+  );
+  step(0.4);
+  check("Wreck slides and turns instead of blinking away", () => {
+    ok(
+      g.carPose.visible && Math.abs(g.carPose.position[0] - crashPose[0]) > 0.3,
+    );
+  });
+  step(0.6);
+  check(
+    "Crash sequence ends in a retryable result without advancing the race",
+    () => {
+      ok(g.phase === "results" && g.state.time < 0.05);
+    },
+  );
+  g.home();
   const memory = g.memory;
   for (let i = 0; i < 2; i++)
     for (const c of COURSES) {
       g.selectCourse(c.id);
       g.step(0);
     }
-  check("Course switching releases old geometry and textures", () => {
+  check("Three prepared venues reuse their geometry and textures", () => {
+    ok(g.preparedVenues === 3);
     ok(g.memory.geometries <= memory.geometries + 2, JSON.stringify(g.memory));
     ok(g.memory.textures <= memory.textures + 1);
   });

@@ -3,11 +3,11 @@ import { HDRLoader } from "./vendor/HDRLoader.js";
 
 // Loaded once and shared across venues. The production build embeds these URLs.
 const urls = {
-  road: "assets/realism/asphalt_track_diff_1k.jpg",
-  roadNormal: "assets/realism/asphalt_track_nor_gl_1k.jpg",
-  roadRoughness: "assets/realism/asphalt_track_rough_1k.jpg",
-  rock: "assets/realism/sandstone_cracks_diff_1k.jpg",
-  environment: "assets/realism/venice_sunset_1k.hdr",
+  road: "assets/runtime/asphalt_color.webp",
+  roadNormal: "assets/runtime/asphalt_normal.webp",
+  roadRoughness: "assets/runtime/asphalt_roughness.webp",
+  rock: "assets/runtime/sandstone_color.webp",
+  environment: "assets/runtime/venice_sunset_512.hdr",
 };
 export const surfaces = {};
 export async function loadVisualAssets(renderer, onProgress) {

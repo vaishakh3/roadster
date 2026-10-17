@@ -1,4 +1,5 @@
 import * as THREE from "./vendor/three.module.js";
+import { createRaceEffects } from "./effects.js";
 import { createCar } from "./car.js";
 import { loadVisualAssets } from "./surfaces.js";
 import {
@@ -7,6 +8,7 @@ import {
   PAINTS,
   completedCount,
   saveResult,
+  LAYOUT_VERSION,
 } from "./courses.js";
 import { createCoast } from "./coast.js";
 import { createControls, requiresLandscape } from "./controls.js";
@@ -57,7 +59,8 @@ let phase = "home",
   previousPhase = "home",
   orientationBlocked = false,
   run = createRun(course);
-let renderer, scene, camera, car, coast, controls, audio;
+let renderer, scene, camera, car, coast, controls, audio, effects;
+const venues = new Map();
 let showroomAngle = 0;
 let lastTime = performance.now(),
   clock = 0,
@@ -111,6 +114,8 @@ function start() {
     tour.score = tour.stages.reduce((sum, s) => sum + s.score, 0);
   }
   run = createRun(course);
+  effects.reset();
+  coast.reset();
   replay = [];
   replayClock = 0;
   ghostIndex = 0;
@@ -163,6 +168,8 @@ function resume() {
 }
 function home() {
   tour = null;
+  effects?.reset();
+  coast?.reset();
   setPhase("home");
   run = createRun(course);
   run.d = 80;
@@ -176,8 +183,11 @@ function selectCourse(id) {
   if (phase !== "home" && phase !== "results") return;
   course = getCourse(id);
   showroomAngle = 0;
-  coast?.dispose();
-  coast = createCoast(scene, renderer, course);
+  if (coast) coast.root.visible = false;
+  coast = venues.get(course.id);
+  coast.activate();
+  coast.reset();
+  effects.reset();
   applyQuality();
   storage.set("roadster-course", course.id);
   run = createRun(course);
@@ -217,9 +227,10 @@ function selectCourse(id) {
 }
 function refreshBest() {
   const best = records[course.id];
-  $("personal-best").textContent = best?.time
-    ? `BEST ${formatTime(best.time)} / ${num(best.score)} PTS / ${["", "BRONZE", "SILVER", "GOLD"][best.medal]}`
-    : "NO RECORD YET. SET THE FIRST.";
+  $("personal-best").textContent =
+    best?.layout === LAYOUT_VERSION && best?.time
+      ? `BEST ${formatTime(best.time)} / ${num(best.score)} PTS / ${["", "BRONZE", "SILVER", "GOLD"][best.medal]}`
+      : "NO RECORD YET. SET THE FIRST.";
   $("course-badges").innerHTML = ["FINISH", "NO DAMAGE", "ALL GATES"]
     .map(
       (t, i) =>
@@ -289,9 +300,9 @@ function endRun() {
       ? "MISSED THE<br /> TAKEOFF."
       : "END OF<br /> THE RUN.";
   $("result-tip").textContent = complete
-    ? `Gold target: ${formatTime(course.gold)} or faster, with ${course.goldGates} gates. Clean runs and all gates earn extra badges.`
+    ? `${run.stunts} / ${course.ramps.length} CLEAN STUNTS · ${run.airtime.toFixed(1)} SEC AIRTIME. Gold: ${formatTime(course.gold)} or faster + ${course.goldGates} gates.`
     : run.reason === "THE BRIDGE WAS OUT"
-      ? "Hold FLY before the orange strips. Keep holding until you clear the water."
+      ? "Take the mint ramp for an automatic jump, or hold FLY before the orange strips and across the gap."
       : "Steer around orange barriers, or fly over them. You have three hits.";
   $("result-time").textContent = formatTime(run.time);
   $("result-score").textContent = num(run.score);
@@ -346,6 +357,11 @@ function endRun() {
 }
 function tick(dt) {
   if (phase !== "playing" || orientationBlocked) return;
+  if (run.failed) {
+    run.crashAge += dt;
+    if (run.crashAge >= 0.95) endRun();
+    return;
+  }
   if (countdown > 0) {
     const was = countdown;
     countdown -= dt;
@@ -370,22 +386,32 @@ function tick(dt) {
 
   for (const e of run.events.splice(0)) {
     audio.event(e.type);
-    if (!reduced) coast.emit(e.type, run);
+    if (!reduced) {
+      coast.emit(e.type, run);
+      effects.emit(e.type, coast.worldPos(run.d, run.x, run.y), run);
+    }
     if (e.type === "sector") toast(`0${run.sector + 1} / ${e.text}`, "gate");
     else if (e.type === "hit") {
       impactTime = 0.45;
       toast(e.text, "hit");
-    } else if (["gate", "gap", "near", "pad", "launch"].includes(e.type))
+    } else if (
+      ["gate", "gap", "near", "pad", "launch", "stunt"].includes(e.type)
+    )
       toast(e.text, e.type, e.points);
   }
-  if (run.finished || run.failed) endRun();
+  if (run.failed) controls.clear();
+  if (run.finished) endRun();
 }
 function hud(force = false) {
   if (!force && clock - lastHud < 0.06) return;
   lastHud = clock;
   $("timer").textContent = formatTime(run.time);
   $("score").textContent = num(run.score);
-  $("speed").textContent = String(Math.round(run.speed * 3.6)).padStart(3, "0");
+  $("speed").textContent = String(
+    Math.round(
+      run.speed * 3.6 * (run.failed ? Math.max(0, 1 - run.crashAge / 0.7) : 1),
+    ),
+  ).padStart(3, "0");
   $("sector").textContent =
     `0${run.sector + 1} / ${course.sectors[run.sector]}`;
   $("distance").textContent =
@@ -405,14 +431,19 @@ function hud(force = false) {
         : run.boosting
           ? "ROCKET THRUST ACTIVE"
           : "RECHARGES ON THE ROAD";
-  $("motion-label").textContent =
-    run.padTime > 0
-      ? "SLINGSHOT"
-      : run.boosting
-        ? "FULL THRUST"
-        : run.airborne
-          ? "IN FLIGHT"
-          : "ON THE ROAD";
+  $("motion-label").textContent = run.failed
+    ? "RUN ENDED"
+    : run.flight
+      ? "AUTO " + (run.stuntKind === "roll" ? "BARREL ROLL" : "BACKFLIP")
+      : run.attachedRamp >= 0
+        ? "MAGNETIC GRIP"
+        : run.padTime > 0
+          ? "SLINGSHOT"
+          : run.boosting
+            ? "FULL THRUST"
+            : run.airborne
+              ? "IN FLIGHT"
+              : "ON THE ROAD";
   $("hull").setAttribute("aria-label", `Vehicle condition: ${run.hull} of 3`);
   [...$("hull").querySelectorAll("i")].forEach((el, i) =>
     el.classList.toggle("lost", i >= run.hull),
@@ -424,7 +455,9 @@ function hud(force = false) {
     $("warning-detail").textContent = warning.detail;
     $("warning").dataset.kind = warning.kind;
     $("warning").querySelector(".warning-icon").textContent =
-      warning.kind === "gap"
+      warning.kind === "gap" ||
+      warning.kind === "ramp" ||
+      warning.kind === "stunt"
         ? "↗"
         : warning.title === "KEEP RIGHT"
           ? "→"
@@ -439,7 +472,7 @@ function hud(force = false) {
     Math.min(run.gates, course.goldGates) + " / " + course.goldGates + " GATES";
   $("race-target").classList.toggle("missed", run.time > course.gold);
   $("boost-fx").style.opacity =
-    run.boosting && phase === "playing" && !reduced ? 1 : 0;
+    run.boosting && !run.failed && phase === "playing" && !reduced ? 1 : 0;
   document.querySelectorAll("[data-control]").forEach((button) => {
     const r = controls.read();
     const name = button.dataset.control;
@@ -456,10 +489,15 @@ function updateVisuals(dt, snap = false) {
     y = coast.roadY(run.d) + Math.max(-8, run.y);
   car.position.set(x, y, -run.d);
   const heading = -Math.atan(roadSlope(run.d, course));
-  const bank = -run.vx * 0.014 + (run.rollTime > 0 && !reduced ? run.roll : 0);
+  const flip =
+    !reduced && run.flight && run.stuntKind === "flip" ? run.stuntAngle : 0;
+  const stuntBank =
+    !reduced && run.flight && run.stuntKind === "roll" ? run.stuntAngle : 0;
+  const bank =
+    stuntBank - run.vx * 0.014 + (run.rollTime > 0 && !reduced ? run.roll : 0);
   car.rotation.set(
     run.airborne
-      ? clamp(run.vy * 0.014, -0.13, 0.13)
+      ? flip + clamp(run.vy * 0.014, -0.13, 0.13)
       : Math.atan((coast.roadY(run.d + 2) - coast.roadY(run.d - 2)) / 4) +
           (run.boosting ? -0.018 : 0) +
           run.rampPitch,
@@ -467,6 +505,30 @@ function updateVisuals(dt, snap = false) {
     bank,
     "YXZ",
   );
+  if (!hero) {
+    const impact = Math.max(0, 1 - run.crashAge / 1.05),
+      jolt = Math.sin(run.crashAge * 22) * impact;
+    if (!reduced) {
+      car.rotation.y += jolt * 0.28 * run.crashDirection;
+      car.rotation.z += jolt * 0.12;
+      car.position.y += Math.abs(jolt) * 0.18;
+    }
+    if (run.failed) {
+      const t = Math.min(1, run.crashAge / 0.95);
+      if (run.crashKind === "fall") {
+        car.position.y -= t * t * 14;
+        car.rotation.x -= t * 0.7;
+      } else {
+        car.position.x += run.crashDirection * t * 2.6;
+        car.position.z += Math.sin((t * Math.PI) / 2) * 1.8;
+        car.rotation.y += run.crashDirection * t * 1.1;
+        car.rotation.z += run.crashDirection * t * 0.22;
+      }
+    }
+    if (!reduced && run.landingAge < 0.35)
+      car.position.y -= Math.sin((run.landingAge / 0.35) * Math.PI) * 0.13;
+    if (flip) car.position.y += 0.65 * (1 - Math.cos(flip));
+  }
   const d = car.userData;
   d.wing.position.y = THREE.MathUtils.lerp(
     d.wing.position.y,
@@ -478,17 +540,27 @@ function updateVisuals(dt, snap = false) {
     if (wheel.pivot && wheel.front) wheel.pivot.rotation.y = -run.vx * 0.025;
   }
   for (const jet of d.thrusterJets) {
-    jet.visible = run.boosting || run.padTime > 0;
+    jet.visible = !run.failed && (run.boosting || run.padTime > 0);
     jet.scale.z = 1.8 + Math.sin(clock * 43) * 0.25;
     jet.material.uniforms.time.value = clock;
   }
   for (const jet of d.liftJets) {
-    jet.visible = run.lifting;
+    jet.visible = !run.failed && run.lifting;
     if (jet.material.uniforms) jet.material.uniforms.time.value = clock;
   }
-  car.visible = !(run.invulnerable > 0 && Math.floor(clock * 12) % 2 === 0);
-  coast.update(run, dt, clock);
-  const samples = records[course.id]?.ghost;
+  car.visible = true;
+  coast.update(run, phase === "playing" ? dt : 0, clock);
+  effects.update(
+    car,
+    run,
+    phase === "paused" ? 0 : dt,
+    phase === "playing",
+    reduced,
+  );
+  const samples =
+    records[course.id]?.layout === LAYOUT_VERSION
+      ? records[course.id]?.ghost
+      : null;
   ghost.visible = false;
   $("ghost-delta").hidden = true;
   if (ghostOn && phase === "playing" && samples?.length > 1 && countdown <= 0) {
@@ -551,8 +623,8 @@ function updateVisuals(dt, snap = false) {
     );
     cameraGoal.set(
       roadX(run.d - 10, course) + run.x * 0.72,
-      y + 3.5 - run.y * 0.23,
-      -run.d + 8.7,
+      y + 3.5 - Math.min(run.y, 6) * 0.15,
+      -run.d + (run.flight ? 11.5 : 8.7),
     );
     if (!reduced) {
       cameraGoal.y += Math.sin(clock * 19) * 0.014 * (run.boosting ? 2 : 1);
@@ -562,7 +634,7 @@ function updateVisuals(dt, snap = false) {
     else camera.position.lerp(cameraGoal, 1 - Math.exp(-dt * 8));
     cameraTarget.set(
       roadX(run.d + 30, course) + run.x * 0.64,
-      coast.roadY(run.d + 30) + 1.3 + run.y * 0.65,
+      coast.roadY(run.d + 30) + 1.3 + run.y * 0.92,
       -run.d - 30,
     );
     camera.lookAt(cameraTarget);
@@ -575,7 +647,7 @@ function applyQuality() {
   renderer.setPixelRatio(
     Math.min(devicePixelRatio || 1, qualityLow ? 1.25 : 1.75),
   );
-  coast.setQuality(qualityLow);
+  coast?.setQuality(qualityLow);
   car.userData.setDetail(!qualityLow && phase === "home");
   $("quality").querySelector("b").textContent = quality.toUpperCase();
   storage.set("breakwater-quality", quality);
@@ -618,7 +690,11 @@ function frame(now) {
   $("impact").style.opacity = impactTime / 0.9;
   audio.update(
     run,
-    phase === "playing" && !orientationBlocked && countdown <= 0 && !frozen,
+    phase === "playing" &&
+      !run.failed &&
+      !orientationBlocked &&
+      countdown <= 0 &&
+      !frozen,
   );
   renderer.render(scene, camera);
 }
@@ -682,10 +758,10 @@ async function boot() {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     await loadVisualAssets(renderer, (value) => {
       $("loading").querySelector("strong").textContent =
-        "PREPARING THE TOUR / " + Math.round(value * 100) + "%";
+        "LOADING SURFACES / " + Math.round(value * 100) + "%";
     });
-    coast = createCoast(scene, renderer, course);
     car = createCar();
+    effects = createRaceEffects(scene);
     scene.add(car);
     car.userData.interior.visible = false;
     car.userData.setDetail(!qualityLow && phase === "home");
@@ -862,9 +938,28 @@ async function boot() {
         "The graphics connection was interrupted. Reload to start a new crossing.",
       );
     });
+    const selectedId = course.id;
+    const nextFrame = () => new Promise(requestAnimationFrame);
+    for (const c of COURSES) {
+      $("loading").querySelector("strong").textContent =
+        "PREPARING / " + c.name;
+      await nextFrame();
+      const venue = createCoast(scene, renderer, c);
+      venue.root.visible = false;
+      venues.set(c.id, venue);
+    }
     initialized = true;
+    for (const c of COURSES) {
+      selectCourse(c.id);
+      applyQuality();
+      resize();
+      updateVisuals(0, true);
+      await renderer.compileAsync(scene, camera);
+      renderer.render(scene, camera);
+      await nextFrame();
+    }
+    selectCourse(selectedId);
     home();
-    selectCourse(course.id);
     applyQuality();
     resize();
     updateVisuals(0, true);
@@ -884,6 +979,19 @@ async function boot() {
         },
         get records() {
           return records;
+        },
+        get trailHistory() {
+          return effects.trails;
+        },
+        get carPose() {
+          return {
+            position: car.position.toArray(),
+            rotation: [car.rotation.x, car.rotation.y, car.rotation.z],
+            visible: car.visible,
+          };
+        },
+        get preparedVenues() {
+          return venues.size;
         },
         get memory() {
           return { ...renderer.info.memory };

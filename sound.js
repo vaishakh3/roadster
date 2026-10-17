@@ -78,7 +78,7 @@ export function createSound() {
       );
     },
     event(type) {
-      if (type === "gate") {
+      if (type === "gate" || type === "stunt") {
         tone(523, 0.28, 0.22);
         tone(784, 0.35, 0.16, 0.08);
         tone(1047, 0.4, 0.1, 0.16);

@@ -11,6 +11,7 @@ import {
   nextWarning,
   formatTime,
 } from "../run.js";
+import { rampSurface, PathHistory } from "../stunts.js";
 import { createControls, requiresLandscape } from "../controls.js";
 let count = 0;
 const test = (name, fn) => {
@@ -126,10 +127,10 @@ test("Brake overrides thrust without locking steering", () => {
   assert(!s.boosting);
   assert(s.x < -3);
 });
-test("Bridge warnings precede the jump by more than two seconds at full speed", () => {
+test("Magnetic ramp warnings give time to align before the launch", () => {
   const s = createRun();
   s.d = 500;
-  assert.equal(nextWarning(s).kind, "gap");
+  assert.equal(nextWarning(s).kind, "ramp");
   assert(660 - s.d > 76 * 2);
 });
 for (const course of COURSES)
@@ -179,12 +180,140 @@ test("Freight traffic stops before broken bridge sections", () => {
 });
 test("Launch ramps supply a physical upward impulse without suspending steering", () => {
   const s = createRun("redshift");
-  Object.assign(s, { d: 794, x: 0, speed: 70 });
+  Object.assign(s, { d: 794, x: 0, y: 6.8, speed: 70 });
   advance(s, { steer: 1 }, 0.25);
   assert(s.y > 1);
   assert(s.vy > 0);
   assert(s.x > 1);
   assert.equal(s.launches, 1);
+});
+test("An imminent barrier warning takes priority over a later ramp", () => {
+  const s = createRun();
+  s.d = 1300;
+  assert.equal(nextWarning(s).kind, "sweeper");
+  s.y = 5;
+  assert.equal(nextWarning(s).kind, "ramp");
+});
+test("All ten ramps carry the car along the rendered deck and land one automatic stunt", () => {
+  for (const c of COURSES)
+    for (const r of c.ramps)
+      for (const hz of [30, 60, 120]) {
+        const s = createRun(c);
+        Object.assign(s, {
+          d: r.d - r.length - 1,
+          speed: 65,
+          x: r.x,
+          time: 10,
+        });
+        let maxAngle = 0,
+          gripFrames = 0;
+        while (s.d < r.land + 2 && !s.failed) {
+          stepRun(s, { boost: true }, 1 / hz);
+          if (s.attachedRamp >= 0) {
+            gripFrames++;
+            assert(Math.abs(s.y - rampSurface(r, s.d).height) < 0.001);
+          }
+          maxAngle = Math.max(maxAngle, s.stuntAngle);
+        }
+        assert(!s.failed, c.name + " ramp " + r.d);
+        assert(gripFrames > 5);
+        assert(maxAngle > Math.PI * 1.99);
+        assert.equal(s.stunts, 1);
+        assert.equal(s.launches, 1);
+        assert.equal(s.y, 0);
+        assert.equal(s.stuntAngle, 0);
+      }
+});
+test("Braking during an automatic flip preserves the safe landing zone", () => {
+  for (const c of COURSES) {
+    const r = c.ramps[1],
+      s = createRun(c);
+    Object.assign(s, { d: r.d - r.length - 1, speed: 76 });
+    while (s.d < r.land + 2 && !s.failed)
+      stepRun(s, { brake: !!s.flight }, 1 / 60);
+    assert(!s.failed);
+    assert.equal(s.stunts, 1);
+    assert.equal(s.y, 0);
+  }
+});
+test("Entering beside a high ramp lip cannot teleport the car to its top", () => {
+  const s = createRun(),
+    r = s.course.ramps[1];
+  Object.assign(s, { d: r.d - 2, speed: 70 });
+  advance(s, {}, 0.1);
+  assert.equal(s.launches, 0);
+  assert.equal(s.y, 0);
+});
+test("Ground hazards trigger a visible directional impact and damage only once", () => {
+  for (const kind of ["cargo", "rubble", "drums"]) {
+    const c = COURSES.find((c) => c.obstacles.some((o) => o.kind === kind));
+    const o = c.obstacles.find((o) => o.kind === kind),
+      s = createRun(c),
+      p = hazardPose(o, 0);
+    Object.assign(s, { d: p.d - 5, x: p.x + 0.1, speed: 76 });
+    advance(s, { boost: true }, 0.2);
+    assert.equal(s.hull, 2);
+    assert(s.crashAge < 0.2);
+    assert.equal(s.crashDirection, 1);
+    assert.equal(s.crashKind, "impact");
+  }
+});
+test("A collision during a stunt cancels the clean-landing reward", () => {
+  const source = COURSES[0],
+    r = source.ramps[0];
+  const c = {
+    ...source,
+    gates: [],
+    obstacles: [
+      { d: r.d + 35, x: 0, w: 5, h: 40, depth: 2.7, kind: "barrier" },
+    ],
+  };
+  const s = createRun(c);
+  Object.assign(s, { d: r.d - r.length - 1, speed: 65 });
+  while (s.d < r.land + 2 && !s.failed) stepRun(s, { boost: true }, 1 / 60);
+  assert.equal(s.launches, 1);
+  assert.equal(s.hull, 2);
+  assert.equal(s.stunts, 0);
+  assert.equal(s.y, 0);
+});
+test("Boost trail keeps past world positions as the car turns and clears after a teleport", () => {
+  const history = new PathHistory(64, 0.75);
+  history.push(0, 1, 0, 0);
+  history.push(0, 1, -1, 0.1);
+  const before = JSON.stringify(history.points);
+  history.push(1, 1, -2, 0.2);
+  history.push(2, 1, -3, 0.3);
+  assert.equal(JSON.stringify(history.points.slice(0, 2)), before);
+  assert.equal(history.points.at(-1).x, 2);
+  history.push(100, 1, -300, 0.4);
+  assert.equal(history.points.length, 1);
+  history.expire(1.2);
+  assert.equal(history.points.length, 0);
+});
+test("Updated track records replace incompatible ghosts without removing earned paints", () => {
+  const s = createRun();
+  Object.assign(s, { finished: true, time: 63, score: 1000, hull: 2 });
+  const old = {
+    breakwater: {
+      time: 40,
+      score: 9999,
+      medal: 3,
+      badges: [true, true, true],
+      ghost: [
+        [0, 0, 0, 0],
+        [40, 3600, 0, 0],
+      ],
+    },
+  };
+  const result = saveResult(old, s, [
+    [0, 0, 0, 0],
+    [63, 3600, 0, 0],
+  ]);
+  assert(result.record);
+  assert.equal(result.records.breakwater.time, 63);
+  assert.equal(result.records.breakwater.ghost[1][0], 63);
+  assert.equal(completedCount(result.records), 1);
+  assert.equal(result.records.breakwater.medal, 3);
 });
 test("Slingshot strips reward ground contact once and decay after use", () => {
   const s = createRun();
