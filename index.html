@@ -39,21 +39,32 @@
     <main id="app">
       <header id="masthead">
         <span class="brand">ROADSTER <i>/</i></span
-        ><span class="edition">WORLD TOUR / VOL. 01</span
+        ><span class="edition">FLIGHT DIVISION / WORLD TOUR</span
         ><button id="settings" class="text-button" aria-label="Open settings">
           SETTINGS <span>↗</span>
         </button>
       </header>
       <section id="home" aria-labelledby="home-title">
+        <div class="venue-heading">
+          <span>CHOOSE YOUR VENUE</span>
+          <div>
+            <button id="venue-prev" aria-label="Previous venue">←</button
+            ><span id="venue-index" aria-live="polite">01 / 03</span
+            ><button id="venue-next" aria-label="Next venue">→</button>
+          </div>
+        </div>
         <nav id="course-select" aria-label="Select race course">
           <button data-course="breakwater" aria-pressed="true">
-            <i>01</i><span>BREAKWATER</span><small>ATLANTIC</small>
+            <i>01</i><span>BREAKWATER<small>ATLANTIC / 3.6 KM</small></span
+            ><b aria-hidden="true">↗</b>
           </button>
           <button data-course="redshift" aria-pressed="false">
-            <i>02</i><span>REDSHIFT</span><small>BADLANDS</small>
+            <i>02</i><span>REDSHIFT<small>BADLANDS / 3.9 KM</small></span
+            ><b aria-hidden="true">↗</b>
           </button>
           <button data-course="nightshift" aria-pressed="false">
-            <i>03</i><span>NIGHTSHIFT</span><small>FREIGHT PORT</small>
+            <i>03</i><span>NIGHTSHIFT<small>FREIGHT PORT / 4.2 KM</small></span
+            ><b aria-hidden="true">↗</b>
           </button>
         </nav>
         <div class="home-copy">
@@ -83,6 +94,9 @@
           <span id="course-gold"></span>
           <div id="course-badges" class="badges"></div>
         </div>
+        <button id="orbit-car" class="text-button" aria-label="Rotate car view">
+          VIEW CAR ↻
+        </button>
         <button
           id="paint"
           class="text-button"
@@ -101,9 +115,9 @@
           </div>
           <div class="start-actions">
             <button id="start" class="primary">
-              <span>RACE THIS COURSE</span><b>↗</b></button
+              <span>RACE HERE</span><b>↗</b></button
             ><button id="start-tour" class="secondary">
-              WORLD TOUR <span>ALL 3 ↗</span>
+              WORLD TOUR <span>3 STAGES ↗</span>
             </button>
           </div>
           <div class="home-foot">
@@ -143,6 +157,10 @@
         <div id="announcement" role="status" aria-live="polite">
           <span id="announcement-small"></span
           ><strong id="announcement-title"></strong>
+        </div>
+        <div id="race-target">
+          <span>GOLD TARGET</span><b id="target-time">01:05</b
+          ><span id="target-gates">0 / 12 GATES</span>
         </div>
         <div id="ghost-delta" hidden></div>
         <div id="event" role="status" aria-live="polite"></div>

@@ -1,5 +1,6 @@
 import * as THREE from "./vendor/three.module.js";
 import { createCar } from "./car.js";
+import { loadVisualAssets } from "./surfaces.js";
 import {
   COURSES,
   getCourse,
@@ -57,6 +58,7 @@ let phase = "home",
   orientationBlocked = false,
   run = createRun(course);
 let renderer, scene, camera, car, coast, controls, audio;
+let showroomAngle = 0;
 let lastTime = performance.now(),
   clock = 0,
   countdown = 0,
@@ -173,6 +175,7 @@ function home() {
 function selectCourse(id) {
   if (phase !== "home" && phase !== "results") return;
   course = getCourse(id);
+  showroomAngle = 0;
   coast?.dispose();
   coast = createCoast(scene, renderer, course);
   applyQuality();
@@ -182,11 +185,8 @@ function selectCourse(id) {
   run.speed = 0;
   document.body.dataset.course = course.theme;
   document.documentElement.style.setProperty("--orange", course.accent);
-  $("home-title").innerHTML =
-    course.title[0] +
-    "<br /><span>" +
-    course.title[1] +
-    '</span><b aria-hidden="true">↗</b>';
+  $("home-title").textContent = course.name.toUpperCase();
+  $("venue-index").textContent = course.number + " / 03";
   $("course-location").textContent = course.number + " / " + course.location;
   $("course-description").textContent = course.subtitle;
   $("route-meta").textContent =
@@ -432,6 +432,12 @@ function hud(force = false) {
             ? "←"
             : "↔";
   }
+  $("target-time").textContent = formatTime(
+    Math.max(0, course.gold - run.time),
+  );
+  $("target-gates").textContent =
+    Math.min(run.gates, course.goldGates) + " / " + course.goldGates + " GATES";
+  $("race-target").classList.toggle("missed", run.time > course.gold);
   $("boost-fx").style.opacity =
     run.boosting && phase === "playing" && !reduced ? 1 : 0;
   document.querySelectorAll("[data-control]").forEach((button) => {
@@ -445,6 +451,7 @@ function hud(force = false) {
 function updateVisuals(dt, snap = false) {
   const hero =
     phase === "home" || (phase === "paused" && previousPhase === "home");
+  car.userData.setDetail(hero && !qualityLow);
   const x = roadX(run.d, course) + run.x,
     y = coast.roadY(run.d) + Math.max(-8, run.y);
   car.position.set(x, y, -run.d);
@@ -473,7 +480,7 @@ function updateVisuals(dt, snap = false) {
   for (const jet of d.thrusterJets) {
     jet.visible = run.boosting || run.padTime > 0;
     jet.scale.z = 1.8 + Math.sin(clock * 43) * 0.25;
-    jet.material.opacity = 0.35;
+    jet.material.uniforms.time.value = clock;
   }
   for (const jet of d.liftJets) {
     jet.visible = run.lifting;
@@ -511,21 +518,23 @@ function updateVisuals(dt, snap = false) {
   }
 
   if (hero) {
-    camera.fov = 43;
+    camera.fov = innerHeight < 600 ? 39 : 36;
     camera.setViewOffset(
       innerWidth,
       innerHeight,
-      -innerWidth * 0.19,
+      -innerWidth * (innerHeight < 600 ? 0.17 : 0.12),
       0,
       innerWidth,
       innerHeight,
     );
     camera.position.set(
-      x + 7.1 + Math.sin(clock * 0.11) * 0.3,
-      y + 2.9,
-      -run.d - 7.1,
+      x +
+        Math.sin(Math.PI / 4 + showroomAngle) * 8.5 +
+        Math.sin(clock * 0.11) * 0.2,
+      y + 2.3,
+      -run.d - Math.cos(Math.PI / 4 + showroomAngle) * 8.5,
     );
-    camera.lookAt(x, y + 0.75, -run.d + 0.2);
+    camera.lookAt(x, y + 0.38, -run.d + 0.2);
   } else {
     camera.clearViewOffset();
     const targetFov = reduced
@@ -542,8 +551,8 @@ function updateVisuals(dt, snap = false) {
     );
     cameraGoal.set(
       roadX(run.d - 10, course) + run.x * 0.72,
-      y + 4.5 - run.y * 0.33,
-      -run.d + 10.7,
+      y + 3.5 - run.y * 0.23,
+      -run.d + 8.7,
     );
     if (!reduced) {
       cameraGoal.y += Math.sin(clock * 19) * 0.014 * (run.boosting ? 2 : 1);
@@ -567,7 +576,7 @@ function applyQuality() {
     Math.min(devicePixelRatio || 1, qualityLow ? 1.25 : 1.75),
   );
   coast.setQuality(qualityLow);
-  car.userData.setDetail(false);
+  car.userData.setDetail(!qualityLow && phase === "home");
   $("quality").querySelector("b").textContent = quality.toUpperCase();
   storage.set("breakwater-quality", quality);
 }
@@ -671,59 +680,39 @@ async function boot() {
     renderer.toneMappingExposure = 1.05;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    await loadVisualAssets(renderer, (value) => {
+      $("loading").querySelector("strong").textContent =
+        "PREPARING THE TOUR / " + Math.round(value * 100) + "%";
+    });
     coast = createCoast(scene, renderer, course);
     car = createCar();
     scene.add(car);
     car.userData.interior.visible = false;
-    car.userData.setDetail(false);
+    car.userData.setDetail(!qualityLow && phase === "home");
     ghost = new THREE.Group();
     const ghostMaterial = new THREE.MeshBasicMaterial({
       color: 0x98ffdb,
       transparent: true,
       opacity: 0.22,
       depthWrite: false,
-      wireframe: true,
+      wireframe: false,
     });
-    const ghostBody = new THREE.Mesh(
-      new THREE.BoxGeometry(1.94, 0.55, 4.6, 1, 1, 2),
-      ghostMaterial,
-    );
-    ghostBody.position.y = 0.6;
-    ghost.add(ghostBody);
-    const ghostRoof = new THREE.Mesh(
-      new THREE.BoxGeometry(1.5, 0.5, 1.8),
-      ghostMaterial,
-    );
-    ghostRoof.position.set(0, 1.06, 0.2);
-    ghost.add(ghostRoof);
+    for (const part of car.children) {
+      if (
+        !part.isMesh ||
+        ![car.userData.paintMaterial, car.userData.glassMaterial].includes(
+          part.material,
+        )
+      )
+        continue;
+      const shell = new THREE.Mesh(part.geometry, ghostMaterial);
+      shell.position.copy(part.position);
+      shell.rotation.copy(part.rotation);
+      ghost.add(shell);
+    }
     scene.add(ghost);
     ghost.visible = false;
 
-    // A small procedural environment supplies real paint reflections without downloaded textures.
-    const envScene = new THREE.Scene();
-    envScene.background = new THREE.Color(0xb6d4d4);
-    const ceiling = new THREE.Mesh(
-      new THREE.PlaneGeometry(40, 25),
-      new THREE.MeshBasicMaterial({ color: 0xfff7d9 }),
-    );
-    ceiling.rotation.x = Math.PI / 2;
-    ceiling.position.y = 9;
-    envScene.add(ceiling);
-    const darkFloor = new THREE.Mesh(
-      new THREE.PlaneGeometry(100, 100),
-      new THREE.MeshBasicMaterial({ color: 0x28464a }),
-    );
-    darkFloor.rotation.x = -Math.PI / 2;
-    darkFloor.position.y = -3;
-    envScene.add(darkFloor);
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    const env = pmrem.fromScene(envScene, 0.03);
-    scene.environment = env.texture;
-    pmrem.dispose();
-    ceiling.geometry.dispose();
-    ceiling.material.dispose();
-    darkFloor.geometry.dispose();
-    darkFloor.material.dispose();
     audio = createSound();
     controls = createControls(
       window,
@@ -782,6 +771,50 @@ async function boot() {
       storage.set("breakwater-sound", soundOn);
       $("sound").querySelector("b").textContent = soundOn ? "ON" : "OFF";
     };
+    const browseVenue = (direction) => {
+      if (phase !== "home" || orientationBlocked) return;
+      tour = null;
+      const index = COURSES.findIndex((c) => c.id === course.id);
+      selectCourse(
+        COURSES[(index + direction + COURSES.length) % COURSES.length].id,
+      );
+    };
+    $("venue-prev").onclick = () => browseVenue(-1);
+    $("venue-next").onclick = () => browseVenue(1);
+    window.addEventListener("keydown", (e) => {
+      if (phase !== "home" || e.repeat || e.altKey || e.ctrlKey || e.metaKey)
+        return;
+      if (
+        (e.code === "ArrowLeft" || e.code === "ArrowRight") &&
+        (e.target?.tagName !== "BUTTON" || e.target.closest("#course-select"))
+      ) {
+        e.preventDefault();
+        browseVenue(e.code === "ArrowLeft" ? -1 : 1);
+      }
+      if (e.code === "Enter" && e.target?.tagName !== "BUTTON") {
+        e.preventDefault();
+        tour = null;
+        start();
+      }
+    });
+    $("orbit-car").onclick = () => {
+      showroomAngle += Math.PI / 2;
+      updateVisuals(0, true);
+    };
+    let orbitPointer = null;
+    $("scene").addEventListener("pointerdown", (e) => {
+      if (phase !== "home") return;
+      orbitPointer = { id: e.pointerId, x: e.clientX };
+      $("scene").setPointerCapture?.(e.pointerId);
+    });
+    $("scene").addEventListener("pointermove", (e) => {
+      if (phase !== "home" || orbitPointer?.id !== e.pointerId) return;
+      showroomAngle += (e.clientX - orbitPointer.x) * 0.007;
+      orbitPointer.x = e.clientX;
+      updateVisuals(0, true);
+    });
+    for (const type of ["pointerup", "pointercancel", "lostpointercapture"])
+      $("scene").addEventListener(type, () => (orbitPointer = null));
     $("quality").onclick = () => {
       quality =
         quality === "auto" ? "high" : quality === "high" ? "low" : "auto";

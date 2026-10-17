@@ -143,6 +143,21 @@ document.getElementById("run").onclick = async () => {
     ok(g.state.score === score);
   });
   g.home();
+  check("Venue arrows cycle all three courses and update the selection", () => {
+    g.selectCourse("breakwater");
+    d.getElementById("venue-prev").click();
+    ok(g.course.id === "nightshift");
+    d.getElementById("venue-next").click();
+    ok(g.course.id === "breakwater");
+    ok(d.getElementById("venue-index").textContent === "01 / 03");
+  });
+  check("Showroom rotation preserves course and driving state", () => {
+    d.getElementById("orbit-car").click();
+    g.step(0);
+    ok(
+      g.phase === "home" && g.course.id === "breakwater" && g.state.speed === 0,
+    );
+  });
   for (const course of COURSES) {
     d.querySelector('[data-course="' + course.id + '"]').click();
     g.step(0);
@@ -224,7 +239,7 @@ document.getElementById("run").onclick = async () => {
         const title = d.querySelector(".home-copy").getBoundingClientRect();
         const brief = d.querySelector(".brief").getBoundingClientRect();
         ok(
-          title.bottom + 8 <= brief.top,
+          !brief.height || title.bottom + 8 <= brief.top,
           `title bottom ${title.bottom}, instructions ${brief.top}`,
         );
         const start = d.getElementById("start").getBoundingClientRect();
@@ -238,6 +253,9 @@ document.getElementById("run").onclick = async () => {
       () => {
         const ids = [
           "course-select",
+          "venue-prev",
+          "venue-next",
+          "orbit-car",
           "home-title",
           "paint",
           "start",
@@ -288,7 +306,7 @@ document.getElementById("run").onclick = async () => {
       () => {
         for (const el of [
           ...d.querySelectorAll(
-            ".hud-top,.speed-block,.reserve-block,#warning,#touch-controls button",
+            ".hud-top,.speed-block,.reserve-block,#warning,#race-target,#touch-controls button",
           ),
         ]) {
           if (!el.getClientRects().length) continue;

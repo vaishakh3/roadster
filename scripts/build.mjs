@@ -1,5 +1,12 @@
 import { build } from "esbuild";
-import { readFile, writeFile, mkdir, copyFile, rm } from "node:fs/promises";
+import {
+  readFile,
+  writeFile,
+  mkdir,
+  copyFile,
+  rm,
+  readdir,
+} from "node:fs/promises";
 const result = await build({
   entryPoints: ["main.js"],
   bundle: true,
@@ -8,7 +15,19 @@ const result = await build({
   write: false,
 });
 const html = await readFile("index.html", "utf8"),
-  js = result.outputFiles[0].text;
+  bundled = result.outputFiles[0].text;
+let js = bundled;
+for (const file of await readdir("assets/realism")) {
+  if (!/\.(jpg|hdr)$/.test(file)) continue;
+  const data = await readFile("assets/realism/" + file);
+  const mime = file.endsWith(".jpg")
+    ? "image/jpeg"
+    : "application/octet-stream";
+  js = js.replaceAll(
+    "assets/realism/" + file,
+    `data:${mime};base64,${data.toString("base64")}`,
+  );
+}
 let css = await readFile("style.css", "utf8");
 for (const file of [
   "BarlowCondensed-SemiBold.ttf",
@@ -20,12 +39,27 @@ for (const file of [
     "data:font/ttf;base64," + data.toString("base64"),
   );
 }
+for (const file of await readdir("assets/venues")) {
+  if (!file.endsWith(".png")) continue;
+  const data = await readFile("assets/venues/" + file);
+  css = css.replaceAll(
+    "assets/venues/" + file,
+    "data:image/png;base64," + data.toString("base64"),
+  );
+}
 const fontLicenseFiles = ["Barlow-OFL.txt", "IBMPlexMono-OFL.txt"];
-const fontLicenses = (
-  await Promise.all(
-    fontLicenseFiles.map((file) => readFile("assets/fonts/" + file, "utf8")),
-  )
-).join("\n\n");
+const bundledLicenses =
+  (
+    await Promise.all(
+      fontLicenseFiles.map((file) => readFile("assets/fonts/" + file, "utf8")),
+    )
+  ).join("\n\n") +
+  "\n\n" +
+  (await readFile("assets/realism/LICENSE.txt", "utf8")) +
+  "\n\n" +
+  (await readFile("assets/LICENSE.txt", "utf8")) +
+  "\n\n" +
+  (await readFile("vendor/THREE-LICENSE.txt", "utf8"));
 const standalone = html
   .replace(/<link\b[^>]*href="style\.css"[^>]*>/, () => `<style>${css}</style>`)
   .replace(
@@ -35,7 +69,7 @@ const standalone = html
   .replace(
     "</body>",
     () =>
-      `<script type="text/plain" id="font-licenses">${fontLicenses.replaceAll("</script", "<\\/script")}</script></body>`,
+      `<script type="text/plain" id="asset-licenses">${bundledLicenses.replaceAll("</script", "<\\/script")}</script></body>`,
   );
 await writeFile("Roadster-Flight-Lab.html", standalone);
 await rm("dist", { recursive: true, force: true });
@@ -43,6 +77,7 @@ await mkdir("dist", { recursive: true });
 await writeFile("dist/index.html", standalone);
 await copyFile("vendor/THREE-LICENSE.txt", "dist/THREE-LICENSE.txt");
 await copyFile("assets/LICENSE.txt", "dist/ASSET-LICENSE.txt");
+await copyFile("assets/realism/LICENSE.txt", "dist/REALISM-ASSETS-LICENSE.txt");
 for (const file of ["Barlow-OFL.txt", "IBMPlexMono-OFL.txt"])
   await copyFile("assets/fonts/" + file, "dist/" + file);
 console.log(

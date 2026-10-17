@@ -1,0 +1,69 @@
+Realism assets — Poly Haven / CC0 1.0 Universal
+Retrieved 17 October 2026 from the official Poly Haven asset download service.
+
+License
+-------
+All seven media files in this directory are original Poly Haven assets distributed
+under CC0 1.0 Universal (public-domain dedication). Commercial use, modification
+and redistribution are permitted. Attribution is appreciated but is not required
+by the asset license.
+
+Official license statement: https://polyhaven.com/license
+CC0 deed: https://creativecommons.org/publicdomain/zero/1.0/
+CC0 legal code: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+Sources / voluntary credit
+==========================
+Asphalt Track — Dimitrios Savva / Poly Haven
+https://polyhaven.com/a/asphalt_track
+- asphalt_track_diff_1k.jpg: diffuse/base color, 1024 x 1024, 858925 bytes
+- asphalt_track_nor_gl_1k.jpg: OpenGL tangent normal, 1024 x 1024, 832851 bytes
+- asphalt_track_rough_1k.jpg: roughness, 1024 x 1024, 459197 bytes
+Scanned surface width: 2 metres.
+
+Sandstone Cracks — Rob Tuytel / Poly Haven
+https://polyhaven.com/a/sandstone_cracks
+- sandstone_cracks_diff_1k.jpg: diffuse/base color, 1024 x 1024, 696657 bytes
+- sandstone_cracks_nor_gl_1k.jpg: OpenGL tangent normal, 1024 x 1024, 1307622 bytes
+- sandstone_cracks_rough_1k.jpg: roughness, 1024 x 1024, 352483 bytes
+Scanned surface width: 2 metres.
+
+Venice Sunset — Greg Zaal / Poly Haven
+https://polyhaven.com/a/venice_sunset
+- venice_sunset_1k.hdr: Radiance RGBE equirectangular HDR, 1024 x 512,
+  1440400 bytes. Warm horizon, blue upper sky, coastal reflections.
+
+The JPEG and HDR files are unmodified official 1K downloads. Each downloaded
+file's MD5 was verified against https://api.polyhaven.com/files/{asset_id}.
+The game does not need the API or any remote runtime asset requests.
+
+Integration notes
+=================
+Diffuse JPEGs contain color information: use THREE.SRGBColorSpace.
+Normal and roughness JPEGs are data textures: use THREE.NoColorSpace.
+The normals use OpenGL (+Y) orientation, suitable for Three.js tangent-space
+normal maps without inverting the green channel. Retain the same repeat,
+rotation, offset and flipY settings across each corresponding material set.
+Set wrapS/wrapT to RepeatWrapping. The source scale is one tile per 2 metres;
+world-aligned UVs (worldDistance/2) avoid road stretch at different course lengths.
+Use modest normalScale for asphalt, and an appropriate mipmapped minification
+filter / anisotropy to prevent road shimmer at a grazing camera angle.
+Roughness files are grayscale and can be assigned to roughnessMap directly.
+
+Load the HDR with Three.js RGBELoader/HDRLoader. It contains linear HDR radiance,
+not sRGB pixels; keep the loader's color-space/type settings. Set its mapping to
+EquirectangularReflectionMapping, then generate a PMREM for scene.environment.
+A 1K source is sufficient for rough body reflections and saves mobile bandwidth.
+Rotate scene.environmentRotation around Y to align its brightest horizon with
+the scene's key light. Its reflected architecture is not geometry in the game;
+use the existing authored sky if a coherent in-game skyline is required.
+
+SHA-256 integrity
+=================
+05c4e79cd99160075969d37bfc6ef72be262153a410bb45510b2c23f7303894c  asphalt_track_diff_1k.jpg
+18caf02427a7cd9cd577ceae5aa9daa7bb3ffba60598e2df8aaf75d1925a8a94  asphalt_track_nor_gl_1k.jpg
+0646d0cfbe6bf9ea4a8a9e43aec826e7ec32a10b8aff61bf5a4ec02b1bc3c363  asphalt_track_rough_1k.jpg
+cf381bbcf60aac570ce895719025a2b7adae7c03369b3d545b4f52f94e57e0e9  sandstone_cracks_diff_1k.jpg
+cb983540cae33979e79862fe27b4ec23a5d41c627230d3730e9d5ff6671859f9  sandstone_cracks_nor_gl_1k.jpg
+4995b3ce148ceef48ea3bc0b83a8799fd0bf38e00c75677ff2de857a7d4cbdbb  sandstone_cracks_rough_1k.jpg
+92fe2b29b1957828fb8925a57633540bbba5bf380d9285ed553443e834249352  venice_sunset_1k.hdr

@@ -12,3 +12,5 @@ tests/*-report.json
 tests/*-report.txt
 tests/*-log.txt
 review-r*/
+
+!assets/venues/*.png

@@ -1,12 +1,12 @@
 import * as THREE from './vendor/three.module.js';
 import { createInterior } from './interior.js';
 
-/** Original procedural interpretation of the October 2026 Roadster.
+/** Original Roadster-inspired concept model.
  * The model points down -Z. All measurements are in meters. */
 export function createCar() {
   const car = new THREE.Group();
   car.name = 'Roadster';
-  const paint = new THREE.MeshPhysicalMaterial({color: 0xeeefec, metalness:.24, roughness:.22, clearcoat:1, clearcoatRoughness:.075, side:THREE.DoubleSide});
+  const paint = new THREE.MeshPhysicalMaterial({color: 0xeeefec, metalness:.42, roughness:.20, clearcoat:1, clearcoatRoughness:.075, side:THREE.DoubleSide});
   const black = new THREE.MeshStandardMaterial({color:0x080b0d, metalness:.3, roughness:.43, side:THREE.DoubleSide});
   const intakeVoid=new THREE.MeshStandardMaterial({color:0x010203,metalness:0,roughness:1,side:THREE.DoubleSide});
   const frontBand=new THREE.MeshPhysicalMaterial({color:0x363c42,metalness:.15,roughness:.23,clearcoat:1,clearcoatRoughness:.08,side:THREE.DoubleSide});
@@ -17,7 +17,7 @@ export function createCar() {
   const darkAlloy = new THREE.MeshStandardMaterial({color:0x252e32, metalness:.92, roughness:.3, side:THREE.DoubleSide});
   const chrome = new THREE.MeshStandardMaterial({color:0xbac6c7, metalness:1, roughness:.15});
   const brake = new THREE.MeshStandardMaterial({color:0x70251b, metalness:.55, roughness:.35});
-  const glass = new THREE.MeshPhysicalMaterial({color:0x201b18, metalness:.25, roughness:.12, transmission:.28, thickness:.05, ior:1.5, attenuationColor:0x9e7350, attenuationDistance:.35, clearcoat:.6, clearcoatRoughness:.10, side:THREE.DoubleSide, envMapIntensity:1.0, iridescence:.08, iridescenceIOR:1.24, iridescenceThicknessRange:[220,260]});
+  const glass = new THREE.MeshPhysicalMaterial({color:0x24333c, metalness:.12, roughness:.075, transmission:.28, thickness:.05, ior:1.5, attenuationColor:0x8da6b1, attenuationDistance:1.6, clearcoat:.6, clearcoatRoughness:.10, side:THREE.DoubleSide, envMapIntensity:1.0, iridescence:.015, iridescenceIOR:1.24, iridescenceThicknessRange:[220,260]});
   const headlamp = new THREE.MeshStandardMaterial({color:0xe4f9ff, emissive:0xc4e9ff, emissiveIntensity:3.5, roughness:.14, side:THREE.DoubleSide});
   const tail = new THREE.MeshStandardMaterial({color:0xb5060c, emissive:0xff0816, emissiveIntensity:2.3, roughness:.17});
   const amber = new THREE.MeshStandardMaterial({color:0xffae46, emissive:0xff760c, emissiveIntensity:1.8});
@@ -67,7 +67,7 @@ export function createCar() {
   }
 
   // Continuous, crease-controlled body patches. Dimensions are an original
-  // reconstruction from Tesla's public 2026 photographs, not manufacturer CAD.
+  // Roadster-inspired interpretation, not manufacturer CAD.
   const frontZ=-1.45,rearZ=1.48, wheelY=.39, archR=.432;
   // z, outer half-width, hood/deck centre height, shoulder height, hood half-width
   const stations=[
@@ -94,7 +94,7 @@ export function createCar() {
   // the canopy or flying buttress can cause flickering/intersection highlights.
   const centerRow=([z,w,h,shoulder,inner])=>{
     const half=z>=1.9?THREE.MathUtils.lerp(.44,.77,(z-1.9)/.49):z>=1.55?THREE.MathUtils.lerp(.364,.44,(z-1.55)/.35):inner,row=[];
-    for(let j=0;j<=16;j++){const t=j/16*2-1;row.push([t*half,h+.007*(1-t*t),z]);}return row;
+    for(let j=0;j<=16;j++){const t=j/16*2-1;row.push([t*half,h+.045*(1-t*t)*THREE.MathUtils.smoothstep(z,-2.38,-1.65),z]);}return row;
   };
   strip(samples.filter(row=>row[0]<=-1.03).map(centerRow),paint);
   strip(samples.filter(row=>row[0]>=1.55).map(centerRow),paint);
@@ -102,7 +102,7 @@ export function createCar() {
     // Deliberate diagonal shoulder crease and gently rolled outer fender.
     const shoulderRow=([z,w,h,sh,inner])=>{
       if(z>=1.9)inner=THREE.MathUtils.lerp(.44,.77,(z-1.9)/.49);
-      const row=[];for(let j=0;j<=8;j++){const u=j/8;const x=THREE.MathUtils.lerp(inner,w*.972,u);const y=THREE.MathUtils.lerp(h,sh,u)+.016*Math.sin(Math.PI*u);row.push([side*x,y,z]);}return row;
+      const row=[];for(let j=0;j<=8;j++){const u=j/8;const x=THREE.MathUtils.lerp(inner,w*.972,u);const y=THREE.MathUtils.lerp(h,sh,u)+.033*Math.sin(Math.PI*u);row.push([side*x,y,z]);}return row;
     };
     strip(samples.filter(row=>row[0]<=.57).map(shoulderRow),paint);
     strip(samples.filter(row=>row[0]>=1.9).map(shoulderRow),paint);
@@ -138,7 +138,7 @@ export function createCar() {
   for(const side of [-1,1]){
     // Lamp lens lies precisely on the shoulder surface. A four-millimetre recess
     // border follows the same curvature, so no triangle can sink into the fender.
-    const lampPoint=(x,z,lift=.004)=>{const [_,w,h,sh,inner]=station(z),u=(x-inner)/(w*.972-inner);return [side*x,THREE.MathUtils.lerp(h,sh,u)+.016*Math.sin(Math.PI*u)+lift,z];};
+    const lampPoint=(x,z,lift=.004)=>{const [_,w,h,sh,inner]=station(z),u=(x-inner)/(w*.972-inner);return [side*x,THREE.MathUtils.lerp(h,sh,u)+.033*Math.sin(Math.PI*u)+lift,z];};
     const lampA=[.748,-2.345],lampB=[.966,-2.20],lampC=[.706,-2.045];
     function lensPatch(A,B,C,material,lift){
       const vertices=[],N=8,point=(a,b)=>lampPoint(A[0]+(B[0]-A[0])*a+(C[0]-A[0])*b,A[1]+(B[1]-A[1])*a+(C[1]-A[1])*b,lift);
@@ -155,7 +155,7 @@ export function createCar() {
     }
     const capRows=[];for(let v=0;v<=12;v++){
       const t=v/12,[z,w,h,sh,inner]=station(-2.38),outerX=w*(.972+.028*Math.sin(t*Math.PI*.5))-.014*t*t,outerY=THREE.MathUtils.lerp(sh,bottom(z),t),innerX=THREE.MathUtils.lerp(inner,.810,t),innerY=THREE.MathUtils.lerp(h,.300,t),row=[];
-      for(let j=0;j<=16;j++){const u=j/16;row.push([side*THREE.MathUtils.lerp(innerX,outerX,u),THREE.MathUtils.lerp(innerY,outerY,u)+.016*Math.sin(Math.PI*u)*(1-t),-2.382-.009*t*(1-u)]);}capRows.push(row);
+      for(let j=0;j<=16;j++){const u=j/16;row.push([side*THREE.MathUtils.lerp(innerX,outerX,u),THREE.MathUtils.lerp(innerY,outerY,u)+.033*Math.sin(Math.PI*u)*(1-t),-2.382-.009*t*(1-u)]);}capRows.push(row);
     }strip(capRows,paint);
     // Black lower wrap turns the front corner without overlapping body patches.
     poly([[side*.810,.300,-2.391],[side*.916,.310,-2.391],[side*.93,.170,-2.412],[side*.830,.166,-2.413]],carbon);
@@ -171,15 +171,15 @@ export function createCar() {
   const canopy=[[-1.03,.880,.770,.860],[-.83,.800,.898,.883],[-.58,.728,1.024,1.009],[-.32,.673,1.161,1.146],[-.20,.655,1.197,1.182],[.22,.650,1.210,1.195],[.57,.620,1.201,1.186],[.78,.577,1.145,1.130],[1.04,.506,1.035,1.020],[1.38,.397,.861,.846],[1.55,.355,.833,.825]];
   // Broad, planar roof and straight windshield follow the revealed wedge silhouette.
   for(const row of canopy){row[2]+=.018;row[3]+=.012;row[1]*=1.025;}
-  function canopyRow(row){const[z,w,h,e]=row,out=[];for(let j=0;j<=12;j++){const t=j/12*2-1;out.push([t*w,h-(h-e)*Math.pow(Math.abs(t),4),z]);}return out;}
+  function canopyRow(row){const[z,w,h,e]=row,out=[];for(let j=0;j<=12;j++){const t=j/12*2-1;out.push([t*w,h-(h-e)*Math.pow(Math.abs(t),2)+.022*(1-t*t),z]);}return out;}
   // Resample along Z to avoid normal jumps while retaining the roof break.
   const canopyRows=[];for(let i=0;i<canopy.length-1;i++)for(let j=0;j<4;j++){
     const t=j/4,a=canopy[i],b=canopy[i+1],prev=canopy[Math.max(0,i-1)],next=canopy[Math.min(canopy.length-1,i+2)],dz=b[0]-a[0];
-    canopyRows.push(canopyRow(a.map((v,k)=>k===0?THREE.MathUtils.lerp(a[0],b[0],t):THREE.MathUtils.lerp(v,b[k],t))));
+    canopyRows.push(canopyRow(a.map((v,k)=>k===0?THREE.MathUtils.lerp(a[0],b[0],t):(2*t*t*t-3*t*t+1)*v+(t*t*t-2*t*t+t)*dz*(b[k]-prev[k])/(b[0]-prev[0])+(-2*t*t*t+3*t*t)*b[k]+(t*t*t-t*t)*dz*(next[k]-a[k])/(next[0]-a[0]))));
   }canopyRows.push(canopyRow(canopy.at(-1)));strip(canopyRows,glass);
   for(const side of [-1,1]){
     const top=canopy.slice(0,8).map(([z,x,h,y])=>[z,x,y]);
-    function glassSill(z,x,y){const outer=.908-(z+1.03)*.016,st=station(z),u=(outer-st[4])/(st[1]*.972-st[4]),base=THREE.MathUtils.lerp(st[2],st[3],u)+.016*Math.sin(Math.PI*u)+.004,t=THREE.MathUtils.smoothstep(z,.57,1.2525);return [THREE.MathUtils.lerp(outer,x,t),THREE.MathUtils.lerp(base,y,t)];}
+    function glassSill(z,x,y){const outer=.908-(z+1.03)*.016,st=station(z),u=(outer-st[4])/(st[1]*.972-st[4]),base=THREE.MathUtils.lerp(st[2],st[3],u)+.033*Math.sin(Math.PI*u)+.004,t=THREE.MathUtils.smoothstep(z,.57,1.2525);return [THREE.MathUtils.lerp(outer,x,t),THREE.MathUtils.lerp(base,y,t)];}
     const sideEdges=[];
     const sideRows=canopyRows.filter(row=>row[0][2]<=1.2526).map(row=>{const z=row[0][2],p=side>0?row.at(-1):row[0],[lowerX,lowerY]=glassSill(z,Math.abs(p[0]),p[1]),out=[];for(let i=0;i<=12;i++){const u=i/12;out.push([THREE.MathUtils.lerp(p[0],side*lowerX,u)+side*.009*Math.sin(Math.PI*u),THREE.MathUtils.lerp(p[1],lowerY,u),z]);}sideEdges.push([side*lowerX,lowerY+.002,z]);return out;});if(side<0)for(const row of sideRows)row.reverse();strip(sideRows,glass);
     line(canopyRows.filter(row=>row[0][2]<=1.2526).map(row=>{const p=side>0?row.at(-1):row[0];return [p[0]+side*.002,p[1]+.002,p[2]]}),black,.003);
@@ -209,6 +209,10 @@ export function createCar() {
     const tire=mesh(new THREE.LatheGeometry(profile,64),rubber,spin);tire.rotation.z=Math.PI/2;
     // Tread channels and sidewall bead sit on the curved rubber, not on its silhouette.
     for(const x of [-.062,-.021,.021,.062])torus(.394,.002,black,x,0,0,'x',spin);
+    for(let j=0;j<48;j++)for(const lane of [-1,1]) {
+      const a=j/48*Math.PI*2;
+      line([[lane*.025,Math.sin(a)*.395,Math.cos(a)*.395],[lane*.098,Math.sin(a+.06)*.39,Math.cos(a+.06)*.39]],black,.0012,spin);
+    }
     const out=side*.141;cyl(.313,.04,darkAlloy,side*.072,0,0,'x',spin,80);
     torus(.312,.007,alloy,out,0,0,'x',spin);torus(.296,.002,chrome,out+side*.003,0,0,'x',spin);
     cyl(.259,.018,darkAlloy,side*.079,0,0,'x',pivot,72);
@@ -264,7 +268,19 @@ export function createCar() {
     cyl(.041,.025,darkAlloy,x,.252,2.47,'z',car,40);torus(.037,.003,alloy,x,.252,2.486,'z');
     const cone=mesh(new THREE.ConeGeometry(.038,.038,40),carbon);cone.rotation.x=Math.PI/2;cone.position.set(x,.252,2.498);
     const jetGeo=new THREE.ConeGeometry(.13,.9,16,1,true);jetGeo.rotateX(-Math.PI/2);jetGeo.translate(0,0,.45);
-    const jet=mesh(jetGeo,new THREE.MeshBasicMaterial({color:0xe8f4ff,transparent:true,opacity:.12,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide}),car);jet.position.set(x,.433,2.528);jet.visible=false;jet.castShadow=false;jet.receiveShadow=false;thrusterJets.push(jet);
+    const jet=mesh(jetGeo,new THREE.ShaderMaterial({
+      transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
+      uniforms:{time:{value:0},phase:{value:x*13}},
+      vertexShader:`varying vec2 vUv;varying vec3 vNormal;varying vec3 vView;
+        void main(){vUv=uv;vNormal=normalize(normalMatrix*normal);vec4 p=modelViewMatrix*vec4(position,1.);vView=-p.xyz;gl_Position=projectionMatrix*p;}`,
+      fragmentShader:`varying vec2 vUv;varying vec3 vNormal;varying vec3 vView;uniform float time;uniform float phase;
+        void main(){
+          float w=.7+.3*sin(vUv.y*46.-time*32.+phase+sin(vUv.x*19.));
+          float edge=pow(abs(dot(normalize(vNormal),normalize(vView))),.8);
+          float fade=smoothstep(0.,.58,vUv.y)*(1.-smoothstep(.94,1.,vUv.y));
+          gl_FragColor=vec4(.72,.85,1.,fade*edge*w*.22);
+        }`,
+    }),car);jet.position.set(x,.433,2.528);jet.visible=false;jet.castShadow=false;jet.receiveShadow=false;thrusterJets.push(jet);
   }
   for(const x of [-.836,-.413,0,.413,.836]){
     poly([[x,.113,2.24],[x,.13,2.516],[x,.371,2.488],[x,.355,2.30]],carbon);
@@ -340,6 +356,6 @@ export function createCar() {
   for(const wheel of wheels){batchRigid(wheel.spin);batchRigid(wheel.pivot);}
   batchRigid(wing);
   batchRigid(car,new Set([...brakeLights,...thrusterJets,...liftJets]));
-  car.userData={interior,setDetail:detailed=>{glass.transmission=detailed?.28:0;glass.needsUpdate=true;},wheels,brakeLights,thrusterJets,liftJets,wing,paintMaterial:paint,glassMaterial:glass,headlightMaterial:headlamp};
+  car.userData={interior,setDetail:detailed=>{const t=detailed?.20:0;if(glass.transmission!==t){glass.transmission=t;glass.needsUpdate=true;}interior.visible=!!detailed;},wheels,brakeLights,thrusterJets,liftJets,wing,paintMaterial:paint,glassMaterial:glass,headlightMaterial:headlamp};
   return car;
 }

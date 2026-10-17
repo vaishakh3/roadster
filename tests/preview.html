@@ -36,6 +36,8 @@
     ><button data-size="844,390">Landscape phone</button
     ><button data-size="568,320">Small phone</button
     ><button data-size="390,844">Portrait phone</button
+    ><button data-size="480,270">Thumbnail size</button
+    ><button id="scenery">Scenery only</button
     ><button id="reload">Reload game</button
     ><button id="capture">Clean capture</button>
   </nav>
@@ -64,6 +66,25 @@
   <script type="module">
     import { driveInput } from "./driver.js";
     const frame = document.querySelector("iframe");
+    document.getElementById("scenery").onclick = () => {
+      const w = frame.contentWindow,
+        g = w.__breakwater;
+      g.start();
+      g.freeze();
+      g.setState({
+        d:
+          g.course.id === "redshift"
+            ? 540
+            : g.course.id === "nightshift"
+              ? 240
+              : 240,
+        x: 0,
+        speed: 60,
+      });
+      g.step(0);
+      for (const id of ["app", "shade", "boost-fx"])
+        w.document.getElementById(id).style.display = "none";
+    };
     document.getElementById("capture").onclick = () => {
       document.body.style.margin = "0";
       document

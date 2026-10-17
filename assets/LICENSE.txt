@@ -1,5 +1,7 @@
-Breakwater's scenery, sky, sea, vehicle geometry and sound are generated locally by original code.
-No promotional photographs, reference-game graphics or third-party HDR textures are bundled.
+Roadster's vehicle geometry, scenery geometry, shaders and sound are generated locally by original code.
+Scanned asphalt and sandstone textures and the Venice Sunset HDR are Poly Haven CC0 assets; see realism/LICENSE.txt for sources, authors and checksums.
+Venue thumbnails are captures of this game's rendered scenes.
+No promotional photographs or reference-game graphics are bundled.
 Barlow Condensed: SIL Open Font License, see fonts/Barlow-OFL.txt.
 IBM Plex Mono: SIL Open Font License, see fonts/IBMPlexMono-OFL.txt.
-Three.js: MIT License, see ../vendor/THREE-LICENSE.txt.
+Three.js and its HDR loader: MIT License, see ../vendor/THREE-LICENSE.txt.
