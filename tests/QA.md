@@ -20,6 +20,8 @@ The production-bundle harness uses WebGL and actual DOM handlers. 31 checks cove
 - Visible pause controls of at least 44 px at those sizes; no title/instruction overlap on start screens.
 - Portrait prompts at 390×844 and 320×568, pausing time and input, inert gameplay, and deliberate resume after returning to landscape.
 
+A real-time rendered course driven through keyboard events completed all 18 gates and four jumps in 50.51 seconds, with all three condition segments intact (20,869 points).
+
 Native keyboard verification in the Codex browser also held Shift+Right, then Shift+Left: the vehicle moved from X=0 to X=8.54 at 211 km/h, then back to X=−0.51 at 248 km/h. This exercised a real held key chord in addition to the synthetic harness.
 
 Visual review covers the start screen, driving/flight HUD, bridge warnings, pause, results and portrait prompt. QA state is isolated from persisted personal bests. The standalone and hosted builds are identical, with bundled fonts and no runtime network assets.

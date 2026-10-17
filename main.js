@@ -162,10 +162,10 @@ function endRun() {
     ? "THE OTHER SIDE."
     : `${(run.d / 1000).toFixed(2)} KM INTO THE CROSSING.`;
   $("result-title").innerHTML = complete
-    ? "CROSSING<br />COMPLETE."
+    ? "CROSSING<br /> COMPLETE."
     : run.reason === "THE BRIDGE WAS OUT"
-      ? "MISSED THE<br />TAKEOFF."
-      : "END OF<br />THE RUN.";
+      ? "MISSED THE<br /> TAKEOFF."
+      : "END OF<br /> THE RUN.";
   $("result-tip").textContent = complete
     ? "Chase the gold: under 1:05, with at least 12 gates."
     : run.reason === "THE BRIDGE WAS OUT"
