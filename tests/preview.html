@@ -36,7 +36,8 @@
     ><button data-size="844,390">Landscape phone</button
     ><button data-size="568,320">Small phone</button
     ><button data-size="390,844">Portrait phone</button
-    ><button id="reload">Reload game</button>
+    ><button id="reload">Reload game</button
+    ><button id="capture">Clean capture</button>
   </nav>
   <nav>
     <button data-view="home">Start screen</button
@@ -47,14 +48,31 @@
     ><button id="play">Play live</button
     ><button id="tour">Watch full course</button>
   </nav>
+  <nav>
+    <button data-arena="breakwater">Atlantic</button
+    ><button data-arena="redshift">Canyon</button
+    ><button data-arena="nightshift">Night port</button
+    ><button data-view="tunnel">Low clearance</button
+    ><button data-view="last">Final sector</button
+    ><button data-view="arch">Landmark</button>
+  </nav>
   <p id="status">
     Frozen visual review. Use Play live for native keyboard checks.
   </p>
   <p id="tour-report"></p>
   <iframe title="Game preview" src="../dist/?qa=1"></iframe>
   <script type="module">
-    import { GAPS, GATES, OBSTACLES } from "../run.js";
+    import { driveInput } from "./driver.js";
     const frame = document.querySelector("iframe");
+    document.getElementById("capture").onclick = () => {
+      document.body.style.margin = "0";
+      document
+        .querySelectorAll("nav,p")
+        .forEach((el) => (el.style.display = "none"));
+      const g = frame.contentWindow.__breakwater;
+      if (g.phase === "paused") g.resume();
+      g.step(0);
+    };
     document.querySelectorAll("[data-size]").forEach(
       (b) =>
         (b.onclick = () => {
@@ -65,6 +83,16 @@
     );
     document.querySelector("#reload").onclick = () =>
       frame.contentWindow.location.reload();
+    document.querySelectorAll("[data-arena]").forEach(
+      (b) =>
+        (b.onclick = () => {
+          const g = frame.contentWindow.__breakwater;
+          g.home();
+          g.selectCourse(b.dataset.arena);
+          g.freeze();
+          g.step(0);
+        }),
+    );
     document.querySelectorAll("[data-view]").forEach(
       (b) =>
         (b.onclick = () => {
@@ -89,7 +117,7 @@
             });
           if (v === "gap")
             g.setState({
-              d: 580,
+              d: g.course.gaps[0].start - 80,
               x: 0,
               speed: 60,
               time: 10,
@@ -98,7 +126,7 @@
             });
           if (v === "flight")
             g.setState({
-              d: 680,
+              d: g.course.gaps[0].start + 20,
               x: 0,
               y: 5.7,
               vy: 1,
@@ -110,8 +138,30 @@
               lifting: true,
               boosting: true,
             });
+          if (v === "arch")
+            g.setState({
+              d: 550,
+              x: -1,
+              y: 0,
+              time: 9,
+              speed: 70,
+              boosting: true,
+            });
+          if (v === "tunnel")
+            g.setState({
+              d: (g.course.tunnels[0]?.start || 1200) - 50,
+              time: 18,
+              speed: 65,
+            });
+          if (v === "last")
+            g.setState({ d: g.course.length - 300, time: 48, speed: 70 });
           if (v === "results") {
-            g.setState({ d: 3599, time: 59, gates: 16, score: 18600 });
+            g.setState({
+              d: g.course.length - 1,
+              time: 59,
+              gates: 16,
+              score: 18600,
+            });
             g.step(0.1);
           }
           g.step(0);
@@ -146,19 +196,14 @@
         if (g.phase !== "playing") {
           for (const code of [...held]) send(code, false);
           document.getElementById("tour-report").textContent =
-            `COURSE ${s.finished ? "COMPLETE" : "STOPPED"} · ${s.time.toFixed(2)} s · ${s.gates}/18 gates · hull ${s.hull}/3 · ${s.score} pts · ${Math.round(frames / ((performance.now() - started) / 1000))} browser frames/sec average`;
+            `COURSE ${s.finished ? "COMPLETE" : "STOPPED"} · ${s.time.toFixed(2)} s · ${s.gates}/${s.course.gates.length} gates · hull ${s.hull}/3 · ${s.score} pts · ${Math.round(frames / ((performance.now() - started) / 1000))} browser frames/sec average`;
           return;
         }
-        const gate = GATES.find((a) => a.d > s.d),
-          gap = GAPS.find((a) => s.d > a.start - 80 && s.d < a.end + 5),
-          obstacle = OBSTACLES.find((a) => a.d > s.d - 8 && a.d < s.d + 85);
-        let target = gate?.x || 0;
-        if (obstacle && !gap) target = obstacle.x >= 0 ? -6 : 6;
-        const command = (target - s.x) * 2 - s.vx * 0.2;
-        send("ArrowRight", command > 0.25);
-        send("ArrowLeft", command < -0.25);
-        send("Space", !!gap);
-        send("ShiftLeft", s.energy > 18);
+        const input = driveInput(s);
+        send("ArrowRight", input.steer > 0.25);
+        send("ArrowLeft", input.steer < -0.25);
+        send("Space", input.fly);
+        send("ShiftLeft", input.boost);
         frames++;
         requestAnimationFrame(drive);
       };
@@ -177,7 +222,7 @@
       const g = frame.contentWindow.__breakwater;
       if (g)
         document.querySelector("#status").textContent =
-          `${g.phase} · X ${g.state.x.toFixed(2)} · Y ${g.state.y.toFixed(2)} · Speed ${(g.state.speed * 3.6).toFixed(0)} · steer ${g.input.steer} · boost ${g.input.boost} · fly ${g.input.fly}`;
+          `${g.phase} · X ${g.state.x.toFixed(2)} · Y ${g.state.y.toFixed(2)} · Speed ${(g.state.speed * 3.6).toFixed(0)} · draws ${g.drawCalls} · steer ${g.input.steer} · boost ${g.input.boost} · fly ${g.input.fly}`;
     }, 100);
   </script>
 </html>

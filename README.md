@@ -1,78 +1,83 @@
-# Roadster / Breakwater
+# Roadster / World Tour
 
-A fast, original coastal crossing built in Three.js. Drive a Roadster-inspired car across 3.6 km of sea bridges, thread recharge gates, fly four gaps, and reach the lighthouse. A crossing takes roughly 50–80 seconds, with a score, medal, personal best, and instant retry.
+A self-contained Three.js arcade racer with three authored arenas, a three-stage tour, moving hazards, flight, local course records and personal ghosts. All arenas are available from the start.
 
-Breakwater replaces the previous Flight Lab playground. It is deliberately an **arcade game**: automatic forward travel, continuous lateral steering, damped lift, gravity, and a predictable flight ceiling. Steering remains available while boosting, lifting, landing, and performing a visual reward roll. It is not a simulation of Tesla or SpaceX hardware.
+| Course     | Route  | Character                                                                         | Gold target     |
+| ---------- | ------ | --------------------------------------------------------------------------------- | --------------- |
+| Breakwater | 3.6 km | Atlantic bridges, traffic, sweepers, four broken spans, lighthouse finish         | 1:05 + 12 gates |
+| Redshift   | 3.9 km | Sandstone canyon, rock arches, launch ramps, mine tunnels, low-clearance gantries | 1:13 + 13 gates |
+| Nightshift | 4.2 km | Rainy freight port, moving traffic, container yards, cranes, dock crossings       | 1:20 + 14 gates |
 
-## Run
+Pick **Race this course** for a quick run or **World Tour** to race all three in order. A tour adds stage scores; retrying a stage replaces that stage's result. Course medals, best times, best scores and three mastery badges are saved locally. Finishing each new course unlocks a paint finish: Solar, Glacier, then Midnight. Pearl is available immediately. Your fastest successful run becomes a mint wireframe ghost on subsequent attempts. The ghost can be disabled in Settings.
+
+## Run and build
 
 ```sh
 npm ci
 npm start
-```
-
-Open `http://127.0.0.1:4173/`. Node.js 20+ is required for development.
-
-```sh
 npm test
 npm run build
 ```
 
-The build creates `dist/index.html` and an identical self-contained `Roadster-Flight-Lab.html` (the existing filename is retained for compatibility). Fonts, JavaScript, geometry, sky, water and audio are local/procedural. The hosted game makes no external asset or API requests. No accounts, environment variables, paid assets or backend are required.
+Open `http://127.0.0.1:4173/`. Node.js 20+ is required for development. The build creates `dist/index.html` and an identical self-contained `Roadster-Flight-Lab.html`; the old filename remains for compatibility. Fonts, shaders, geometry and synthesized audio are local. There are no runtime asset downloads, account requirements, environment variables, paid assets or backend.
 
 ## Play
 
-| Action | Keyboard                            | Landscape phone                                            |
-| ------ | ----------------------------------- | ---------------------------------------------------------- |
-| Steer  | ← / → or A / D                      | Left / right buttons                                       |
-| Fly    | Hold Space or H; release to descend | Hold FLY; release to descend                               |
-| Boost  | Hold Shift or ↑ / W                 | Hold BOOST                                                 |
-| Brake  | ↓ or S                              | Automatic cruise; steering and flight are the main actions |
-| Pause  | Escape or P                         | Ⅱ                                                          |
-| Retry  | R or the result button              | ONE MORE RUN                                               |
+| Action | Keyboard                            | Landscape phone                                |
+| ------ | ----------------------------------- | ---------------------------------------------- |
+| Steer  | ← / → or A / D                      | Left / right buttons                           |
+| Fly    | Hold Space or H; release to descend | Hold FLY; release to descend                   |
+| Boost  | Hold Shift or ↑ / W                 | Hold BOOST                                     |
+| Brake  | ↓ or S                              | Automatic cruise; steer and fly around hazards |
+| Pause  | Escape or P                         | Ⅱ                                              |
+| Retry  | R or result button                  | ONE MORE RUN                                   |
 
-You can steer, fly and boost simultaneously. Each pointer owns its own control; releasing one does not cancel the others. Pausing, changing tabs, losing focus or rotating upright clears input. Landing and takeoff **do not** clear input.
+Steering, boost and flight work simultaneously. Each touch pointer owns its own control. Landing and takeoff never clear held inputs. Pause, focus loss and portrait rotation clear input so it cannot stick.
 
-- **Mint gates:** restore 30% thrust. A centred pass earns 250 points; a wider pass earns 150. Consecutive gates increase the multiplier to 4×. Missing a gate breaks the chain.
-- **Broken bridges:** orange approach strips warn of a gap. Hold FLY before the edge, and keep holding across the water. Approach stations guarantee at least 65% reserve. Each crossing earns 300 points.
-- **Barriers:** steer around them or fly above them. Close calls earn 150 points. A hit slows the car and costs one of three condition segments. Three hits or falling into the water ends the run.
-- **Flight:** hold to lift toward a 5.8 m ceiling; release to glide down. Perfect airborne gates trigger an automatic visual barrel roll without suspending control or changing the collision shape.
-- **Thrust:** boost and lift consume reserve; coasting on the road refills it. Gates reward staying on the intended route instead of flying continuously.
-- **Medals:** gold requires at most 65 seconds and at least 12 gates; silver requires at most 76 seconds and at least 8 gates; every other completed crossing earns bronze. Time and remaining condition add finish points.
+- **Mint gates** refill 30% thrust and reward an accurate line. Consecutive gates raise the multiplier to 4×. Air gates can award a visual barrel roll without taking away control.
+- **Broken bridges** have orange approach bands and an early warning. Hold FLY before the edge and across the gap. Approach stations guarantee a usable flight reserve.
+- **Traffic and orange barriers** can be passed on either side or flown over. Sweepers move sideways. A close pass scores bonus points. Three hits end a run.
+- **Low gantries** require returning to the road. Release FLY when the warning appears. The lower amber edge marks the 3.3 m clearance.
+- **Launch ramps** physically raise the car and impart an upward impulse. Hold FLY to extend the jump.
+- **Blue slingshot strips** give a short speed surge and restore reserve when driven over.
+- **Mastery badges** track finishing, taking no damage, and collecting every gate. These can be earned over separate runs.
 
-The pause menu includes sound, graphics quality, reduced camera motion and fullscreen. Audio starts only after a player gesture. High score is stored on the device. SAVE RUN CARD downloads a local PNG; nothing is posted or uploaded.
+The game uses assisted heading, automatic forward travel, independent lateral control and damped lift. It is an arcade game, not a simulation of a real Tesla or SpaceX vehicle. Time and remaining vehicle condition contribute to the finish score.
 
-## Mobile and readability
+## Mobile and visibility
 
-Phones play in landscape. Portrait shows a rotation prompt, pauses the run and makes the underlying controls inert. Returning to landscape requires an explicit resume. This works without browser orientation-lock support.
+Phones play in landscape. Portrait pauses the race, displays a rotation prompt and makes the underlying UI inert; turning back requires an explicit resume. Touch controls prevent selection, scrolling and long-press menus. The timer, speed and thrust remain large, while hazard warnings sit to the left to preserve the central driving view.
 
-The HUD prioritises a large central hazard warning, timer, score, speed and thrust. High-contrast shading supports the instruments over bright scenery. Touch targets are at least 44 CSS pixels; primary driving targets are 62–86 pixels wide at the verified phone sizes. Controls do not select text, open a long-press menu or scroll the page. Safe-area insets keep controls away from device edges. This still needs physical-device testing before public launch.
+Settings include sound, quality, reduced camera motion, fullscreen and the personal ghost. Sound starts after a gesture. SAVE RUN CARD downloads a PNG; nothing is posted or uploaded. Records and ghosts stay in this browser and do not sync between devices. Private browsing or storage restrictions can prevent persistence without preventing play.
+
+## Rendering
+
+Each arena has its own geometry, palette, lighting and landmarks. The Atlantic uses water highlights and suspension towers; Redshift uses layered rock surfaces, arches and mine passes; Nightshift uses container yards, illuminated buildings, cranes, wet-road lights and rain. Road wear, skies and rock strata are procedural shaders. Impacts, gates and launches emit pooled particles.
+
+Rigid scenery is batched by material and district, moving objects are batched within their groups, and distant districts are culled. Switching courses disposes their geometry, textures, instance buffers and shadow maps. Mobile AUTO limits pixel density and disables shadows. HIGH and LOW are available manually. Rendering stops while the page is hidden. Actual phone frame rates still need physical-device testing.
 
 ## Source map
 
-- `main.js`: renderer, camera, UI, lifecycle, preferences and run-card export.
-- `run.js`: deterministic course, independent steering/lift/boost, collision, scoring and medals.
-- `controls.js`: simultaneous keyboard and pointer state.
-- `coast.js`: procedural ocean, islands, bridges, gates, turbines and lighthouse; static geometry batching.
-- `sound.js`: locally synthesised motor, wind and action cues.
+- `courses.js`: authored routes, hazards, medal targets, badges, paint rewards and record reducer.
+- `run.js`: deterministic simulation, swept collision, lift, ramps, boost pads and scoring.
+- `controls.js`: independent keyboard and pointer state.
+- `main.js`: renderer, camera, tour flow, local records, ghost playback, settings and UI.
+- `coast.js`: course-specific scenery, animated hazards, shaders, particles and resource cleanup.
 - `car.js`, `interior.js`: original procedural Roadster interpretation.
-
-Older Flight Lab simulation modules remain in repository history; the current build has one focused game mode. Mobile AUTO lowers pixel density and disables shadows; HIGH/LOW are also available. The glass uses a cheaper opaque external-view material during play. Rendering and simulation pause when the page is hidden.
+- `sound.js`: local motor, wind and action cues.
 
 ## Verification
 
-`npm test` runs 20 gameplay/input checks, including sustained combined controls, all four gaps, collision sweeps, scoring, energy, frame-rate independence and a complete 18-gate crossing without damage. They establish correctness and feasibility, not how enjoyable a human finds the game.
+`npm test` runs 28 simulation/input checks, including a complete gold run on every course collecting every gate without damage. It also covers moving hazards, low clearance, ramp impulse, boost strips, record/ghost retention and input independence.
 
-For real WebGL/DOM checks, build and start the server, open `/tests/browser.html`, then select **Run checks**. It checks the production bundle, combined keyboard and synthetic multitouch input, pause/resume/retry, portrait behavior, and HUD/layout bounds at desktop and phone sizes. `/tests/preview.html` provides visible scene and viewport presets for manual inspection. QA runs do not write personal records or preferences.
+After building and starting the server, open `/tests/browser.html`. **Run checks** verifies the real production WebGL bundle, simultaneous keyboard and synthetic touch inputs, portrait behavior, course switching, tour progression, paint rewards, geometry/texture cleanup and responsive layouts. **Drive all three courses** completes each production course through its keyboard handlers and checks saved ghost playback. These QA runs use isolated in-memory records and never overwrite personal progress.
 
-The optional `npm run test:browser` wrapper runs the same harness in an installed Chromium browser. CI runs `npm ci`, `npm test` and `npm run build`. See `tests/QA.md` for the tested scope and device limitations.
+`/tests/preview.html` offers viewport and scene presets for visual inspection. Its test driver is not included in the shipped game. CI runs `npm ci`, `npm test` and `npm run build`. See `tests/QA.md` for results and remaining device checks. Automated feasibility does not establish human enjoyment or physical phone performance.
 
 ## Vercel
 
-Import this GitHub repository and select the upgrade branch. `vercel.json` configures `npm run build` and the `dist` output directory. Review a preview deployment before merging to your production branch. This change does not deploy automatically from the local workspace.
+The existing `vercel.json` uses `npm run build` and serves `dist`. The connected GitHub repository creates branch previews automatically. Review the PR preview before merging into the production branch. No service credentials or environment variables are needed.
 
-## Credits and limits
+## Credits
 
-This is an independent fan game, not affiliated with Tesla. The white car is an original procedural interpretation, not manufacturer CAD. The course, graphics and game loop are original; no imagery from the reference game is included. The game physics, route assistance, recharging and visual barrel rolls are design choices, not claims about a real car.
-
-Original code retains its existing `UNLICENSED` status (`LICENSE`). Three.js is MIT-licensed (`vendor/THREE-LICENSE.txt`). Barlow Condensed and IBM Plex Mono are bundled under the SIL Open Font License; exact licenses are in `assets/fonts/`, copied into `dist/` and embedded in the standalone HTML. No external font service is used.
+Independent fan game; not affiliated with Tesla. The car is an original procedural interpretation, not manufacturer CAD. No graphics from the supplied reference game are included. Original code retains its existing `UNLICENSED` status. Three.js is MIT-licensed. Barlow Condensed and IBM Plex Mono use the SIL Open Font License; exact licenses are bundled in source, copied into `dist`, and embedded in the standalone HTML.

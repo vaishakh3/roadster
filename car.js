@@ -235,9 +235,9 @@ export function createCar() {
   poly([[-1.015,.733,2.394],[1.015,.733,2.394],[1.01,.535,2.415],[.795,.465,2.436],[-.795,.465,2.436],[-1.01,.535,2.415]],paint);
   box(2.036,.069,.036,black,0,.699,2.409);
   const rearLine=[];for(let i=0;i<=20;i++){const x=-1.012+i/20*2.024;rearLine.push([x,.710-.014*(1-(x/1.012)**2),2.433-.012*(x/1.012)**2]);}
-  const lightbar=line(rearLine,tail,.0058);brakeLights.push(lightbar);
+  const lightbar=line(rearLine,tail,.017);brakeLights.push(lightbar);
   for(const side of [-1,1]){
-    const light=line([[side*1.01,.710,2.42],[side*1.027,.711,2.36]],tail,.0058);brakeLights.push(light);
+    const light=line([[side*1.01,.710,2.42],[side*1.027,.711,2.36]],tail,.017);brakeLights.push(light);
     // Tail inset echoes the long flying buttress, underneath the optical line.
     poly([[side*.97,.652,2.429],[side*.68,.628,2.436],[side*.54,.537,2.442],[side*.93,.483,2.434]],carbon);
     poly([[side*1.018,.535,2.415],[side*.928,.482,2.433],[side*.875,.14,2.46],[side*1.03,.202,2.368]],carbon);

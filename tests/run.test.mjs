@@ -1,3 +1,5 @@
+import { COURSES, hazardPose, saveResult, completedCount } from "../courses.js";
+import { driveInput } from "./driver.js";
 import assert from "node:assert/strict";
 import {
   createRun,
@@ -130,35 +132,93 @@ test("Bridge warnings precede the jump by more than two seconds at full speed", 
   assert.equal(nextWarning(s).kind, "gap");
   assert(660 - s.d > 76 * 2);
 });
-test("A complete crossing can collect every gate with all hull intact", () => {
-  const s = createRun();
-  for (let i = 0; i < 120 * 100 && !s.finished && !s.failed; i++) {
-    const g = GATES.find((g) => g.d > s.d);
-    const gap = GAPS.find((g) => s.d > g.start - 80 && s.d < g.end + 5);
-    const o = OBSTACLES.find((o) => o.d > s.d - 8 && o.d < s.d + 85);
-    let x = g?.x || 0;
-    if (o && !gap) x = o.x >= 0 ? -6 : 6;
-    stepRun(
-      s,
-      {
-        steer: Math.max(-1, Math.min(1, (x - s.x) * 2 - s.vx * 0.2)),
-        fly: !!gap,
-        boost: s.energy > 18,
-      },
-      1 / 120,
-    );
-  }
-  assert(s.finished);
-  assert.equal(s.gates, GATES.length);
-  assert.equal(s.hull, 3);
-  assert.equal(rankRun(s), "GOLD");
-  assert(s.time > 45 && s.time < 70);
-  const score = s.score;
-  advance(s, { boost: true }, 1);
-  assert.equal(s.score, score);
-  console.log(
-    `  Full crossing: ${s.time.toFixed(2)} s, ${s.score} pts, ${s.gates} gates`,
+for (const course of COURSES)
+  test(
+    course.name + ": a complete gold run can collect every gate without damage",
+    () => {
+      const s = createRun(course);
+      for (let i = 0; i < 120 * 110 && !s.finished && !s.failed; i++)
+        stepRun(s, driveInput(s), 1 / 120);
+      assert(s.finished);
+      assert.equal(s.hull, 3);
+      assert.equal(s.gates, course.gates.length);
+      assert.equal(rankRun(s), "GOLD");
+      const score = s.score;
+      advance(s, { boost: true }, 1);
+      assert.equal(s.score, score);
+      console.log(
+        `  ${course.name}: ${s.time.toFixed(2)} s / ${s.gates} gates / ${s.score} points`,
+      );
+    },
   );
+test("Low-clearance gantries allow ground driving and collide with flight", () => {
+  for (const y of [0, 5.8]) {
+    const s = createRun("redshift");
+    Object.assign(s, { d: 1125, x: 0, y, speed: 76 });
+    advance(s, { fly: y > 0 }, 0.2);
+    assert.equal(s.hull, y ? 2 : 3);
+  }
+});
+test("Moving obstacles use the same timed pose for swept collisions", () => {
+  for (const c of COURSES) {
+    const o = c.obstacles.find((o) => o.kind === "sweeper"),
+      s = createRun(c),
+      p = hazardPose(o, 10);
+    Object.assign(s, { time: 10, d: p.d - 5, x: p.x, speed: 76 });
+    advance(s, { boost: true }, 0.15);
+    assert.equal(s.hull, 2);
+  }
+});
+test("Freight traffic stops before broken bridge sections", () => {
+  for (const c of COURSES)
+    for (const o of c.obstacles.filter((o) => o.speed)) {
+      const p = hazardPose(o, 1000);
+      assert(!c.gaps.some((g) => p.d >= g.start && p.d <= g.end));
+      assert(p.d < c.length);
+    }
+});
+test("Launch ramps supply a physical upward impulse without suspending steering", () => {
+  const s = createRun("redshift");
+  Object.assign(s, { d: 794, x: 0, speed: 70 });
+  advance(s, { steer: 1 }, 0.25);
+  assert(s.y > 1);
+  assert(s.vy > 0);
+  assert(s.x > 1);
+  assert.equal(s.launches, 1);
+});
+test("Slingshot strips reward ground contact once and decay after use", () => {
+  const s = createRun();
+  Object.assign(s, { d: 524, x: -4.7, energy: 30 });
+  advance(s, {}, 0.1);
+  assert(s.padTime > 2);
+  assert(s.energy > 55);
+  const score = s.score;
+  s.d = 524;
+  advance(s, {}, 0.1);
+  assert.equal(s.score, score);
+  const air = createRun();
+  Object.assign(air, { d: 524, x: -4.7, y: 5 });
+  advance(air, { fly: true }, 0.1);
+  assert.equal(air.padTime, 0);
+});
+test("Course records preserve independent best time, score, badges and fastest ghost", () => {
+  const s = createRun();
+  Object.assign(s, { finished: true, time: 60, score: 1000, gates: 18 });
+  const ghost = [
+    [0, 0, 0, 0],
+    [60, 3600, 0, 0],
+  ];
+  let r = saveResult({}, s, ghost).records;
+  Object.assign(s, { time: 62, score: 2000, hull: 2, gates: 10 });
+  r = saveResult(r, s, []).records;
+  assert.equal(r.breakwater.time, 60);
+  assert.equal(r.breakwater.score, 2000);
+  assert.deepEqual(r.breakwater.ghost, ghost);
+  assert.deepEqual(r.breakwater.badges, [true, true, true]);
+  assert.equal(completedCount(r), 1);
+  const fail = createRun("redshift");
+  fail.failed = true;
+  assert.equal(saveResult(r, fail).records, r);
 });
 test("Physics stays stable across 30, 60 and 120 Hz", () => {
   const states = [30, 60, 120].map((hz) => {

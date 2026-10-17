@@ -1,7 +1,7 @@
 {
-  "name": "roadster-breakwater",
-  "version": "3.0.0",
-  "description": "An original coastal driving and flight sprint with simultaneous keyboard and touch controls",
+  "name": "roadster-world-tour",
+  "version": "4.0.0",
+  "description": "Three authored Roadster racing arenas, a World Tour, moving hazards, course records and personal ghosts",
   "scripts": {
     "start": "node scripts/serve.mjs",
     "test": "node tests/run.test.mjs",

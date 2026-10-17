@@ -9,14 +9,14 @@
     <meta name="theme-color" content="#112c34" />
     <meta
       name="description"
-      content="Roadster: Breakwater. A coastal sprint above the ocean. Thread the gates, fly the broken bridges, chase a perfect crossing."
+      content="Three arenas. One Roadster. Race the Atlantic, fly the canyon, and weave through the night port."
     />
-    <meta property="og:title" content="Roadster / Breakwater" />
+    <meta property="og:title" content="Roadster / World Tour" />
     <meta
       property="og:description"
-      content="3.6 kilometres. Four broken bridges. One perfect crossing."
+      content="Coast. Canyon. Night port. Take on the three-stage World Tour."
     />
-    <title>Roadster / Breakwater</title>
+    <title>Roadster / World Tour</title>
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23f46b3c' d='M0 0h64v64H0z'/%3E%3Cpath stroke='%23132d36' stroke-width='7' fill='none' d='m17 46 13-28h17L34 46M25 31h17'/%3E%3C/svg%3E"
@@ -33,47 +33,82 @@
     <div id="impact" aria-hidden="true"></div>
     <div id="boost-fx" aria-hidden="true"></div>
     <div id="loading" role="status">
-      <span class="brand">ROADSTER /</span><strong>OPENING THE COAST</strong
+      <span class="brand">ROADSTER /</span><strong>PREPARING THE TOUR</strong
       ><span class="loading-line"></span>
     </div>
     <main id="app">
       <header id="masthead">
         <span class="brand">ROADSTER <i>/</i></span
-        ><span class="edition">AN EXPERIMENT IN FLIGHT</span
+        ><span class="edition">WORLD TOUR / VOL. 01</span
         ><button id="settings" class="text-button" aria-label="Open settings">
           SETTINGS <span>↗</span>
         </button>
       </header>
       <section id="home" aria-labelledby="home-title">
+        <nav id="course-select" aria-label="Select race course">
+          <button data-course="breakwater" aria-pressed="true">
+            <i>01</i><span>BREAKWATER</span><small>ATLANTIC</small>
+          </button>
+          <button data-course="redshift" aria-pressed="false">
+            <i>02</i><span>REDSHIFT</span><small>BADLANDS</small>
+          </button>
+          <button data-course="nightshift" aria-pressed="false">
+            <i>03</i><span>NIGHTSHIFT</span><small>FREIGHT PORT</small>
+          </button>
+        </nav>
         <div class="home-copy">
-          <p class="kicker">THE COAST IS CALLING.</p>
+          <p class="kicker" id="course-location">01 / NORTH ATLANTIC</p>
           <h1 id="home-title">
             BREAK<br /><span>WATER</span><b aria-hidden="true">↗</b>
           </h1>
-          <p class="home-description">The road ends.<br />Your run doesn’t.</p>
+          <p class="home-description" id="course-description">
+            The road ends. Your run doesn’t.
+          </p>
         </div>
         <div class="route-label">
-          <span>01 — THE ATLANTIC CROSSING</span
-          ><b>3.6 KM <i> / </i> 4 LEAPS</b>
+          <svg id="route-map" viewBox="0 0 220 130" aria-label="Course route">
+            <path
+              d="M12 115H208M12 15H208"
+              stroke="currentColor"
+              opacity=".25"
+            />
+            <polyline
+              id="route-line"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+            />
+          </svg>
+          <b id="route-meta">3.6 KM / FLOW</b><span id="route-tags"></span>
+          <span id="course-gold"></span>
+          <div id="course-badges" class="badges"></div>
         </div>
+        <button
+          id="paint"
+          class="text-button"
+          aria-label="Change unlocked paint finish"
+        >
+          PAINT / <span id="paint-name">PEARL</span> ↻
+        </button>
         <div class="home-bottom">
           <div class="brief">
-            <p>
-              Thread the gates. Fly the broken bridges.<br />Make it to the last
-              light.
-            </p>
+            <p id="course-brief"></p>
             <p class="touch-brief">Hold FLY to lift. Release to land.</p>
             <div class="quick-controls">
-              <span><b>← →</b> STEER</span><span><b>SPACE</b> HOLD TO FLY</span
+              <span><b>← →</b> STEER</span><span><b>SPACE</b> FLY</span
               ><span><b>SHIFT</b> BOOST</span>
             </div>
           </div>
-          <button id="start" class="primary">
-            <span>MAKE THE CROSSING</span><b>↗</b>
-          </button>
+          <div class="start-actions">
+            <button id="start" class="primary">
+              <span>RACE THIS COURSE</span><b>↗</b></button
+            ><button id="start-tour" class="secondary">
+              WORLD TOUR <span>ALL 3 ↗</span>
+            </button>
+          </div>
           <div class="home-foot">
-            <span id="personal-best">YOUR FIRST CROSSING STARTS HERE</span
-            ><span>INDEPENDENT FAN GAME · NOT AFFILIATED WITH TESLA</span>
+            <span id="personal-best"></span><span id="tour-record"></span
+            ><span>INDEPENDENT FAN GAME</span>
           </div>
         </div>
       </section>
@@ -85,7 +120,8 @@
           </div>
           <div class="journey">
             <div class="journey-label">
-              <span id="distance">3.6 KM TO GO</span><span>LAST LIGHT ↗</span>
+              <span id="distance">3.6 KM TO GO</span
+              ><span id="destination">BREAKWATER ↗</span>
             </div>
             <div class="journey-track"><i id="progress"></i><b></b><b></b></div>
           </div>
@@ -108,6 +144,7 @@
           <span id="announcement-small"></span
           ><strong id="announcement-title"></strong>
         </div>
+        <div id="ghost-delta" hidden></div>
         <div id="event" role="status" aria-live="polite"></div>
         <div class="speed-block">
           <strong id="speed">000</strong><span>KM/H</span
@@ -150,9 +187,9 @@
           <div class="menu-grid">
             <div class="menu-actions">
               <button id="resume" class="primary">
-                BACK TO THE COAST <b>↗</b></button
+                BACK TO THE RUN <b>↗</b></button
               ><button id="restart" class="secondary">
-                RESTART CROSSING <span>↻</span></button
+                RESTART COURSE <span>↻</span></button
               ><button id="go-home" class="text-button">RETURN TO START</button>
             </div>
             <div class="preferences">
@@ -164,6 +201,9 @@
                 <span>CAMERA MOTION</span><b>FULL</b></button
               ><button id="fullscreen" class="setting">
                 <span>FULLSCREEN</span><b>↗</b>
+              </button>
+              <button id="ghost" class="setting">
+                <span>PERSONAL GHOST</span><b>ON</b>
               </button>
               <p class="menu-help">
                 Steer with ← → or A / D.<br />Hold Space to fly. Release to
@@ -191,7 +231,12 @@
             <div><span>GATES</span><strong id="result-gates"></strong></div>
             <div><span>MEDAL</span><strong id="result-rank"></strong></div>
           </div>
+          <div id="result-badges" class="badges"></div>
+          <p id="tour-summary" hidden></p>
           <div class="result-actions">
+            <button id="next-stage" class="primary" hidden>
+              NEXT COURSE ↗
+            </button>
             <button id="retry" class="primary">ONE MORE RUN <b>↗</b></button
             ><button id="share" class="secondary">
               SAVE RUN CARD <span>↓</span></button
@@ -201,9 +246,9 @@
         </div>
       </section>
       <section id="rotate" hidden aria-labelledby="rotate-title">
-        <span class="brand">ROADSTER / BREAKWATER</span>
+        <span class="brand">ROADSTER / WORLD TOUR</span>
         <div class="phone-outline" aria-hidden="true">↻</div>
-        <h2 id="rotate-title">THE COAST<br />NEEDS SPACE.</h2>
+        <h2 id="rotate-title">THE ROAD<br />NEEDS SPACE.</h2>
         <p>Turn your phone sideways.</p>
         <span>Your run pauses while you rotate.</span>
       </section>
