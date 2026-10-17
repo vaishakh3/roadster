@@ -11,7 +11,8 @@ import {
 } from "./challenge.js";
 import { renderRatio } from "./performance.js";
 import { resolveObstacles } from "./collision.js";
-import { bindSteeringPad } from "./input.js";
+import { bindSteeringPad, requiresLandscape } from "./input.js";
+import { createPilot, requestRoll, pilotInput } from "./pilot.js";
 import { RectAreaLightUniformsLib } from "./vendor/RectAreaLightUniformsLib.js";
 import { createStudioEnvironment } from "./studio-light.js";
 import { createCar } from "./car.js";
@@ -177,7 +178,28 @@ let flightCameraYaw = state.yaw,
   lastReserveWarning = false,
   runTrickScore = 0;
 const touch = matchMedia("(pointer:coarse)").matches;
-const touchUI = () => touch || innerWidth < 760;
+const touchUI = () => touch || Math.min(innerWidth, innerHeight) <= 600;
+let orientationBlocked = false;
+let easyControls = true,
+  pilot = createPilot();
+function syncOrientation() {
+  orientationBlocked = requiresLandscape(innerWidth, innerHeight, touch);
+  document.body.classList.toggle("touch-ui", touchUI());
+  document.body.classList.toggle("rotate-required", orientationBlocked);
+  $("game-shell").inert = orientationBlocked;
+  $("game-shell").setAttribute("aria-hidden", String(orientationBlocked));
+  $("rotate-screen").setAttribute("aria-hidden", String(!orientationBlocked));
+  if (orientationBlocked) {
+    clearInput();
+    if (phase === "playing") pause();
+  }
+  $("rotate-note").textContent =
+    phase === "paused"
+      ? "Your run is paused. Rotate, then tap Resume when ready."
+      : "Built for two thumbs. And a clear view ahead.";
+  lastTime = 0;
+  accumulator = 0;
+}
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let challenge = createChallenge(),
   rushBest = 0,
@@ -252,12 +274,30 @@ function clearInput() {
     .forEach((el) => el.classList.remove("pressed"));
 }
 function refreshInput() {
+  if (orientationBlocked || phase !== "playing") {
+    for (const key of Object.keys(input))
+      input[key] = typeof input[key] === "boolean" ? false : 0;
+    return;
+  }
   const active = new Set(pointers.values()),
     held = (...names) => names.some((n) => keys.has(n)),
     has = (n) => active.has(n),
     air = airborne();
   input.boost = held("ShiftLeft", "ShiftRight") || has("boost");
   input.brake = has("brake");
+  if (easyControls) {
+    input.steer = clamp(
+      (held("KeyA", "ArrowLeft") || has("left") ? 1 : 0) -
+        (held("KeyD", "ArrowRight") || has("right") ? 1 : 0) +
+        groundSteer,
+      -1,
+      1,
+    );
+    input.brake = held("KeyS", "ArrowDown", "KeyB") || has("brake") ? 1 : 0;
+    input.throttle = input.pitch = input.yaw = input.roll = input.lift = 0;
+    input.drift = input.recover = false;
+    return;
+  }
   if (air) {
     input.throttle = input.boost || has("throttle") ? 1 : 0;
     input.boost = false;
@@ -315,8 +355,8 @@ function setPhase(p) {
     garage && studioEnvironment ? studioEnvironment : outdoorEnvironment;
   scene.environmentIntensity = garage ? 0.55 : 0.8;
   scene.environmentRotation.y = garage ? 2.07 : 0;
-  world.sun.intensity = garage ? 0.16 : 0.55;
-  if (hemisphere) hemisphere.intensity = garage ? 0.13 : 0.5;
+  world.sun.intensity = garage ? 0.16 : 0.8;
+  if (hemisphere) hemisphere.intensity = garage ? 0.13 : 0.7;
   document.body?.setAttribute("data-phase", p);
   document.body?.setAttribute("data-mode", mode);
   $("intro").classList.toggle("hidden", p !== "intro");
@@ -333,6 +373,8 @@ function setPhase(p) {
 }
 
 function start() {
+  if (orientationBlocked) return;
+  pilot = createPilot();
   helpFromIntro = false;
   clearInput();
   challenge = createChallenge();
@@ -351,6 +393,7 @@ function start() {
   lastFlightMode = false;
   state = createState(world.spawn.x, world.spawn.z, world.spawn.yaw);
   state.charge = 100;
+  if (easyControls) state.assist = true;
   flightCameraYaw = state.yaw;
   cameraMode = 0;
   world.setGate(mode === "circuit" ? 1 : -1);
@@ -374,7 +417,9 @@ function start() {
   if (mode === "free")
     toast(
       touchUI()
-        ? "TAP LAUNCH · CLIMB TO 30 M FOR FLIPS"
+        ? easyControls
+          ? "STEER / BOOST / TAP LAUNCH"
+          : "TAP LAUNCH / CLIMB TO 30 M"
         : "H TO LAUNCH · SPACE TO CLIMB",
       4,
     );
@@ -383,6 +428,7 @@ function start() {
 function reset() {
   if (phase !== "playing") return;
   loseCombo(challenge);
+  pilot = createPilot();
   wasSafelyAirborne = false;
   const savedCharge = state.charge,
     savedTopSpeed = state.topSpeed;
@@ -421,7 +467,7 @@ function hover() {
   if (state.landing) {
     state.landing = false;
     state.hover = true;
-    state.hoverTarget = Math.max(2.8, state.y);
+    state.hoverTarget = Math.max(easyControls ? 32 : 2.8, state.y);
     toast("LANDING CANCELLED · YOU HAVE CONTROL", 2);
   } else if (state.hover) {
     state.landing = true;
@@ -431,15 +477,51 @@ function hover() {
     state.hover = true;
     state.landing = false;
     state.hoverTarget = Math.max(2.8, state.y);
+    if (easyControls) {
+      state.assist = true;
+      state.hoverTarget = Math.max(32, state.y);
+      state._wasHover = true;
+    }
     flightCameraYaw = state.yaw;
-    toast("FLIGHT ONLINE · CLIMB TO 30 M BEFORE FLIPS", 3);
+    toast(
+      easyControls
+        ? "FLIGHT ONLINE / AUTO CLIMB"
+        : "FLIGHT ONLINE / CLIMB TO 30 M",
+      2,
+    );
   }
   lastFlightMode = airborne();
   refreshInput();
   audio.resume();
 }
+function easyRoll() {
+  if (!easyControls || phase !== "playing" || countdown > 0) return;
+  const result = requestRoll(pilot, state);
+  if (result === "climb") toast("CLIMBING · ROLL READY ABOVE 24 M", 2);
+  else if (result === "reserve") toast("LOW RESERVE · LAND TO REFILL", 2);
+  else if (result === "started") toast("BARREL ROLL · RELEASE AND ENJOY", 1.2);
+}
+$("easy-stunt").addEventListener("click", easyRoll);
+$("control-style").addEventListener("click", () => {
+  easyControls = !easyControls;
+  pilot = createPilot();
+  clearInput();
+  if (easyControls) state.assist = true;
+  syncControlStyle();
+});
+function syncControlStyle() {
+  lastLegend = "";
+  document.body.classList.toggle("easy-controls", easyControls);
+  $("control-style").textContent = easyControls
+    ? "CONTROLS · SIMPLE"
+    : "CONTROLS · MANUAL";
+  $("control-style").setAttribute("aria-pressed", String(easyControls));
+  $("device-hint").textContent = easyControls
+    ? "Auto acceleration · steer · boost · launch, roll and land"
+    : "Manual pedals and six-axis flight · controls in pause";
+}
 function toggleAssist() {
-  if (phase !== "playing" || countdown > 0) return;
+  if (!["playing", "paused"].includes(phase) || countdown > 0) return;
   state.assist = !state.assist;
   if (state.landing) state.landing = false;
   toast(
@@ -466,9 +548,7 @@ function pause(help = false) {
   clearInput();
   setPhase("paused");
   $("dialog-label").textContent = help ? "DRIVER BRIEFING" : "MISSION PAUSED";
-  $("dialog-title").textContent = help
-    ? "Know your machine."
-    : "Take a breath.";
+  $("dialog-title").textContent = help ? "DRIVER BRIEF." : "SESSION PAUSED.";
   $("dialog-content").innerHTML = help
     ? helpContent()
     : `<p>Your run is paused. The timer will wait.</p><p>${mode === "circuit" ? "Clear the gates in order. Brake before the corners and use thrust on the straights." : mode === "stunt" ? "Full rotations build a combo. Land safely to bank it with a 250-point landing bonus. A crash or reset loses unbanked points." : "Explore at your own pace. Launch, climb above 30 m, then try a roll. Assisted landing brings you down."}</p>`;
@@ -477,13 +557,15 @@ function pause(help = false) {
 }
 let helpFromIntro = false;
 function helpContent() {
+  if (easyControls)
+    return `<div class="simple-brief"><p><b>01 / STEER</b><br>Left thumb pad or A / D. The car accelerates for you. Hold BRAKE or S to slow; release to accelerate again.</p><p><b>02 / TAKE FLIGHT</b><br>Tap LAUNCH or H. The pilot climbs to 32 m and stabilizes the car. Steer to turn; hold BOOST or Shift to move forward.</p><p><b>03 / MAKE IT COUNT</b><br>Tap ROLL or Space above 24 m. Tap LAND or H to settle and bank your combo. Watch the fuel reserve; stop on the ground to refill.</p><p>Want full control? Switch to Manual in pause. The assistance uses the same physical thrusters, gravity and finite reserve.</p></div>`;
   return `<div class="keys"><b>GROUND</b><span>WASD / arrows drive · Shift thrust · Space drift</span><b>H</b><span>Launch / assisted land / cancel landing</span><b>AIR: W / S</b><span>Pitch nose down / up (or ↑ / ↓)</span><b>A / D · Q / E</b><span>Yaw left / right · roll left / right</span><b>Space / Z</b><span>Climb / descend</span><b>Shift · B</b><span>Forward thrust · airbrake</span><b>F · hold X</b><span>Assist / acro · level and arrest spin</span><b>C · R</b><span>Camera · recover (+3s in circuit)</span><b>Esc / P</b><span>Pause</span></div><p>Climb to at least 30 m for your first flip, higher for acro or chained stunts. Hold pitch or roll for a full rotation. Assist levels the car when you release; acro keeps your attitude. Thrust follows the car’s actual orientation. Hold X or LEVEL to recover, then H to land. Landing fast or inverted causes an impact; R or ↺ recovers without refilling your reserve.</p><p>Touch: the flight stick controls yaw and pitch. Use the roll buttons, climb/descent and THRUST together. Hold AIRBRAKE to slow your travel. All thrusters share finite cold gas. Only upright grounded coasting/braking replenishes it; air gates grant a game bonus. With an empty reserve, gravity takes over. Major buildings and track barriers are solid. Slow scrapes deflect the car; high-speed impacts require recovery.</p><p>Original procedural <a href="https://www.tesla.com/roadster" target="_blank" rel="noopener" style="color:#e5e9bc">Roadster-inspired</a> model. Simplified six-axis flight, control forces and recharge are game approximations, not measured vehicle specifications. No affiliation with Tesla.</p>`;
 }
 function showHelp(fromIntro = false) {
   helpFromIntro = fromIntro;
   $("dialog").classList.remove("hidden");
   $("dialog-label").textContent = "DRIVER BRIEFING";
-  $("dialog-title").textContent = "Know your machine.";
+  $("dialog-title").textContent = "DRIVER BRIEF.";
   $("dialog-content").innerHTML = helpContent();
   $("resume").innerHTML = fromIntro
     ? "BACK <span>→</span>"
@@ -492,6 +574,7 @@ function showHelp(fromIntro = false) {
   if (!fromIntro) setPhase("paused");
 }
 function resume() {
+  if (orientationBlocked) return;
   if (helpFromIntro) {
     helpFromIntro = false;
     $("dialog").classList.add("hidden");
@@ -527,7 +610,7 @@ function finish() {
   $("dialog-label").textContent = isBest
     ? "NEW PERSONAL BEST"
     : "CIRCUIT COMPLETE";
-  $("dialog-title").textContent = "A clean escape.";
+  $("dialog-title").textContent = "SESSION COMPLETE.";
   $("dialog-content").innerHTML =
     `<div class="result-time">${fmt(elapsed)}</div><p>12 / 12 gates cleared<br>Top speed: ${Math.round(state.topSpeed * 3.6)} km/h<br>Personal best: ${fmt(best)}</p>`;
   $("resume").innerHTML = "KEEP EXPLORING <span>→</span>";
@@ -558,15 +641,15 @@ document.querySelectorAll("[data-mode]").forEach((btn) =>
     const copy = {
       circuit: [
         "Clear 12 gates in order. Brake into corners, thrust out of them.",
-        "LET’S DRIVE",
+        "START SESSION",
       ],
       stunt: [
         "Chain rotations. Land to bank your combo. Chase gold in 90 seconds.",
-        "TAKE THE CHALLENGE",
+        "START SESSION",
       ],
       free: [
         "Learn the flight controls. Discover the air gates. Make it your own.",
-        "LET’S FLY",
+        "START SESSION",
       ],
     };
     const hint = touch
@@ -575,6 +658,7 @@ document.querySelectorAll("[data-mode]").forEach((btn) =>
     $("mode-description").innerHTML =
       copy[mode][0] + '<span id="device-hint">' + hint + "</span>";
     $("start").innerHTML = copy[mode][1] + " <span>↗</span>";
+    syncControlStyle();
     updateGarageRecord();
   }),
 );
@@ -595,12 +679,20 @@ $("aero-preview").addEventListener("click", () => {
 });
 $("touch-hover").addEventListener("click", hover);
 $("touch-assist").addEventListener("click", toggleAssist);
-$("touch-camera").addEventListener(
-  "click",
-  () => (cameraMode = (cameraMode + 1) % 3),
-);
-$("touch-reset").addEventListener("click", reset);
+$("touch-camera").addEventListener("click", () => {
+  cameraMode = (cameraMode + 1) % 3;
+  $("touch-camera").textContent =
+    "CAMERA · " + ["CHASE", "COCKPIT", "ORBIT"][cameraMode];
+});
+$("touch-reset").addEventListener("click", () => {
+  if (phase === "paused") resume();
+  reset();
+});
+$("menu-controls").addEventListener("click", () => showHelp());
+for (const action of ["sound", "quality", "photo", "fullscreen"])
+  $("menu-" + action).addEventListener("click", () => $(action).click());
 window.addEventListener("keydown", (e) => {
+  if (orientationBlocked) return;
   if (
     [
       "KeyW",
@@ -630,7 +722,8 @@ window.addEventListener("keydown", (e) => {
     if (phase !== "intro") e.preventDefault();
     if (!e.repeat) {
       if (e.code === "KeyH") hover();
-      if (e.code === "KeyF") toggleAssist();
+      if (e.code === "KeyF" && !easyControls) toggleAssist();
+      if (e.code === "Space" && easyControls) easyRoll();
       if (e.code === "KeyC" && phase === "playing")
         cameraMode = (cameraMode + 1) % 3;
       if (e.code === "KeyR" && phase === "playing") reset();
@@ -661,7 +754,7 @@ document.addEventListener("visibilitychange", () => {
 document.querySelectorAll("[data-control]").forEach((btn) => {
   btn.addEventListener("pointerdown", (e) => {
     e.preventDefault();
-    if (phase !== "playing") return;
+    if (phase !== "playing" || orientationBlocked) return;
     try {
       btn.setPointerCapture?.(e.pointerId);
     } catch {}
@@ -755,6 +848,7 @@ $("quality").addEventListener("click", () => {
 });
 window.addEventListener("resize", () => {
   clearInput();
+  syncOrientation();
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
@@ -1117,7 +1211,13 @@ function updateCamera(dt, snap = false) {
     const portrait = innerHeight > innerWidth,
       short = innerHeight < 560 && !portrait;
     const ang = [1.88, 1.05, -0.08][heroView] + Math.sin(heroAngle) * 0.025;
-    const dist = portrait ? 14.3 : short ? 10.8 : 10;
+    const dist = portrait
+      ? 14.3
+      : short
+        ? innerWidth >= 700
+          ? 8.5
+          : 10.5
+        : 10;
     camPosition.set(
       state.x + Math.sin(ang) * dist,
       portrait ? 2.35 : 1.75,
@@ -1316,7 +1416,7 @@ function updateVehicle(dt) {
 }
 let nearest = { distance: 0, t: 0 };
 function physics(dt) {
-  if (phase !== "playing") return;
+  if (phase !== "playing" || orientationBlocked) return;
   if (countdown > 0) {
     countdown -= dt;
     const n = Math.ceil(countdown);
@@ -1327,7 +1427,12 @@ function physics(dt) {
     return;
   }
   nearest = world.nearest(state.x, state.z);
-  stepPhysics(state, input, dt, nearest.distance < 8.6);
+  stepPhysics(
+    state,
+    easyControls ? pilotInput(state, input, pilot, dt) : input,
+    dt,
+    nearest.distance < 8.6,
+  );
   resolveObstacles(state, world.obstacles);
   maxAltitude = Math.max(maxAltitude, state.y);
   const nowFlight = airborne();
@@ -1542,7 +1647,10 @@ function updateHUD(dt) {
       : `AIR GATES ${String(flightCollected).padStart(2, "0")}`;
   $("charge-text").textContent = Math.round(state.charge) + "%";
   $("charge-fill").style.width = state.charge + "%";
-  $("charge-fill").style.background = state.charge < 20 ? "#ffa86b" : "#d7ff65";
+  $("charge-fill").style.background =
+    state.charge < 20
+      ? "#ff493d"
+      : "repeating-linear-gradient(90deg, #eeeae4 0 6px, transparent 6px 8px)";
   $("drive-mode").textContent = state.crashed
     ? "IMPACT · RECOVER"
     : state.landing
@@ -1570,7 +1678,24 @@ function updateHUD(dt) {
       ? "↓ LAND"
       : "↑ LAUNCH";
   $("touch-assist").textContent = state.assist ? "ASSIST ON" : "ACRO";
+  $("easy-stunt").textContent =
+    pilot.targetRoll !== null
+      ? "ROLLING ↻"
+      : pilot.settling > 0
+        ? "LEVELING"
+        : state.y < 24
+          ? "CLIMBING ↑"
+          : "ROLL ↻";
+  $("easy-stunt").disabled =
+    state.y < 24 ||
+    state.charge < 18 ||
+    pilot.targetRoll !== null ||
+    pilot.settling > 0 ||
+    state.landing ||
+    state.crashed;
   $("touch-assist").setAttribute?.("aria-pressed", String(!!state.assist));
+  $("menu-sound").textContent = "SOUND " + (audio.enabled ? "ON" : "OFF");
+  $("menu-quality").textContent = "QUALITY " + quality.toUpperCase();
   $("flight-assist-status").textContent = state.assist ? "ASSIST" : "ACRO";
   $("flight-status").textContent = state.crashed
     ? "IMPACT · RECOVER"
@@ -1601,6 +1726,9 @@ function updateHUD(dt) {
     $("control-legend").innerHTML = air
       ? "<span><kbd>W/S</kbd> PITCH</span><span><kbd>A/D</kbd> YAW</span><span><kbd>Q/E</kbd> ROLL</span><span><kbd>SPACE/Z</kbd> LIFT</span><span><kbd>SHIFT / B</kbd> THRUST / BRAKE</span><span><kbd>F</kbd> ASSIST</span><span><kbd>X</kbd> LEVEL</span><span><kbd>H</kbd> LAND</span>"
       : "<span><kbd>W A S D</kbd> DRIVE</span><span><kbd>SHIFT</kbd> THRUST</span><span><kbd>H</kbd> LAUNCH</span><span><kbd>C</kbd> CAMERA</span><span><kbd>R</kbd> RECOVER</span>";
+    if (easyControls)
+      $("control-legend").innerHTML =
+        "<span><kbd>A / D</kbd> STEER</span><span><kbd>S</kbd> BRAKE</span><span><kbd>SHIFT</kbd> BOOST</span><span><kbd>H</kbd> LAUNCH / LAND</span><span><kbd>SPACE</kbd> ROLL</span>";
   }
 
   const target =
@@ -1630,7 +1758,7 @@ let frameCount = 0,
   fps = 60;
 function animate(ms) {
   requestAnimationFrame(animate);
-  if (qaFreeze || document.hidden) return;
+  if (qaFreeze || document.hidden || orientationBlocked) return;
   const now = ms / 1000,
     dt = lastTime ? Math.min(now - lastTime, 0.1) : 1 / 60;
   lastTime = now;
@@ -1733,6 +1861,25 @@ function updateExperienceHUD() {
       : "Hold Q or E for a full roll. Release to stabilize.";
   else if (challenge.landings)
     tip = "Clean landing. Stop to refill, then chase a bigger combo.";
+  if (easyControls) {
+    tip = state.crashed
+      ? "Open pause → Recover car to try again."
+      : state.landing
+        ? "Landing pilot active. Settle to bank your combo."
+        : state.charge < 22 && airborne()
+          ? "Reserve low. Tap LAND now."
+          : pilot.targetRoll !== null
+            ? "Thrusters are rolling the car. Landing banks your points."
+            : pilot.settling > 0
+              ? "Stabilizing. Tap LAND to bank your combo."
+              : airborne()
+                ? state.y < 24
+                  ? "Climbing automatically. Your ROLL button lights up at 24 m."
+                  : "Tap ROLL. Then LAND to bank it. Steer or BOOST to explore."
+                : pilot.parked
+                  ? "Parked and refilling. BOOST to drive again, or LAUNCH to fly."
+                  : "Auto acceleration is on. Steer left; brake or boost on the right.";
+  }
   $("coach-text").textContent = tip;
 }
 resetSteering = bindSteeringPad(
@@ -1770,7 +1917,7 @@ $("fullscreen").addEventListener("click", async () => {
   }
 });
 function openPhoto() {
-  if (phase !== "intro" && phase !== "playing") return;
+  if (!["intro", "playing", "paused"].includes(phase)) return;
   photoReturn = phase;
   photoYaw = state.yaw + 2.5;
   photoPitch = 0.2;
@@ -1854,7 +2001,7 @@ $("save-result").addEventListener("click", () => {
   bg.addColorStop(1, "#0d1118");
   c.fillStyle = bg;
   c.fillRect(0, 0, 1200, 630);
-  c.strokeStyle = "#d7ff6530";
+  c.strokeStyle = "#ff493d44";
   c.lineWidth = 1;
   for (let i = 0; i < 15; i++) {
     c.beginPath();
@@ -1862,7 +2009,7 @@ $("save-result").addEventListener("click", () => {
     c.lineTo(400 + i * 50, 630);
     c.stroke();
   }
-  c.fillStyle = "#d7ff65";
+  c.fillStyle = "#ff493d";
   c.font = "600 20px monospace";
   c.fillText("ROADSTER / FLIGHT LAB", 64, 77);
   c.fillStyle = "#a5b3b8";
@@ -1871,12 +2018,12 @@ $("save-result").addEventListener("click", () => {
   c.fillStyle = "#f3f4ed";
   c.font = "500 112px Arial";
   c.fillText(resultData.value, 58, 315);
-  c.fillStyle = "#d7ff65";
+  c.fillStyle = "#ff493d";
   c.font = "20px monospace";
   c.fillText(resultData.detail, 64, 380);
   c.fillStyle = "#a5b3b8";
   c.font = "16px monospace";
-  c.fillText("THE ROAD IS ONLY THE BEGINNING.", 64, 530);
+  c.fillText("TEST SESSION / 001.", 64, 530);
   c.fillText("Can you beat my run?", 64, 564);
   downloadCanvas(card, "roadster-score-card.png");
 });
@@ -1928,10 +2075,14 @@ updateCamera(0.016, true);
 renderer.render(scene, camera);
 $("loading").classList.add("hidden");
 setPhase("intro");
+syncControlStyle();
+syncOrientation();
 requestAnimationFrame(animate);
 window.__roadster = {
   getState: () => ({
     phase,
+    orientationBlocked,
+    easyControls,
     mode,
     elapsed,
     countdown,

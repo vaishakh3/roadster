@@ -4,7 +4,7 @@
   "description": "A Roadster-inspired driving and stunt game for desktop and mobile",
   "scripts": {
     "start": "node scripts/serve.mjs",
-    "test": "node tests/physics.test.mjs && node tests/integration.test.mjs && node tests/challenge.test.mjs",
+    "test": "node tests/physics.test.mjs && node tests/integration.test.mjs && node tests/challenge.test.mjs && node tests/pilot.test.mjs",
     "build": "node scripts/build.mjs",
     "test:browser": "node tests/browser-qa.cjs"
   },

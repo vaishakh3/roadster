@@ -14,322 +14,364 @@
     <meta property="og:title" content="Roadster · Flight Lab" />
     <meta
       property="og:description"
-      content="Four wheels. A whole new dimension. A free driving and flight playground."
+      content="DRIVE THE LINE. BREAK THE PLANE. A free driving and flight playground."
     />
     <title>Roadster · Flight Lab</title>
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101216'/%3E%3Cpath d='M14 43 26 20h12l12 23H14Zm9-7h18l-6-10h-6Z' fill='%23d7ff65'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101216'/%3E%3Cpath d='M14 43 26 20h12l12 23H14Zm9-7h18l-6-10h-6Z' fill='%23ff493d'/%3E%3C/svg%3E"
     />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body data-phase="intro">
-    <canvas
-      id="scene"
-      aria-label="3D Roadster driving game"
-      tabindex="-1"
-    ></canvas>
-    <div id="vignette"></div>
-    <div id="flash"></div>
-    <div id="speed-fx"></div>
-    <header class="topbar">
-      <div class="brand">
-        <span class="brandmark" aria-hidden="true">R<span>↗</span></span>
-        <div>ROADSTER<span>F L I G H T &nbsp; L A B</span></div>
-      </div>
-      <div class="top-actions">
-        <button id="sound" aria-label="Toggle sound" title="Sound">
-          SOUND <b>OFF</b>
-        </button>
-        <button
-          id="quality"
-          aria-label="Graphics quality: auto"
-          title="Cycle graphics quality"
-        >
-          AUTO
-        </button>
-        <button
-          id="fullscreen"
-          aria-label="Toggle fullscreen"
-          title="Fullscreen"
-        >
-          ⛶
-        </button>
-        <button id="photo" aria-label="Open photo mode" title="Photo mode">
-          ◎
-        </button>
-        <button id="help" aria-label="Show controls" title="Controls">?</button>
-        <button id="pause" aria-label="Pause game" title="Pause (Esc)">
-          Ⅱ
-        </button>
-      </div>
-    </header>
-    <div id="loading">
-      <div class="loading-mark">R↗</div>
-      <span>PREPARING YOUR MACHINE</span>
-      <div class="loader-line"></div>
-      <small>REAL-TIME 3D · FLIGHT LAB</small>
-    </div>
-    <section id="intro" class="overlay hidden" aria-label="Garage">
-      <div class="intro-copy">
-        <p class="eyebrow"><i></i> THE ROAD IS ONLY THE BEGINNING</p>
-        <h1>Defy<br /><em>ordinary.</em></h1>
-        <p class="lede">Four wheels. A whole new dimension.</p>
-      </div>
-      <div class="vehicle-tag">
-        <span>01 / ROADSTER</span><strong>Flight, by design.</strong
-        ><span>WHITE BODY · COLD-GAS THRUST</span>
-      </div>
-      <div class="intro-spec">
-        <div class="view-picker" aria-label="View the car">
-          <button data-view="0" class="selected" aria-pressed="true">
-            FRONT</button
-          ><button data-view="1" aria-pressed="false">PROFILE</button
-          ><button data-view="2" aria-pressed="false">REAR</button>
-        </div>
-        <button id="aero-preview" aria-pressed="false">
-          AERO <b>STOWED</b> ↗
-        </button>
-      </div>
-      <div class="garage-bottom">
-        <div class="garage-heading">
-          <span class="eyebrow">CHOOSE YOUR TEST</span
-          ><span class="local-record" id="garage-record"
-            >YOUR NEXT PERSONAL BEST STARTS HERE</span
-          >
-        </div>
-        <div class="mode-picker" role="group" aria-label="Game mode">
-          <button class="selected" data-mode="circuit" aria-pressed="true">
-            <span class="mode-no">01</span
-            ><span class="mode-title"
-              >Circuit<small>Find your perfect line.</small></span
-            ><span class="mode-meta">TIME TRIAL ↗</span>
-          </button>
-          <button data-mode="stunt" aria-pressed="false">
-            <span class="mode-no">02</span
-            ><span class="mode-title"
-              >Flight rush<small>90 seconds. Make them count.</small></span
-            ><span class="mode-meta">STUNT CHALLENGE ↗</span>
-          </button>
-          <button data-mode="free" aria-pressed="false">
-            <span class="mode-no">03</span
-            ><span class="mode-title"
-              >Free flight<small>No clock. No ceiling.</small></span
-            ><span class="mode-meta">LEARN & EXPLORE ↗</span>
-          </button>
-        </div>
-        <div class="launch-row">
-          <p id="mode-description">
-            Clear 12 gates in order. Brake into corners, thrust out of
-            them.<span id="device-hint"
-              >WASD to drive · H to fly · Esc to pause</span
-            >
-          </p>
-          <button id="start" class="primary">
-            LET’S DRIVE <span>↗</span>
-          </button>
-        </div>
-        <div class="intro-bottom">
-          <span
-            >ORIGINAL ROADSTER INTERPRETATION · NOT AFFILIATED WITH TESLA</span
-          ><span>NO INSTALL. JUST PLAY.</span>
-        </div>
-      </div>
-    </section>
-    <section id="hud" class="hidden" aria-label="Driving instruments">
-      <div class="mission">
-        <span class="eyebrow" id="mission-mode">CIRCUIT / TIMED RUN</span>
-        <div id="timer">00:00.000</div>
-        <div class="mission-row">
-          <span id="checkpoint">GATE 01 / 12</span><span id="best">BEST —</span>
-        </div>
-        <div class="progress-track"><div id="progress-fill"></div></div>
-      </div>
-      <div id="route-hint">
-        <span class="hint-arrow">↑</span
-        ><span id="route-text">Follow the illuminated gates</span>
-      </div>
-      <div id="toast" role="status" aria-live="polite"></div>
-      <div id="challenge-hud" class="hidden">
-        <span id="challenge-caption">BANKED SCORE</span
-        ><strong id="banked-score">0</strong>
-        <div>
-          <span id="combo-label">LAUNCH · ROTATE · LAND</span
-          ><b id="pending-score"></b>
-        </div>
-        <div class="progress-track"><div id="challenge-fill"></div></div>
-      </div>
-      <div id="coach">
-        <span class="coach-index">FLIGHT BRIEF</span
-        ><span id="coach-text">Launch. Climb. Make your first rotation.</span>
-      </div>
-      <div class="telemetry">
-        <div class="drive-mode">
-          <i></i><span id="drive-mode">GROUND EFFECT</span>
-        </div>
-        <div class="speedline">
-          <strong id="speed">000</strong
-          ><span>KM/H<br /><b id="gear">D</b></span>
-        </div>
-        <div class="charge-title">
-          <span>COLD-GAS RESERVE</span><b id="charge-text">100%</b>
-        </div>
-        <div class="charge-track"><div id="charge-fill"></div></div>
-        <div class="telemetry-foot">
-          <span id="grip">SUCTION GRIP · ACTIVE</span
-          ><span id="altitude">0.0 M</span>
-        </div>
-      </div>
-      <div id="flight-telemetry" aria-label="Flight instruments">
-        <div class="flight-instrument-heading">
-          <span>ATTITUDE</span><b id="flight-assist-status">ASSIST</b>
-        </div>
-        <div id="attitude-readout">P +00° · R +00°</div>
-        <div class="flight-instrument-foot">
-          <span id="flight-status">STABLE FLIGHT</span
-          ><span class="trick-counter"><b id="trick-score">0</b> PTS</span>
-        </div>
-      </div>
-      <div class="map-wrap">
-        <canvas
-          id="minimap"
-          width="300"
-          height="220"
-          aria-label="Circuit map"
-        ></canvas
-        ><span>AFTERDARK / TEST FACILITY</span>
-      </div>
-      <div class="desktop-controls" id="control-legend"></div>
-      <div class="mobile-utils">
-        <button id="touch-hover">↑ LAUNCH</button
-        ><button id="touch-camera" aria-label="Change camera">CAM</button
-        ><button id="touch-reset" aria-label="Recover car">↺</button
-        ><button
-          id="touch-assist"
-          aria-label="Toggle flight assist"
-          aria-pressed="true"
-        >
-          ASSIST
-        </button>
-      </div>
-      <div id="touch-controls">
-        <div class="ground-stick-wrap">
-          <div
-            id="ground-stick"
-            role="group"
-            aria-label="Steering pad: drag left or right"
-          >
-            <span>‹</span>
-            <div id="ground-stick-knob"></div>
-            <span>›</span>
-          </div>
-          <small>STEER</small>
-        </div>
-        <div class="touch-steer">
-          <button data-control="left" aria-label="Steer left">‹</button
-          ><button data-control="right" aria-label="Steer right">›</button>
-        </div>
-        <div
-          id="flight-controls"
-          class="flight-controls hidden"
-          aria-label="Flight controls"
-        >
-          <div class="flight-stick-wrap">
-            <div
-              id="flight-stick"
-              role="group"
-              aria-label="Flight stick: drag left or right to yaw, up for nose down, down for nose up"
-            >
-              <span class="stick-axis-top">PITCH</span
-              ><span class="stick-yaw-left">‹</span
-              ><span class="stick-yaw-right">›</span>
-              <div id="flight-stick-knob"></div>
-            </div>
-            <small>YAW / PITCH</small>
-          </div>
-          <div class="flight-roll-controls">
-            <button data-control="roll-left" aria-label="Roll left">
-              ↶ ROLL</button
-            ><button data-control="roll-right" aria-label="Roll right">
-              ROLL ↷
-            </button>
-          </div>
-          <div class="flight-altitude-controls">
-            <button data-control="lower" aria-label="Descend">↓</button
-            ><button data-control="lift" aria-label="Climb">↑</button>
-          </div>
-          <div class="flight-touch-toolbar">
-            <button
-              id="touch-level"
-              data-control="recover"
-              aria-label="Hold to stabilize flight"
-            >
-              LEVEL
-            </button>
-          </div>
-        </div>
-        <div class="touch-pedals">
-          <button
-            data-control="drift"
-            class="drift-button"
-            aria-label="Handbrake drift"
-          >
-            DRIFT</button
-          ><button
-            data-control="boost"
-            class="boost-button"
-            aria-label="Forward thrust"
-          >
-            THRUST ↗</button
-          ><button data-control="brake" aria-label="Brake or reverse">
-            <span class="ground-brake-label">BRAKE</span
-            ><span class="air-brake-label">BRAKE</span></button
-          ><button
-            data-control="throttle"
-            class="accelerator"
-            aria-label="Accelerate"
-          >
-            <span>GO</span> ↑
-          </button>
-        </div>
-      </div>
-    </section>
     <section
-      id="dialog"
-      class="modal hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="dialog-title"
+      id="rotate-screen"
+      aria-labelledby="rotate-title"
+      aria-live="polite"
     >
-      <div class="dialog-card">
-        <p class="eyebrow" id="dialog-label">MISSION CONTROL</p>
-        <h2 id="dialog-title">Take a breath.</h2>
-        <div id="dialog-content"></div>
-        <button id="resume" class="primary">RESUME <span>→</span></button
-        ><button id="restart" class="secondary">RESTART RUN</button
-        ><button id="save-result" class="secondary hidden">
-          SAVE SCORE CARD ↓</button
-        ><button id="garage" class="text-button">RETURN TO GARAGE</button>
-      </div>
+      <span class="eyebrow">ROADSTER / FLIGHT LAB</span>
+      <div class="rotate-phone" aria-hidden="true"><span>↻</span></div>
+      <h1 id="rotate-title">ROTATE<br /><em>TO DRIVE.</em></h1>
+      <p>Turn your phone sideways to play.</p>
+      <small id="rotate-note"
+        >Built for two thumbs. And a clear view ahead.</small
+      >
     </section>
-    <section id="photo-panel" class="hidden" aria-label="Photo mode">
-      <div>
-        <span class="eyebrow">PHOTO MODE</span>
-        <h2>Your machine.<br />Your moment.</h2>
-        <p>Drag to orbit · scroll to zoom</p>
+    <div id="game-shell">
+      <canvas
+        id="scene"
+        aria-label="3D Roadster driving game"
+        tabindex="-1"
+      ></canvas>
+      <div id="vignette"></div>
+      <div id="flash"></div>
+      <div id="speed-fx"></div>
+      <header class="topbar">
+        <div class="brand">
+          <span class="brandmark" aria-hidden="true">///</span>
+          <div>FLIGHT LAB<span>EXPERIMENTAL MOTORSPORT</span></div>
+        </div>
+        <div class="top-actions">
+          <button id="sound" aria-label="Toggle sound" title="Sound">
+            SOUND <b>OFF</b>
+          </button>
+          <button
+            id="quality"
+            aria-label="Graphics quality: auto"
+            title="Cycle graphics quality"
+          >
+            AUTO
+          </button>
+          <button
+            id="fullscreen"
+            aria-label="Toggle fullscreen"
+            title="Fullscreen"
+          >
+            ⛶
+          </button>
+          <button id="photo" aria-label="Open photo mode" title="Photo mode">
+            ◎
+          </button>
+          <button id="help" aria-label="Show controls" title="Controls">
+            ?
+          </button>
+          <button id="pause" aria-label="Pause game" title="Pause (Esc)">
+            Ⅱ
+          </button>
+        </div>
+      </header>
+      <div id="loading">
+        <div class="loading-mark">R↗</div>
+        <span>PREPARING YOUR MACHINE</span>
+        <div class="loader-line"></div>
+        <small>REAL-TIME 3D · FLIGHT LAB</small>
       </div>
-      <div class="photo-actions">
-        <button id="save-photo" class="primary">SAVE PHOTO ↓</button
-        ><button id="exit-photo" class="secondary">BACK TO GAME</button>
+      <section id="intro" class="overlay hidden" aria-label="Garage">
+        <div class="intro-copy">
+          <p class="eyebrow">
+            TEST SESSION / 001 <span class="live-mark">● LIVE</span>
+          </p>
+          <h1>ROADSTER<span class="title-rule"></span></h1>
+          <p class="lede">DRIVE THE LINE. BREAK THE PLANE.</p>
+        </div>
+        <div class="vehicle-tag">
+          <span>AFTER HOURS / PROVING GROUND</span><strong>GROUND → AIR</strong
+          ><span>VEHICLE 01 · COLD GAS</span>
+        </div>
+        <div class="intro-spec">
+          <div class="view-picker" aria-label="View the car">
+            <button data-view="0" class="selected" aria-pressed="true">
+              FRONT</button
+            ><button data-view="1" aria-pressed="false">PROFILE</button
+            ><button data-view="2" aria-pressed="false">REAR</button>
+          </div>
+          <button id="aero-preview" aria-pressed="false">
+            AERO <b>STOWED</b> ↗
+          </button>
+        </div>
+        <div class="garage-bottom">
+          <div class="garage-heading">
+            <span class="eyebrow">SESSION SELECT</span
+            ><span class="local-record" id="garage-record"
+              >YOUR NEXT PERSONAL BEST STARTS HERE</span
+            >
+          </div>
+          <div class="mode-picker" role="group" aria-label="Game mode">
+            <button class="selected" data-mode="circuit" aria-pressed="true">
+              <span class="mode-no">01</span
+              ><span class="mode-title"
+                >Circuit<small>12 GATES / TIME ATTACK</small></span
+              ><span class="mode-meta">TIME TRIAL ↗</span>
+            </button>
+            <button data-mode="stunt" aria-pressed="false">
+              <span class="mode-no">02</span
+              ><span class="mode-title"
+                >Flight rush<small>90 SEC / STUNT SCORE</small></span
+              ><span class="mode-meta">STUNT CHALLENGE ↗</span>
+            </button>
+            <button data-mode="free" aria-pressed="false">
+              <span class="mode-no">03</span
+              ><span class="mode-title"
+                >Free flight<small>OPEN SESSION / NO CLOCK</small></span
+              ><span class="mode-meta">LEARN & EXPLORE ↗</span>
+            </button>
+          </div>
+          <div class="launch-row">
+            <p id="mode-description">
+              Clear 12 gates in order. Brake into corners, thrust out of
+              them.<span id="device-hint"
+                >WASD to drive · H to fly · Esc to pause</span
+              >
+            </p>
+            <button id="start" class="primary">
+              START SESSION <span>↗</span>
+            </button>
+          </div>
+          <div class="intro-bottom">
+            <span
+              >ORIGINAL ROADSTER INTERPRETATION · NOT AFFILIATED WITH
+              TESLA</span
+            ><span>01 — AFTER HOURS</span>
+          </div>
+        </div>
+      </section>
+      <section id="hud" class="hidden" aria-label="Driving instruments">
+        <div class="mission">
+          <span class="eyebrow" id="mission-mode">CIRCUIT / TIMED RUN</span>
+          <div id="timer">00:00.000</div>
+          <div class="mission-row">
+            <span id="checkpoint">GATE 01 / 12</span
+            ><span id="best">BEST —</span>
+          </div>
+          <div class="progress-track"><div id="progress-fill"></div></div>
+        </div>
+        <div id="route-hint">
+          <span class="hint-arrow">↑</span
+          ><span id="route-text">Follow the illuminated gates</span>
+        </div>
+        <div id="toast" role="status" aria-live="polite"></div>
+        <div id="challenge-hud" class="hidden">
+          <span id="challenge-caption">BANKED SCORE</span
+          ><strong id="banked-score">0</strong>
+          <div>
+            <span id="combo-label">LAUNCH · ROTATE · LAND</span
+            ><b id="pending-score"></b>
+          </div>
+          <div class="progress-track"><div id="challenge-fill"></div></div>
+        </div>
+        <div id="coach">
+          <span class="coach-index">FLIGHT BRIEF</span
+          ><span id="coach-text">Launch. Climb. Make your first rotation.</span>
+        </div>
+        <div class="telemetry">
+          <div class="drive-mode">
+            <i></i><span id="drive-mode">GROUND EFFECT</span>
+          </div>
+          <div class="speedline">
+            <strong id="speed">000</strong
+            ><span>KM/H<br /><b id="gear">D</b></span>
+          </div>
+          <div class="charge-title">
+            <span>RESERVE</span><b id="charge-text">100%</b>
+          </div>
+          <div class="charge-track"><div id="charge-fill"></div></div>
+          <div class="telemetry-foot">
+            <span id="grip">SUCTION GRIP · ACTIVE</span
+            ><span id="altitude">0.0 M</span>
+          </div>
+        </div>
+        <div id="flight-telemetry" aria-label="Flight instruments">
+          <div class="flight-instrument-heading">
+            <span>ATTITUDE</span><b id="flight-assist-status">ASSIST</b>
+          </div>
+          <div id="attitude-readout">P +00° · R +00°</div>
+          <div class="flight-instrument-foot">
+            <span id="flight-status">STABLE FLIGHT</span
+            ><span class="trick-counter"><b id="trick-score">0</b> PTS</span>
+          </div>
+        </div>
+        <div class="map-wrap">
+          <canvas
+            id="minimap"
+            width="300"
+            height="220"
+            aria-label="Circuit map"
+          ></canvas
+          ><span>AFTERDARK / TEST FACILITY</span>
+        </div>
+        <div class="desktop-controls" id="control-legend"></div>
+        <div class="mobile-utils">
+          <button id="touch-hover">↑ LAUNCH</button>
+        </div>
+        <div id="touch-controls">
+          <button id="easy-stunt" aria-label="Perform a barrel roll">
+            ROLL ↻
+          </button>
+          <div class="ground-stick-wrap">
+            <div
+              id="ground-stick"
+              role="group"
+              aria-label="Steering pad: drag left or right"
+            >
+              <span>‹</span>
+              <div id="ground-stick-knob"></div>
+              <span>›</span>
+            </div>
+            <small>STEER</small>
+          </div>
+          <div class="touch-steer">
+            <button data-control="left" aria-label="Steer left">‹</button
+            ><button data-control="right" aria-label="Steer right">›</button>
+          </div>
+          <div
+            id="flight-controls"
+            class="flight-controls hidden"
+            aria-label="Flight controls"
+          >
+            <div class="flight-stick-wrap">
+              <div
+                id="flight-stick"
+                role="group"
+                aria-label="Flight stick: drag left or right to yaw, up for nose down, down for nose up"
+              >
+                <span class="stick-axis-top">PITCH</span
+                ><span class="stick-yaw-left">‹</span
+                ><span class="stick-yaw-right">›</span>
+                <div id="flight-stick-knob"></div>
+              </div>
+              <small>YAW / PITCH</small>
+            </div>
+            <div class="flight-roll-controls">
+              <button data-control="roll-left" aria-label="Roll left">
+                ↶ ROLL</button
+              ><button data-control="roll-right" aria-label="Roll right">
+                ROLL ↷
+              </button>
+            </div>
+            <div class="flight-altitude-controls">
+              <button data-control="lower" aria-label="Descend">↓</button
+              ><button data-control="lift" aria-label="Climb">↑</button>
+            </div>
+            <div class="flight-touch-toolbar">
+              <button
+                id="touch-level"
+                data-control="recover"
+                aria-label="Hold to stabilize flight"
+              >
+                LEVEL
+              </button>
+            </div>
+          </div>
+          <div class="touch-pedals">
+            <button
+              data-control="drift"
+              class="drift-button"
+              aria-label="Handbrake drift"
+            >
+              DRIFT</button
+            ><button
+              data-control="boost"
+              class="boost-button"
+              aria-label="Forward thrust"
+            >
+              BOOST</button
+            ><button
+              data-control="brake"
+              aria-label="Brake; hold at rest to reverse"
+            >
+              <span class="ground-brake-label">BRAKE</span
+              ><span class="air-brake-label">BRAKE</span></button
+            ><button
+              data-control="throttle"
+              class="accelerator"
+              aria-label="Accelerate"
+            >
+              <span class="ground-go-label">GO ↑</span
+              ><span class="air-go-label">THRUST ↗</span>
+            </button>
+          </div>
+        </div>
+      </section>
+      <section
+        id="dialog"
+        class="modal hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dialog-title"
+      >
+        <div class="dialog-card">
+          <p class="eyebrow" id="dialog-label">MISSION CONTROL</p>
+          <h2 id="dialog-title">Take a breath.</h2>
+          <div id="dialog-content"></div>
+          <button id="control-style" aria-pressed="true">
+            CONTROLS · SIMPLE
+          </button>
+          <div id="pause-tools" aria-label="Run settings">
+            <button id="touch-camera" aria-label="Change camera">
+              CAMERA · CHASE
+            </button>
+            <button
+              id="touch-assist"
+              aria-label="Toggle flight assist"
+              aria-pressed="true"
+            >
+              ASSIST ON
+            </button>
+            <button id="menu-sound">SOUND OFF</button>
+            <button id="menu-quality">QUALITY AUTO</button>
+            <button id="menu-photo">PHOTO MODE</button>
+            <button id="menu-controls">CONTROLS</button>
+            <button id="touch-reset" aria-label="Recover car">
+              RECOVER CAR
+            </button>
+            <button id="menu-fullscreen">FULLSCREEN</button>
+          </div>
+          <button id="resume" class="primary">RESUME <span>→</span></button
+          ><button id="restart" class="secondary">RESTART RUN</button
+          ><button id="save-result" class="secondary hidden">
+            SAVE SCORE CARD ↓</button
+          ><button id="garage" class="text-button">RETURN TO GARAGE</button>
+        </div>
+      </section>
+      <section id="photo-panel" class="hidden" aria-label="Photo mode">
+        <div>
+          <span class="eyebrow">PHOTO MODE</span>
+          <h2>Your machine.<br />Your moment.</h2>
+          <p>Drag to orbit · scroll to zoom</p>
+        </div>
+        <div class="photo-actions">
+          <button id="save-photo" class="primary">SAVE PHOTO ↓</button
+          ><button id="exit-photo" class="secondary">BACK TO GAME</button>
+        </div>
+      </section>
+      <div id="error" class="hidden" role="alert">
+        <h2>Let’s get you back on the road.</h2>
+        <p id="error-message">
+          This browser couldn’t start WebGL 2. Try a current browser with
+          hardware acceleration enabled.
+        </p>
+        <button onclick="location.reload()" class="primary">RELOAD ↗</button>
       </div>
-    </section>
-    <div id="error" class="hidden" role="alert">
-      <h2>Let’s get you back on the road.</h2>
-      <p id="error-message">
-        This browser couldn’t start WebGL 2. Try a current browser with hardware
-        acceleration enabled.
-      </p>
-      <button onclick="location.reload()" class="primary">RELOAD ↗</button>
     </div>
     <script type="module" src="main.js"></script>
   </body>

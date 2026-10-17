@@ -1,3 +1,8 @@
+/** Phones and touch tablets play horizontally; desktop portrait windows remain usable. */
+export function requiresLandscape(width, height, coarse) {
+  return height > width && (coarse || width <= 600);
+}
+
 /** Own one pointer per stick, and never cancel an unrelated held button. */
 export function bindSteeringPad(element, knob, onChange) {
   let pointer = null;

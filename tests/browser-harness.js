@@ -41,7 +41,7 @@ button.onclick = async () => {
     w.addEventListener("error", (e) => errors.push(e.message));
     const tick = (seconds) => {
       for (let i = 0; i < Math.ceil(seconds * 120); i++) g.step(1 / 120);
-      g.renderFrame(1 / 60);
+      g.renderFrame(0.06);
     };
     const key = (code, type = "keydown") =>
       w.dispatchEvent(
@@ -64,6 +64,7 @@ button.onclick = async () => {
       assert(g.getState().phase === "intro", "Garage visible");
       assert(g.getState().renderer.triangles > 1000, "Geometry rendered");
     });
+    click("control-style"); // Exercise the complete manual input path first.
     await test("Keyboard driving, steering and braking", () => {
       click("start");
       tick(3.1);
@@ -193,6 +194,97 @@ button.onclick = async () => {
         "Long press menu cancelled",
       );
     });
+    await test("Simple controls: tap launch, roll and land; no manual flight axes", () => {
+      click("pause");
+      click("control-style");
+      click("garage");
+      mode("stunt");
+      click("start");
+      tick(3.1);
+      assert(g.getState().easyControls, "Simple pilot enabled");
+      click("touch-hover");
+      tick(5);
+      assert(g.getState().state.y > 28, "Auto climb reaches safe altitude");
+      assert(
+        !d.getElementById("easy-stunt").disabled,
+        "Roll enabled: " + JSON.stringify(g.getState().state),
+      );
+      click("easy-stunt");
+      tick(4.5);
+      assert(
+        g.getState().state.rolls === 1,
+        "Exactly one real roll: " +
+          JSON.stringify({
+            rolls: g.getState().state.rolls,
+            y: g.getState().state.y,
+            charge: g.getState().state.charge,
+            phase: g.getState().phase,
+            crashed: g.getState().state.crashed,
+          }),
+      );
+      click("touch-hover");
+      let duration = 0;
+      while (
+        !g.getState().state.grounded &&
+        !g.getState().state.crashed &&
+        duration < 20
+      ) {
+        tick(0.1);
+        duration += 0.1;
+      }
+      const landed = g.getState();
+      assert(
+        !landed.state.crashed && landed.challenge.score >= 750,
+        "Safe landing banks points",
+      );
+      tick(0.1);
+      const reserve = g.getState().state.charge;
+      tick(2);
+      assert(g.getState().state.charge > reserve, "Parked landing refills");
+    });
+    for (const [width, height] of [
+      [390, 844],
+      [375, 667],
+      [320, 568],
+    ]) {
+      await test(`Portrait ${width}×${height}: rotate prompt pauses input and run`, async () => {
+        key("ShiftLeft");
+        frame.style.width = width + "px";
+        frame.style.height = height + "px";
+        await new Promise((r) => setTimeout(r, 120));
+        const before = g.getState();
+        assert(
+          before.orientationBlocked && before.phase === "paused",
+          "Portrait blocks and pauses",
+        );
+        assert(
+          d.querySelector("#game-shell").inert,
+          "Game cannot receive interaction",
+        );
+        assert(
+          w.getComputedStyle(d.querySelector("#rotate-screen")).display ===
+            "flex",
+          "Rotate prompt visible",
+        );
+        tick(2);
+        key("KeyH");
+        click("resume");
+        assert(
+          g.getState().elapsed === before.elapsed &&
+            g.getState().phase === "paused",
+          "Clock frozen and resume blocked",
+        );
+        assert(g.getState().input.boost === false, "Held input cleared");
+        frame.style.width = 844 + "px";
+        frame.style.height = 390 + "px";
+        await new Promise((r) => setTimeout(r, 120));
+        assert(
+          !g.getState().orientationBlocked && g.getState().phase === "paused",
+          "Landscape waits for deliberate resume",
+        );
+        click("resume");
+      });
+    }
     const overlap = (a, b) =>
       a.left < b.right - 1 &&
       a.right > b.left + 1 &&
@@ -200,63 +292,66 @@ button.onclick = async () => {
       a.bottom > b.top + 1;
     for (const [width, height] of [
       [1440, 900],
-      [390, 844],
-      [375, 667],
-      [320, 568],
+      [667, 375],
       [844, 390],
       [568, 320],
     ]) {
-      frame.style.width = width + "px";
-      frame.style.height = height + "px";
-      await new Promise((r) => setTimeout(r, 120));
-      await test(`Layout ${width}×${height}: garage actions fit, touch targets stay separate`, () => {
-        click("pause");
-        click("garage");
-        g.snapCamera();
-        assert(
-          d.documentElement.scrollWidth <= width,
-          "No horizontal overflow",
-        );
-        for (const id of ["start", "aero-preview"]) {
-          const r = d.getElementById(id).getBoundingClientRect();
+      for (const simple of [true, false]) {
+        if (g.getState().easyControls !== simple) click("control-style");
+        frame.style.width = width + "px";
+        frame.style.height = height + "px";
+        await new Promise((r) => setTimeout(r, 120));
+        await test(`Layout ${width}×${height} ${simple ? "simple" : "manual"}: actions fit and targets stay separate`, () => {
+          click("pause");
+          click("garage");
+          g.snapCamera();
           assert(
-            r.top >= 0 &&
-              r.bottom <= height + 1 &&
-              r.left >= 0 &&
-              r.right <= width + 1,
-            id + " fits",
+            d.documentElement.scrollWidth <= width,
+            "No horizontal overflow",
           );
-        }
-        mode("free");
-        click("start");
-        g.hover();
-        tick(0.15);
-        g.snapCamera();
-        const controls = [
-          ...d.querySelectorAll("#touch-controls button,.mobile-utils button"),
-        ].filter(
-          (el) =>
-            el.getClientRects().length &&
-            w.getComputedStyle(el).visibility !== "hidden",
-        );
-        for (let i = 0; i < controls.length; i++) {
-          const r = controls[i].getBoundingClientRect();
-          assert(
-            r.top >= 0 &&
-              r.bottom <= height + 1 &&
-              r.left >= 0 &&
-              r.right <= width + 1,
-            controls[i].ariaLabel + " fits",
-          );
-          for (let j = i + 1; j < controls.length; j++)
+          for (const id of ["start", "aero-preview"]) {
+            const r = d.getElementById(id).getBoundingClientRect();
             assert(
-              !overlap(r, controls[j].getBoundingClientRect()),
-              controls[i].outerHTML.slice(0, 70) +
-                " overlaps " +
-                controls[j].outerHTML.slice(0, 70),
+              r.top >= 0 &&
+                r.bottom <= height + 1 &&
+                r.left >= 0 &&
+                r.right <= width + 1,
+              id + " fits",
             );
-        }
-      });
+          }
+          mode("free");
+          click("start");
+          g.hover();
+          tick(0.15);
+          g.snapCamera();
+          const controls = [
+            ...d.querySelectorAll(
+              "#touch-controls button,.mobile-utils button,#ground-stick,#flight-stick",
+            ),
+          ].filter(
+            (el) =>
+              el.getClientRects().length &&
+              w.getComputedStyle(el).visibility !== "hidden",
+          );
+          for (let i = 0; i < controls.length; i++) {
+            const r = controls[i].getBoundingClientRect();
+            assert(
+              r.top >= 0 &&
+                r.bottom <= height + 1 &&
+                r.left >= 0 &&
+                r.right <= width + 1,
+              (controls[i].ariaLabel || controls[i].id) + " fits",
+            );
+            for (let j = i + 1; j < controls.length; j++)
+              assert(
+                !overlap(r, controls[j].getBoundingClientRect()),
+                controls[i].outerHTML.slice(0, 70) +
+                  " overlaps " +
+                  controls[j].outerHTML.slice(0, 70),
+              );
+          }
+        });
+      }
     }
     await test("No uncaught browser errors", () =>
       assert(errors.length === 0, errors.join("; ")));
