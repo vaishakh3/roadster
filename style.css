@@ -1298,3 +1298,598 @@ body[data-phase="results"] #hud {
 #rotate {
   pointer-events: auto;
 }
+
+/* Race programme: a route rail, open scenery and a compact garage. */
+#course-select {
+  position: absolute;
+  top: 96px;
+  left: var(--pad);
+  right: var(--pad);
+  display: flex;
+  border-bottom: 1px solid #e1ecde55;
+  gap: 32px;
+}
+#course-select button {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 50px;
+  background: transparent;
+  padding: 8px 4px 13px;
+  border-bottom: 3px solid transparent;
+  opacity: 0.65;
+}
+#course-select button.active {
+  border-color: var(--orange);
+  opacity: 1;
+}
+#course-select i {
+  font: 13px Plex;
+  font-style: normal;
+  color: var(--orange);
+}
+#course-select span {
+  font-size: 25px;
+  letter-spacing: 0.03em;
+}
+#course-select small {
+  font: 10px Plex;
+  letter-spacing: 0.04em;
+  margin-left: 3px;
+}
+.home-copy {
+  top: 29%;
+}
+h1 {
+  font-size: clamp(90px, 11vw, 158px);
+}
+.home-description {
+  font-size: 25px;
+  max-width: 350px;
+}
+.route-label {
+  top: 25%;
+  right: var(--pad);
+  align-items: flex-end;
+  max-width: 310px;
+  text-align: right;
+  gap: 9px;
+}
+#route-map {
+  width: 180px;
+  height: 105px;
+  color: var(--orange);
+  filter: drop-shadow(0 2px 2px #102b34);
+}
+.route-label > span {
+  font-size: 11px;
+  text-shadow: 0 2px 6px #081d25;
+}
+.route-label b {
+  font-size: 27px;
+}
+.badges {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  font: 11px Plex;
+  color: #bbc6c8;
+}
+.badges .earned {
+  color: var(--mint);
+}
+#paint {
+  position: absolute;
+  right: var(--pad);
+  bottom: 205px;
+  background: #0a222be3;
+  padding: 5px 15px;
+  font-size: 16px;
+}
+#paint span {
+  margin-left: 5px;
+  color: var(--orange);
+}
+.start-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3px;
+}
+.start-actions .secondary {
+  min-height: 44px;
+  padding: 8px 0;
+  font-size: 20px;
+}
+.start-actions .primary {
+  min-height: 64px;
+  font-size: 25px;
+}
+.home-bottom {
+  grid-template-columns: 1fr 340px;
+  gap: 16px 50px;
+}
+.brief {
+  max-width: 490px;
+}
+.brief p {
+  font-size: 22px;
+  line-height: 1.3;
+}
+.home-foot {
+  grid-column: 1/-1;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+.home-foot span {
+  font-size: 10px;
+}
+#ghost-delta {
+  position: absolute;
+  top: 112px;
+  left: var(--pad);
+  font: 12px Plex;
+  color: var(--mint);
+  text-shadow: 0 2px 4px #000;
+}
+#result-badges {
+  margin: 0 0 20px;
+}
+#tour-summary {
+  font: 14px Plex;
+  color: var(--orange);
+  margin: 0 0 20px;
+}
+.result-actions {
+  flex-wrap: wrap;
+}
+#next-stage:not([hidden]) ~ #retry {
+  background: none;
+  color: var(--paper);
+  border: 1px solid #73878d;
+  min-width: 160px;
+  font-size: 22px;
+}
+body[data-course="port"] {
+  --ink: #142433;
+  --dim: #c7d6e6;
+}
+@media (max-height: 600px) {
+  #course-select {
+    top: 57px;
+    gap: 26px;
+  }
+  #course-select button {
+    min-height: 44px;
+    padding: 6px 1px 8px;
+    gap: 8px;
+  }
+  #course-select span {
+    font-size: 21px;
+  }
+  #course-select small {
+    display: none;
+  }
+  .home-copy {
+    top: 35%;
+  }
+  .home-copy h1 {
+    font-size: clamp(56px, 8vw, 74px);
+  }
+  .home-copy .kicker {
+    font-size: 10px;
+    margin-bottom: 12px;
+  }
+  .home-description {
+    display: none;
+  }
+  .route-label {
+    top: 29%;
+    gap: 5px;
+    max-width: 280px;
+  }
+  .route-label b {
+    font-size: 22px;
+  }
+  .route-label > span {
+    font-size: 9px;
+  }
+  #route-map {
+    width: 130px;
+    height: 73px;
+  }
+  .route-label .badges {
+    font-size: 9px;
+    gap: 9px;
+  }
+  #paint {
+    bottom: 109px;
+    font-size: 13px;
+    min-height: 38px;
+    padding: 4px 10px;
+  }
+  .home-bottom {
+    grid-template-columns: 1fr 345px;
+    gap: 9px 20px;
+    bottom: 12px;
+  }
+  .start-actions {
+    grid-template-columns: 1.1fr 1fr;
+    gap: 12px;
+  }
+  .start-actions .primary {
+    min-height: 52px;
+    font-size: 18px;
+    padding: 9px 12px;
+  }
+  .start-actions .secondary {
+    font-size: 17px;
+    min-height: 52px;
+    padding: 6px 0;
+  }
+  .start-actions .secondary span {
+    font-size: 13px;
+  }
+  .brief p#course-brief {
+    display: none;
+  }
+  .brief .touch-brief {
+    margin: 0;
+    font-size: 17px;
+  }
+  .home-foot {
+    padding-top: 9px;
+  }
+  .home-foot span {
+    font-size: 9px;
+  }
+  .home-foot span:last-child {
+    display: none;
+  }
+  #ghost-delta {
+    top: 64px;
+    font-size: 10px;
+  }
+  #result-badges {
+    margin-bottom: 12px;
+    font-size: 10px;
+  }
+  #tour-summary {
+    margin: 0 0 10px;
+    font-size: 11px;
+  }
+  .preferences .setting {
+    min-height: 40px;
+  }
+  .result-inner h2 {
+    font-size: 42px;
+  }
+  .result-stats {
+    padding: 10px 0;
+    margin-bottom: 12px;
+  }
+  .result-actions {
+    gap: 14px;
+  }
+  .result-actions .primary {
+    min-width: 180px;
+    font-size: 19px;
+    min-height: 48px;
+  }
+  .result-actions .secondary {
+    font-size: 17px;
+  }
+  .result-actions .text-button {
+    font-size: 15px;
+  }
+}
+@media (max-height: 360px) and (orientation: landscape) {
+  #course-select {
+    top: 52px;
+    gap: 18px;
+  }
+  #course-select span {
+    font-size: 18px;
+  }
+  #course-select i {
+    font-size: 11px;
+  }
+  .home-copy {
+    top: 36%;
+  }
+  .home-copy h1 {
+    font-size: 53px;
+  }
+  .home-copy .kicker {
+    font-size: 9px;
+    margin-bottom: 10px;
+  }
+  .route-label {
+    display: flex;
+    top: 34%;
+    max-width: 235px;
+  }
+  .route-label b {
+    font-size: 20px;
+  }
+  #route-map {
+    display: none;
+  }
+  .route-label > span {
+    font-size: 8px;
+  }
+  .route-label .badges {
+    font-size: 8px;
+    gap: 7px;
+  }
+  #paint {
+    bottom: 99px;
+    min-height: 38px;
+  }
+  .home-bottom {
+    grid-template-columns: 1fr 300px;
+    gap: 6px 14px;
+  }
+  .brief .touch-brief {
+    font-size: 14px;
+  }
+  .start-actions {
+    gap: 10px;
+  }
+  .start-actions .primary {
+    font-size: 16px;
+    padding: 9px;
+  }
+  .start-actions .secondary {
+    font-size: 16px;
+  }
+  .home-foot span {
+    font-size: 8px;
+  }
+  .result-inner h2 {
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+  #result-tip {
+    font-size: 14px;
+    margin-bottom: 9px;
+  }
+  .result-stats {
+    margin-bottom: 9px;
+    padding: 8px 0;
+  }
+  .result-stats strong {
+    font-size: 24px;
+  }
+  .result-stats span {
+    font-size: 10px;
+  }
+  #result-badges {
+    font-size: 9px;
+    margin-bottom: 8px;
+  }
+  #tour-summary {
+    font-size: 9px;
+    margin-bottom: 8px;
+  }
+  .result-actions {
+    gap: 9px;
+  }
+  .result-actions .primary {
+    min-width: 145px;
+    font-size: 16px;
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+  .result-actions .secondary {
+    font-size: 15px;
+  }
+  .result-actions .text-button {
+    font-size: 13px;
+  }
+  #next-stage:not([hidden]) ~ #retry {
+    min-width: 125px;
+    font-size: 16px;
+  }
+  #record-message {
+    font-size: 9px;
+    margin-top: 8px;
+  }
+  .preferences .setting {
+    min-height: 36px;
+  }
+  .sheet {
+    padding: 16px 18px;
+  }
+  .menu-grid {
+    gap: 25px;
+  }
+}
+@media (max-height: 600px) {
+  .route-label {
+    top: 30%;
+    gap: 6px;
+  }
+  #route-map {
+    display: none;
+  }
+  .route-label b {
+    font-size: 24px;
+  }
+  .route-label > span {
+    font-size: 10px;
+  }
+  #course-badges {
+    margin-top: 5px;
+    font-size: 9px;
+  }
+  #paint {
+    bottom: 108px;
+  }
+  .start-actions {
+    grid-template-columns: 1.25fr 1fr;
+  }
+  .start-actions .primary {
+    font-size: 17px;
+    white-space: nowrap;
+    padding: 8px 11px;
+  }
+  .start-actions .primary b {
+    font-size: 25px;
+    margin-left: 6px;
+  }
+}
+@media (max-height: 360px) and (orientation: landscape) {
+  .route-label {
+    top: 35%;
+    gap: 4px;
+  }
+  .route-label b {
+    font-size: 20px;
+  }
+  .route-label > span {
+    font-size: 8px;
+  }
+  #course-badges {
+    font-size: 8px;
+    margin-top: 3px;
+  }
+  #paint {
+    bottom: 94px;
+  }
+  .start-actions .primary {
+    font-size: 14px;
+  }
+  .start-actions .primary b {
+    font-size: 19px;
+  }
+  .start-actions .secondary {
+    font-size: 15px;
+  }
+}
+@media (max-height: 600px) {
+  .preferences {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 18px;
+    align-content: start;
+  }
+  .preferences .setting {
+    min-height: 44px;
+    font-size: 14px;
+    gap: 8px;
+  }
+  .preferences .setting b {
+    font-size: 14px;
+  }
+}
+@media (max-height: 360px) and (orientation: landscape) {
+  .preferences {
+    column-gap: 12px;
+  }
+  .preferences .setting {
+    min-height: 44px;
+    font-size: 12px;
+  }
+  .preferences .setting b {
+    font-size: 12px;
+  }
+}
+#warning {
+  left: var(--pad);
+  transform: none;
+  top: 132px;
+  min-width: 0;
+  max-width: 330px;
+}
+@media (max-height: 600px) {
+  #warning {
+    top: 82px;
+    max-width: 285px;
+    padding: 9px 12px;
+    gap: 9px;
+  }
+  #warning strong {
+    font-size: 23px;
+  }
+  #warning-detail {
+    font-size: 13px;
+  }
+}
+@media (max-height: 360px) and (orientation: landscape) {
+  #warning {
+    top: 69px;
+    max-width: 245px;
+    padding: 7px 10px;
+  }
+  #warning strong {
+    font-size: 20px;
+  }
+  #warning-detail {
+    font-size: 12px;
+  }
+}
+@media (max-height: 360px) and (orientation: landscape) {
+  .home-copy {
+    top: 34.5%;
+  }
+}
+@media (max-height: 360px) and (orientation: landscape) {
+  .home-copy .kicker {
+    font-size: 10px;
+  }
+  .route-label > span {
+    font-size: 10px;
+  }
+  #route-tags {
+    display: none;
+  }
+  #course-badges {
+    font-size: 10px;
+    gap: 7px;
+  }
+  .start-actions .primary {
+    font-size: 16px;
+  }
+  .home-foot span {
+    font-size: 10px;
+  }
+  .brief .touch-brief {
+    font-size: 16px;
+  }
+}
+@media (max-height: 360px) and (orientation: landscape) {
+  .home-copy {
+    top: 33.5%;
+  }
+  #paint {
+    bottom: 102px;
+  }
+}
+.route-label {
+  text-shadow:
+    0 1px 4px #061b23,
+    0 0 12px #061b23;
+}
+@media (max-height: 600px) {
+  #course-badges {
+    display: none;
+  }
+  #paint {
+    top: 12px;
+    bottom: auto;
+    right: 176px;
+    min-height: 44px;
+    height: 44px;
+  }
+}
+@media (max-height: 360px) and (orientation: landscape) {
+  .route-label {
+    top: 32%;
+  }
+  #paint {
+    top: 6px;
+    bottom: auto;
+    right: 166px;
+  }
+}

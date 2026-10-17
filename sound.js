@@ -85,6 +85,10 @@ export function createSound() {
       } else if (type === "hit" || type === "fail") {
         tone(80, 0.35, 0.35);
         tone(57, 0.45, 0.2, 0.1);
+      } else if (type === "pad" || type === "launch") {
+        tone(196, 0.22, 0.16);
+        tone(392, 0.3, 0.15, 0.07);
+        tone(784, 0.35, 0.1, 0.14);
       } else if (type === "gap") {
         tone(392, 0.25, 0.17);
         tone(587, 0.35, 0.15, 0.12);

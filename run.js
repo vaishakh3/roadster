@@ -1,57 +1,31 @@
 /** Breakwater's deterministic arcade simulation. Metres, seconds; X is across the road.
  * Steering and lift are independent of thrust, including during takeoff/landing.
  * The assisted route heading keeps the controls simple; this is not a vehicle simulator. */
-export const LENGTH = 3600;
+import { COURSES, getCourse, hazardPose } from "./courses.js";
+export const LENGTH = COURSES[0].length;
 export const ROAD_HALF = 10;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-export const SECTORS = ["THE CAUSEWAY", "OPEN WATER", "THE LAST LIGHT"];
-export const GAPS = [
-  { start: 660, end: 725 },
-  { start: 1430, end: 1525 },
-  { start: 2190, end: 2300 },
-  { start: 2960, end: 3090 },
-];
-export const OBSTACLES = [
-  { d: 310, x: -4.4, w: 5.5 },
-  { d: 490, x: 4.5, w: 5.5 },
-  { d: 970, x: 0, w: 6 },
-  { d: 1160, x: -4.5, w: 6 },
-  { d: 1740, x: 4.5, w: 6.5 },
-  { d: 1950, x: -4, w: 7 },
-  { d: 2500, x: 0, w: 7 },
-  { d: 2700, x: -4.5, w: 6 },
-  { d: 3280, x: 4.5, w: 6 },
-  { d: 3430, x: -4.5, w: 6 },
-];
-export const GATES = [
-  { d: 180, x: 0, y: 0 },
-  { d: 405, x: 3.5, y: 0 },
-  { d: 695, x: 0, y: 4.3 },
-  { d: 855, x: -3.5, y: 0 },
-  { d: 1070, x: 3.8, y: 0 },
-  { d: 1300, x: 0, y: 0 },
-  { d: 1475, x: 0, y: 4.3 },
-  { d: 1640, x: -3.8, y: 0 },
-  { d: 1840, x: -3.8, y: 0 },
-  { d: 2080, x: 3.8, y: 0 },
-  { d: 2240, x: 0, y: 4.3 },
-  { d: 2400, x: 3.8, y: 0 },
-  { d: 2600, x: -3.8, y: 0 },
-  { d: 2830, x: 3.5, y: 0 },
-  { d: 3020, x: 0, y: 4.3 },
-  { d: 3170, x: -3.8, y: 0 },
-  { d: 3360, x: -3.8, y: 0 },
-  { d: 3540, x: 0, y: 0 },
-];
-export const inGap = (d) => GAPS.some((g) => d >= g.start && d <= g.end);
-export function roadX(d) {
-  return Math.sin(d / 310) * 31 + Math.sin(d / 710) * 48;
+export const SECTORS = COURSES[0].sectors;
+export const GAPS = COURSES[0].gaps;
+export const OBSTACLES = COURSES[0].obstacles;
+export const GATES = COURSES[0].gates;
+export const inGap = (d, course = COURSES[0]) =>
+  course.gaps.some((g) => d >= g.start && d <= g.end);
+export function roadX(d, course = COURSES[0]) {
+  const [a, b, c, e] = course.curve;
+  return Math.sin(d / b) * a + Math.sin(d / e) * c;
 }
-export function roadSlope(d) {
-  return (Math.cos(d / 310) * 31) / 310 + (Math.cos(d / 710) * 48) / 710;
+export function roadSlope(d, course = COURSES[0]) {
+  const [a, b, c, e] = course.curve;
+  return (Math.cos(d / b) * a) / b + (Math.cos(d / e) * c) / e;
 }
-export function createRun() {
+export function roadY(d, course = COURSES[0]) {
+  const [a, b, c, e] = course.elevation;
+  return 22 + Math.sin(d / b) * a + Math.sin(d / e) * c;
+}
+export function createRun(course = COURSES[0]) {
   return {
+    course: typeof course === "string" ? getCourse(course) : course,
     d: 0,
     x: 0,
     vx: 0,
@@ -84,6 +58,9 @@ export function createRun() {
     bestChain: 0,
     gapRescue: false,
     near: 0,
+    padTime: 0,
+    launches: 0,
+    rampPitch: 0,
   };
 }
 function event(s, type, text, points = 0) {
@@ -95,7 +72,9 @@ function finish(s, failed, reason) {
   s.finished = !failed;
   s.reason = reason;
   if (!failed)
-    s.score += Math.round(Math.max(0, 90 - s.time) * 60 + s.hull * 400);
+    s.score += Math.round(
+      Math.max(0, s.course.silver + 14 - s.time) * 60 + s.hull * 400,
+    );
   event(s, failed ? "fail" : "finish", reason);
 }
 export function stepRun(s, raw, frameDt) {
@@ -109,6 +88,14 @@ export function stepRun(s, raw, frameDt) {
 }
 function tick(s, raw, dt) {
   s.time += dt;
+  s.padTime = Math.max(0, s.padTime - dt);
+  const {
+    gaps: GAPS,
+    obstacles: OBSTACLES,
+    gates: GATES,
+    sectors: SECTORS,
+    length: LENGTH,
+  } = s.course;
   s.invulnerable = Math.max(0, s.invulnerable - dt);
   const steer = clamp(Number(raw.steer) || 0, -1, 1);
   const brake = !!raw.brake;
@@ -123,26 +110,37 @@ function tick(s, raw, dt) {
     s.vx *= -0.18;
     s.speed = Math.max(28, s.speed - dt * 15);
   }
-  const targetSpeed = brake ? 27 : s.boosting ? 76 : 48 + s.sector * 2;
+  const targetSpeed = brake
+    ? 27
+    : s.padTime > 0
+      ? 88
+      : s.boosting
+        ? 76
+        : 48 + s.sector * 2;
   s.speed +=
     (targetSpeed - s.speed) *
     (1 - Math.exp(-dt * (brake ? 3 : s.boosting ? 1.1 : 0.75)));
   const prevD = s.d;
   s.d += s.speed * dt;
   s.topSpeed = Math.max(s.topSpeed, s.speed);
-  const gap = inGap(s.d);
+  const gap = inGap(s.d, s.course);
   if (s.lifting) {
     // Damped lift, then a gentle automatic ceiling. Releasing gives a predictable glide.
     const liftAccel = clamp((5.8 - s.y) * 13 - s.vy * 5, -18, 24);
     s.vy += liftAccel * dt;
   } else if (s.y > 0 || gap) s.vy -= 9.81 * dt;
   s.y += s.vy * dt;
-  if (!gap && s.y <= 0) {
+  const ramp = s.course.ramps.find(
+    (r) => s.d >= r.d - 10 && s.d < r.d && Math.abs(s.x - r.x) < 3.5,
+  );
+  const floor = ramp ? (s.d - ramp.d + 10) * 0.15 : 0;
+  s.rampPitch = ramp && s.y < floor + 0.3 ? 0.15 : 0;
+  if (!gap && s.y <= floor) {
     if (s.airborne && s.vy < -3) event(s, "land", "TOUCHDOWN");
-    s.y = 0;
+    s.y = floor;
     s.vy = 0;
   }
-  s.airborne = s.y > 0.25 || gap;
+  s.airborne = s.y > floor + 0.25 || gap;
   if (s.airborne) s.airtime += dt;
   // Flight stays available at the final bridge even after an imperfect run.
   // Amber approach strips are also reserve stations; the warning announces the refill.
@@ -168,16 +166,55 @@ function tick(s, raw, dt) {
     0,
     100,
   );
+  for (const [i, p] of s.course.pads.entries()) {
+    if (
+      prevD <= p.d &&
+      s.d > p.d &&
+      Math.abs(s.x - p.x) < 2.8 &&
+      s.y < 0.8 &&
+      !s.processed.has("p" + i)
+    ) {
+      s.processed.add("p" + i);
+      s.padTime = 2.5;
+      s.energy = Math.min(100, s.energy + 25);
+      s.score += 200;
+      event(s, "pad", "SLINGSHOT", 200);
+    }
+  }
+  for (const [i, r] of s.course.ramps.entries()) {
+    if (
+      prevD <= r.d &&
+      s.d > r.d &&
+      Math.abs(s.x - r.x) < 3.5 &&
+      s.y < 2 &&
+      !s.processed.has("r" + i)
+    ) {
+      s.processed.add("r" + i);
+      s.vy = 12;
+      s.y = 1.5;
+      s.launches++;
+      s.energy = Math.max(s.energy, 65);
+      event(s, "launch", "LAUNCH · HOLD FLY");
+    }
+  }
   for (let i = 0; i < OBSTACLES.length; i++) {
     const o = OBSTACLES[i],
       key = "o" + i;
+    const pose = hazardPose(o, s.time),
+      before = hazardPose(o, s.time - dt);
+    const depth = (o.depth || 2.7) / 2;
     // Swept longitudinal contact prevents skipping obstacles during fast/slow frames.
-    if (s.processed.has(key) || s.d + 2.35 < o.d - 1.5) continue;
-    if (prevD - 2.35 > o.d + 1.5) {
+    if (s.processed.has(key) || s.d + 2.35 < pose.d - depth) continue;
+    if (prevD - 2.35 > before.d + depth) {
       s.processed.add(key);
       continue;
     }
-    if (Math.abs(s.x - o.x) < o.w / 2 + 0.96 && s.y < 2.1 && !s.invulnerable) {
+    if (
+      Math.abs(s.x - pose.x) < o.w / 2 + 0.96 &&
+      s.y < o.h &&
+      s.y + 1.25 > (o.bottom || 0) &&
+      !s.invulnerable
+    ) {
       s.processed.add(key);
       s.hull--;
       s.chain = 0;
@@ -189,9 +226,13 @@ function tick(s, raw, dt) {
         finish(s, true, "TOO MUCH DAMAGE");
         return;
       }
-    } else if (s.d > o.d + 4) {
+    } else if (s.d > pose.d + depth + 2.4) {
       s.processed.add(key);
-      if (Math.abs(s.x - o.x) < o.w / 2 + 2.8 && s.y < 2.5) {
+      if (
+        Math.abs(s.x - pose.x) < o.w / 2 + 2.8 &&
+        s.y < o.h + 0.6 &&
+        !o.bottom
+      ) {
         s.score += 150;
         s.near++;
         event(s, "near", "CLOSE CALL", 150);
@@ -232,7 +273,7 @@ function tick(s, raw, dt) {
     s.roll = (1 - s.rollTime / 0.9) * Math.PI * 2;
     if (!s.rollTime) s.roll = 0;
   }
-  const sector = Math.min(2, Math.floor(s.d / 1200));
+  const sector = Math.min(2, Math.floor(s.d / (LENGTH / 3)));
   if (sector !== s.sector) {
     s.sector = sector;
     event(s, "sector", SECTORS[sector]);
@@ -240,7 +281,7 @@ function tick(s, raw, dt) {
   if (s.d >= LENGTH) finish(s, false, "CROSSING COMPLETE");
 }
 export function nextWarning(s) {
-  const gap = GAPS.find((g) => s.d > g.start - 175 && s.d < g.end);
+  const gap = s.course.gaps.find((g) => s.d > g.start - 175 && s.d < g.end);
   if (gap)
     return {
       kind: "gap",
@@ -248,27 +289,53 @@ export function nextWarning(s) {
       detail:
         s.d < gap.start
           ? Math.ceil(gap.start - s.d) + " M · HOLD FLY"
-          : "HOLD FLY TO CLEAR THE WATER",
+          : "HOLD FLY UNTIL THE ROAD RETURNS",
     };
-  const hazard = OBSTACLES.find((o) => o.d > s.d && o.d - s.d < 125);
-  if (hazard)
+  const hazards = s.course.obstacles
+    .map((o) => ({ ...o, ...hazardPose(o, s.time) }))
+    .filter((o) => o.d > s.d - 4 && o.d - s.d < 160)
+    .sort((a, b) => a.d - b.d);
+  const o = hazards[0];
+  if (o)
     return {
-      kind: "hazard",
+      kind: o.kind,
       title:
-        hazard.x < -2
-          ? "KEEP RIGHT"
-          : hazard.x > 2
-            ? "KEEP LEFT"
-            : "SPLIT AROUND",
-      detail: "BARRIER · " + Math.ceil(hazard.d - s.d) + " M",
+        o.kind === "gantry"
+          ? "STAY LOW"
+          : o.kind === "sweeper"
+            ? "MOVING BARRIER"
+            : o.kind === "traffic"
+              ? "TRAFFIC AHEAD"
+              : o.x < -2
+                ? "KEEP RIGHT"
+                : o.x > 2
+                  ? "KEEP LEFT"
+                  : "SPLIT AROUND",
+      detail:
+        (o.kind === "gantry"
+          ? "RELEASE FLY · "
+          : o.kind === "sweeper"
+            ? "STEER OR FLY · "
+            : o.kind === "traffic"
+              ? "PASS OR FLY · "
+              : "BARRIER · ") +
+        Math.max(0, Math.ceil(o.d - s.d)) +
+        " M",
+    };
+  const pad = s.course.pads.find((p) => p.d > s.d && p.d < s.d + 100);
+  if (pad)
+    return {
+      kind: "pad",
+      title: "SLINGSHOT STRIP",
+      detail: "DRIVE OVER THE BLUE CHEVRONS",
     };
   return null;
 }
 export function rankRun(s) {
   if (s.failed) return "TRY AGAIN";
-  return s.time <= 65 && s.gates >= 12
+  return s.time <= s.course.gold && s.gates >= s.course.goldGates
     ? "GOLD"
-    : s.time <= 76 && s.gates >= 8
+    : s.time <= s.course.silver && s.gates >= 8
       ? "SILVER"
       : "BRONZE";
 }

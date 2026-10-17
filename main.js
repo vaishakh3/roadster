@@ -1,5 +1,12 @@
 import * as THREE from "./vendor/three.module.js";
 import { createCar } from "./car.js";
+import {
+  COURSES,
+  getCourse,
+  PAINTS,
+  completedCount,
+  saveResult,
+} from "./courses.js";
 import { createCoast } from "./coast.js";
 import { createControls, requiresLandscape } from "./controls.js";
 import { createSound } from "./sound.js";
@@ -10,9 +17,6 @@ import {
   rankRun,
   roadX,
   roadSlope,
-  LENGTH,
-  SECTORS,
-  GATES,
   clamp,
   formatTime,
 } from "./run.js";
@@ -37,10 +41,21 @@ const storage = {
     }
   },
 };
+let course = getCourse(storage.get("roadster-course", "breakwater"));
+let records = storage.get("roadster-records", {});
+if (!records || typeof records !== "object" || Array.isArray(records))
+  records = {};
+let paintIndex = storage.get("roadster-paint", 0);
+let ghostOn = storage.get("roadster-ghost", true),
+  ghost,
+  ghostIndex = 0,
+  replay = [],
+  replayClock = 0;
+let tour = null;
 let phase = "home",
   previousPhase = "home",
   orientationBlocked = false,
-  run = createRun();
+  run = createRun(course);
 let renderer, scene, camera, car, coast, controls, audio;
 let lastTime = performance.now(),
   clock = 0,
@@ -55,8 +70,7 @@ let soundOn = storage.get("breakwater-sound", true),
     "breakwater-reduced",
     matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
-let best = storage.get("breakwater-best", null),
-  qualityLow = false,
+let qualityLow = false,
   lastHud = 0,
   initialized = false;
 const coarse = () => matchMedia("(pointer:coarse)").matches;
@@ -90,7 +104,14 @@ function toast(text, type = "gate", points = 0) {
 }
 function start() {
   if (!initialized || orientationBlocked) return;
-  run = createRun();
+  if (tour) {
+    tour.stages = tour.stages.slice(0, tour.index);
+    tour.score = tour.stages.reduce((sum, s) => sum + s.score, 0);
+  }
+  run = createRun(course);
+  replay = [];
+  replayClock = 0;
+  ghostIndex = 0;
   countdown = 1.5;
   toastTime = impactTime = 0;
   $("event").textContent = "";
@@ -110,7 +131,7 @@ function pause() {
   setPhase("paused");
   $("menu-title").textContent = "ON HOLD.";
   $("menu-kicker").textContent = "TAKE A BREATH.";
-  $("resume").innerHTML = "BACK TO THE COAST <b>↗</b>";
+  $("resume").innerHTML = "BACK TO THE RUN <b>↗</b>";
   $("restart").hidden = false;
   $("go-home").hidden = false;
   $("resume").focus({ preventScroll: true });
@@ -139,8 +160,9 @@ function resume() {
   audio.setEnabled(soundOn);
 }
 function home() {
+  tour = null;
   setPhase("home");
-  run = createRun();
+  run = createRun(course);
   run.d = 80;
   run.speed = 0;
   run.x = 0;
@@ -148,10 +170,106 @@ function home() {
   camera.updateProjectionMatrix();
   refreshBest();
 }
+function selectCourse(id) {
+  if (phase !== "home" && phase !== "results") return;
+  course = getCourse(id);
+  coast?.dispose();
+  coast = createCoast(scene, renderer, course);
+  applyQuality();
+  storage.set("roadster-course", course.id);
+  run = createRun(course);
+  run.d = 80;
+  run.speed = 0;
+  document.body.dataset.course = course.theme;
+  document.documentElement.style.setProperty("--orange", course.accent);
+  $("home-title").innerHTML =
+    course.title[0] +
+    "<br /><span>" +
+    course.title[1] +
+    '</span><b aria-hidden="true">↗</b>';
+  $("course-location").textContent = course.number + " / " + course.location;
+  $("course-description").textContent = course.subtitle;
+  $("route-meta").textContent =
+    (course.length / 1000).toFixed(1) + " KM / " + course.difficulty;
+  $("route-tags").textContent = course.tags;
+  $("course-brief").textContent = course.description;
+  $("course-gold").textContent =
+    "GOLD / " + formatTime(course.gold) + " + " + course.goldGates + " GATES";
+  $("destination").textContent = course.name + " ↗";
+  document.querySelectorAll("[data-course]").forEach((b) => {
+    if (b.tagName === "BUTTON") {
+      const active = b.dataset.course === course.id;
+      b.setAttribute("aria-pressed", active);
+      b.classList.toggle("active", active);
+    }
+  });
+  const points = [];
+  for (let d = 0; d <= course.length; d += 40)
+    points.push(
+      (110 + roadX(d, course) * 0.6).toFixed(1) +
+        "," +
+        (115 - (d / course.length) * 100).toFixed(1),
+    );
+  $("route-line").setAttribute("points", points.join(" "));
+  refreshBest();
+  updateVisuals(0, true);
+  hud(true);
+}
 function refreshBest() {
-  $("personal-best").textContent = best
-    ? `PERSONAL BEST ${formatTime(best.time)} / ${num(best.score)} PTS`
-    : "YOUR FIRST CROSSING STARTS HERE";
+  const best = records[course.id];
+  $("personal-best").textContent = best?.time
+    ? `BEST ${formatTime(best.time)} / ${num(best.score)} PTS / ${["", "BRONZE", "SILVER", "GOLD"][best.medal]}`
+    : "NO RECORD YET. SET THE FIRST.";
+  $("course-badges").innerHTML = ["FINISH", "NO DAMAGE", "ALL GATES"]
+    .map(
+      (t, i) =>
+        '<span class="' +
+        (best?.badges?.[i] ? "earned" : "") +
+        '">' +
+        (best?.badges?.[i] ? "◆" : "◇") +
+        " " +
+        t +
+        "</span>",
+    )
+    .join("");
+  const total = completedCount(records);
+  $("tour-record").textContent =
+    total +
+    " / 3 COURSES COMPLETED" +
+    (storage.get("roadster-tour-best", 0)
+      ? " / TOUR BEST " + num(storage.get("roadster-tour-best", 0))
+      : "");
+  if (!PAINTS[paintIndex] || PAINTS[paintIndex].required > total)
+    paintIndex = 0;
+  car?.userData.paintMaterial.color.setHex(PAINTS[paintIndex].color);
+  $("paint-name").textContent = PAINTS[paintIndex].name;
+  $("paint").disabled = total === 0;
+  $("paint").setAttribute(
+    "aria-label",
+    total === 0
+      ? "Pearl paint. Complete a course to unlock more finishes"
+      : "Change unlocked paint finish",
+  );
+  $("paint").title =
+    total < 3
+      ? "Finish a new course to unlock another paint"
+      : "All four finishes unlocked";
+  $("ghost").querySelector("b").textContent = ghostOn ? "ON" : "OFF";
+}
+function beginTour() {
+  tour = { index: 0, stages: [], score: 0 };
+  selectCourse(COURSES[0].id);
+  start();
+}
+function nextStage() {
+  if (!tour || !run.finished) return;
+  if (tour.index >= 2) {
+    home();
+    return;
+  }
+  tour.index++;
+  selectCourse(COURSES[tour.index].id);
+  start();
 }
 function endRun() {
   audio.event(run.failed ? "fail" : "finish");
@@ -159,34 +277,71 @@ function endRun() {
   const rank = rankRun(run),
     complete = !run.failed;
   $("result-kicker").textContent = complete
-    ? "THE OTHER SIDE."
+    ? tour
+      ? `WORLD TOUR / STAGE ${tour.index + 1} OF 3`
+      : course.name + " / FINISH"
     : `${(run.d / 1000).toFixed(2)} KM INTO THE CROSSING.`;
   $("result-title").innerHTML = complete
-    ? "CROSSING<br /> COMPLETE."
+    ? tour && tour.index === 2
+      ? "TOUR<br /> COMPLETE."
+      : "COURSE<br /> COMPLETE."
     : run.reason === "THE BRIDGE WAS OUT"
       ? "MISSED THE<br /> TAKEOFF."
       : "END OF<br /> THE RUN.";
   $("result-tip").textContent = complete
-    ? "Chase the gold: under 1:05, with at least 12 gates."
+    ? `Gold target: ${formatTime(course.gold)} or faster, with ${course.goldGates} gates. Clean runs and all gates earn extra badges.`
     : run.reason === "THE BRIDGE WAS OUT"
       ? "Hold FLY before the orange strips. Keep holding until you clear the water."
       : "Steer around orange barriers, or fly over them. You have three hits.";
   $("result-time").textContent = formatTime(run.time);
   $("result-score").textContent = num(run.score);
-  $("result-gates").textContent = `${run.gates} / ${GATES.length}`;
+  $("result-gates").textContent = `${run.gates} / ${course.gates.length}`;
   $("result-rank").textContent = complete ? rank : "—";
-  let record = false;
-  if (complete && (!best || run.score > best.score)) {
-    best = { time: run.time, score: run.score, rank };
-    storage.set("breakwater-best", best);
-    record = true;
+  const unlockedBefore = completedCount(records);
+  const result = saveResult(records, run, replay),
+    record = result.record;
+  records = result.records;
+  storage.set("roadster-records", records);
+  if (tour && complete) {
+    tour.stages[tour.index] = { score: run.score, time: run.time, rank };
+    tour.score = tour.stages.reduce((sum, s) => sum + s.score, 0);
+  }
+  $("next-stage").hidden = !tour || !complete;
+  $("next-stage").textContent =
+    tour?.index === 2 ? "TOUR GARAGE ↗" : "NEXT COURSE ↗";
+  $("tour-summary").hidden = !tour;
+  $("tour-summary").textContent = tour
+    ? `WORLD TOUR / ${tour.stages.length} OF 3 FINISHED / ${num(tour.score)} TOTAL POINTS`
+    : "";
+  $("result-badges").innerHTML = ["FINISH", "NO DAMAGE", "ALL GATES"]
+    .map(
+      (t, i) =>
+        '<span class="' +
+        (records[course.id]?.badges?.[i] ? "earned" : "") +
+        '">' +
+        (records[course.id]?.badges?.[i] ? "◆" : "◇") +
+        " " +
+        t +
+        "</span>",
+    )
+    .join("");
+  if (tour && complete && tour.index === 2) {
+    const old = storage.get("roadster-tour-best", 0);
+    if (tour.score > old) storage.set("roadster-tour-best", tour.score);
+    $("result-tip").textContent =
+      `Three arenas conquered. Tour best: ${num(Math.max(old, tour.score))} points. ${completedCount(records) === 3 ? "All paint finishes are unlocked." : ""}`;
   }
   $("record-message").textContent = record
     ? "NEW PERSONAL BEST. THAT’S YOUR LINE."
     : complete
       ? `BEST CHAIN ${run.bestChain} · ${run.perfect} PERFECT GATES · ${run.airtime.toFixed(1)} SEC IN FLIGHT`
       : "A quick retry. A cleaner line.";
-  $("retry").focus({ preventScroll: true });
+  if (completedCount(records) > unlockedBefore)
+    $("record-message").textContent =
+      PAINTS[completedCount(records)].name +
+      " PAINT UNLOCKED / " +
+      $("record-message").textContent;
+  $(tour && complete ? "next-stage" : "retry").focus({ preventScroll: true });
   audio.update(run, false);
 }
 function tick(dt) {
@@ -202,14 +357,25 @@ function tick(dt) {
     return;
   }
   stepRun(run, controls.read(), dt);
+  replayClock += dt;
+  if (replayClock >= 0.1) {
+    replayClock = 0;
+    replay.push([
+      +run.time.toFixed(3),
+      +run.d.toFixed(2),
+      +run.x.toFixed(2),
+      +run.y.toFixed(2),
+    ]);
+  }
+
   for (const e of run.events.splice(0)) {
     audio.event(e.type);
-    if (e.type === "sector")
-      announce(`SECTOR ${run.sector + 1} / 3`, e.text, 2);
+    if (!reduced) coast.emit(e.type, run);
+    if (e.type === "sector") toast(`0${run.sector + 1} / ${e.text}`, "gate");
     else if (e.type === "hit") {
       impactTime = 0.45;
       toast(e.text, "hit");
-    } else if (e.type === "gate" || e.type === "gap" || e.type === "near")
+    } else if (["gate", "gap", "near", "pad", "launch"].includes(e.type))
       toast(e.text, e.type, e.points);
   }
   if (run.finished || run.failed) endRun();
@@ -220,10 +386,11 @@ function hud(force = false) {
   $("timer").textContent = formatTime(run.time);
   $("score").textContent = num(run.score);
   $("speed").textContent = String(Math.round(run.speed * 3.6)).padStart(3, "0");
-  $("sector").textContent = `0${run.sector + 1} / ${SECTORS[run.sector]}`;
+  $("sector").textContent =
+    `0${run.sector + 1} / ${course.sectors[run.sector]}`;
   $("distance").textContent =
-    `${Math.max(0, (LENGTH - run.d) / 1000).toFixed(1)} KM TO GO`;
-  $("progress").style.width = (run.d / LENGTH) * 100 + "%";
+    `${Math.max(0, (course.length - run.d) / 1000).toFixed(1)} KM TO GO`;
+  $("progress").style.width = (run.d / course.length) * 100 + "%";
   $("multiplier").textContent =
     run.chain > 1 ? "×" + Math.min(run.chain, 4) : "";
   $("energy").textContent = Math.round(run.energy) + "%";
@@ -238,11 +405,14 @@ function hud(force = false) {
         : run.boosting
           ? "ROCKET THRUST ACTIVE"
           : "RECHARGES ON THE ROAD";
-  $("motion-label").textContent = run.boosting
-    ? "FULL THRUST"
-    : run.airborne
-      ? "IN FLIGHT"
-      : "ON THE ROAD";
+  $("motion-label").textContent =
+    run.padTime > 0
+      ? "SLINGSHOT"
+      : run.boosting
+        ? "FULL THRUST"
+        : run.airborne
+          ? "IN FLIGHT"
+          : "ON THE ROAD";
   $("hull").setAttribute("aria-label", `Vehicle condition: ${run.hull} of 3`);
   [...$("hull").querySelectorAll("i")].forEach((el, i) =>
     el.classList.toggle("lost", i >= run.hull),
@@ -275,17 +445,17 @@ function hud(force = false) {
 function updateVisuals(dt, snap = false) {
   const hero =
     phase === "home" || (phase === "paused" && previousPhase === "home");
-  const x = roadX(run.d) + run.x,
-    y = coast.ROAD_Y + Math.max(-8, run.y);
+  const x = roadX(run.d, course) + run.x,
+    y = coast.roadY(run.d) + Math.max(-8, run.y);
   car.position.set(x, y, -run.d);
-  const heading = -Math.atan(roadSlope(run.d));
+  const heading = -Math.atan(roadSlope(run.d, course));
   const bank = -run.vx * 0.014 + (run.rollTime > 0 && !reduced ? run.roll : 0);
   car.rotation.set(
     run.airborne
       ? clamp(run.vy * 0.014, -0.13, 0.13)
-      : run.boosting
-        ? -0.018
-        : 0,
+      : Math.atan((coast.roadY(run.d + 2) - coast.roadY(run.d - 2)) / 4) +
+          (run.boosting ? -0.018 : 0) +
+          run.rampPitch,
     heading - run.vx * 0.022,
     bank,
     "YXZ",
@@ -301,7 +471,7 @@ function updateVisuals(dt, snap = false) {
     if (wheel.pivot && wheel.front) wheel.pivot.rotation.y = -run.vx * 0.025;
   }
   for (const jet of d.thrusterJets) {
-    jet.visible = run.boosting;
+    jet.visible = run.boosting || run.padTime > 0;
     jet.scale.z = 1.8 + Math.sin(clock * 43) * 0.25;
     jet.material.opacity = 0.35;
   }
@@ -311,6 +481,35 @@ function updateVisuals(dt, snap = false) {
   }
   car.visible = !(run.invulnerable > 0 && Math.floor(clock * 12) % 2 === 0);
   coast.update(run, dt, clock);
+  const samples = records[course.id]?.ghost;
+  ghost.visible = false;
+  $("ghost-delta").hidden = true;
+  if (ghostOn && phase === "playing" && samples?.length > 1 && countdown <= 0) {
+    while (
+      ghostIndex < samples.length - 2 &&
+      samples[ghostIndex + 1][0] < run.time
+    )
+      ghostIndex++;
+    const a = samples[ghostIndex],
+      b = samples[ghostIndex + 1],
+      f = clamp((run.time - a[0]) / (b[0] - a[0] || 1), 0, 1);
+    const d = a[1] + (b[1] - a[1]) * f,
+      gx = a[2] + (b[2] - a[2]) * f,
+      gy = a[3] + (b[3] - a[3]) * f;
+    ghost.position.set(roadX(d, course) + gx, coast.roadY(d) + gy, -d);
+    ghost.rotation.y = -Math.atan(roadSlope(d, course));
+    ghost.visible =
+      Math.abs(d - run.d) < 220 &&
+      Math.abs(d - run.d) > 4 &&
+      run.time < samples[samples.length - 1][0];
+    $("ghost-delta").hidden = false;
+    $("ghost-delta").textContent =
+      "PERSONAL GHOST / " +
+      (run.d >= d ? "AHEAD " : "BEHIND ") +
+      Math.abs(run.d - d).toFixed(0) +
+      " M";
+  }
+
   if (hero) {
     camera.fov = 43;
     camera.setViewOffset(
@@ -329,14 +528,20 @@ function updateVisuals(dt, snap = false) {
     camera.lookAt(x, y + 0.75, -run.d + 0.2);
   } else {
     camera.clearViewOffset();
-    const targetFov = reduced ? 63 : run.boosting ? 72 : 63;
+    const targetFov = reduced
+      ? 63
+      : run.padTime > 0
+        ? 76
+        : run.boosting
+          ? 72
+          : 63;
     camera.fov = THREE.MathUtils.lerp(
       camera.fov,
       targetFov,
       snap ? 1 : 1 - Math.exp(-dt * 3),
     );
     cameraGoal.set(
-      roadX(run.d - 10) + run.x * 0.72,
+      roadX(run.d - 10, course) + run.x * 0.72,
       y + 4.5 - run.y * 0.33,
       -run.d + 10.7,
     );
@@ -347,8 +552,8 @@ function updateVisuals(dt, snap = false) {
     if (snap) camera.position.copy(cameraGoal);
     else camera.position.lerp(cameraGoal, 1 - Math.exp(-dt * 8));
     cameraTarget.set(
-      roadX(run.d + 30) + run.x * 0.64,
-      coast.ROAD_Y + 1.3 + run.y * 0.65,
+      roadX(run.d + 30, course) + run.x * 0.64,
+      coast.roadY(run.d + 30) + 1.3 + run.y * 0.65,
       -run.d - 30,
     );
     camera.lookAt(cameraTarget);
@@ -418,10 +623,10 @@ function saveCard() {
   ctx.fillStyle = "#ff8255";
   ctx.fillRect(0, 0, 18, 630);
   ctx.font = "600 26px Barlow";
-  ctx.fillText("ROADSTER / BREAKWATER", 65, 65);
+  ctx.fillText("ROADSTER / " + course.name, 65, 65);
   ctx.font = "600 102px Barlow";
   ctx.fillStyle = "#f6f1df";
-  ctx.fillText(run.finished ? "CROSSING COMPLETE." : "ONE MORE RUN.", 65, 195);
+  ctx.fillText(run.finished ? "COURSE COMPLETE." : "ONE MORE RUN.", 65, 195);
   ctx.font = "600 190px Barlow";
   ctx.fillText(num(run.score), 65, 380);
   ctx.font = "600 35px Barlow";
@@ -440,13 +645,14 @@ function saveCard() {
     const url = URL.createObjectURL(blob),
       a = document.createElement("a");
     a.href = url;
-    a.download = "breakwater-" + Math.round(run.score) + ".png";
+    a.download = course.id + "-" + Math.round(run.score) + ".png";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 3000);
   });
 }
 async function boot() {
   try {
+    await document.fonts.ready;
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(
       63,
@@ -465,11 +671,34 @@ async function boot() {
     renderer.toneMappingExposure = 1.05;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    coast = createCoast(scene, renderer);
+    coast = createCoast(scene, renderer, course);
     car = createCar();
     scene.add(car);
     car.userData.interior.visible = false;
     car.userData.setDetail(false);
+    ghost = new THREE.Group();
+    const ghostMaterial = new THREE.MeshBasicMaterial({
+      color: 0x98ffdb,
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false,
+      wireframe: true,
+    });
+    const ghostBody = new THREE.Mesh(
+      new THREE.BoxGeometry(1.94, 0.55, 4.6, 1, 1, 2),
+      ghostMaterial,
+    );
+    ghostBody.position.y = 0.6;
+    ghost.add(ghostBody);
+    const ghostRoof = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 0.5, 1.8),
+      ghostMaterial,
+    );
+    ghostRoof.position.set(0, 1.06, 0.2);
+    ghost.add(ghostRoof);
+    scene.add(ghost);
+    ghost.visible = false;
+
     // A small procedural environment supplies real paint reflections without downloaded textures.
     const envScene = new THREE.Scene();
     envScene.background = new THREE.Color(0xb6d4d4);
@@ -488,7 +717,7 @@ async function boot() {
     darkFloor.position.y = -3;
     envScene.add(darkFloor);
     const pmrem = new THREE.PMREMGenerator(renderer);
-    const env = pmrem.fromScene(envScene, 0.08);
+    const env = pmrem.fromScene(envScene, 0.03);
     scene.environment = env.texture;
     pmrem.dispose();
     ceiling.geometry.dispose();
@@ -504,7 +733,9 @@ async function boot() {
           else if (phase === "paused") resume();
         } else if (
           action === "retry" &&
-          (phase === "playing" || phase === "results" || phase === "paused")
+          (phase === "playing" ||
+            phase === "results" ||
+            (phase === "paused" && previousPhase === "playing"))
         )
           start();
       },
@@ -513,7 +744,29 @@ async function boot() {
     document
       .querySelectorAll("[data-control]")
       .forEach((button) => controls.bind(button, button.dataset.control));
-    $("start").onclick = start;
+    $("start").onclick = () => {
+      tour = null;
+      start();
+    };
+    $("start-tour").onclick = beginTour;
+    $("next-stage").onclick = nextStage;
+    document.querySelectorAll("button[data-course]").forEach(
+      (b) =>
+        (b.onclick = () => {
+          tour = null;
+          selectCourse(b.dataset.course);
+        }),
+    );
+    $("paint").onclick = () => {
+      paintIndex = (paintIndex + 1) % (completedCount(records) + 1);
+      storage.set("roadster-paint", paintIndex);
+      refreshBest();
+    };
+    $("ghost").onclick = () => {
+      ghostOn = !ghostOn;
+      storage.set("roadster-ghost", ghostOn);
+      refreshBest();
+    };
     $("pause").onclick = pause;
     $("settings").onclick = settings;
     $("resume").onclick = resume;
@@ -578,6 +831,7 @@ async function boot() {
     });
     initialized = true;
     home();
+    selectCourse(course.id);
     applyQuality();
     resize();
     updateVisuals(0, true);
@@ -586,6 +840,21 @@ async function boot() {
     if (qa)
       window.__breakwater = {
         start,
+        selectCourse,
+        beginTour,
+        nextStage,
+        get course() {
+          return course;
+        },
+        get tour() {
+          return tour;
+        },
+        get records() {
+          return records;
+        },
+        get memory() {
+          return { ...renderer.info.memory };
+        },
         pause,
         resume,
         home,
