@@ -67,7 +67,7 @@ Phones play in landscape. Portrait pauses the race, displays a rotation prompt a
 
 The loading screen shows a Roadster silhouette, completed preparation stages and an accessible percentage. Progress advances when surface assets, the car, the venue and its first rendered frame are ready; it is weighted preparation progress, not downloaded-byte progress or a timer. Shader preparation uses `compileAsync`; race starts are guarded until the first frame is ready. Long stages show a retry option, and errors have an explicit recovery screen.
 
-Touch devices get short vibration cues for impacts, rival contact, launches and landings where the Vibration API exists; reduced camera motion also disables them. Settings include sound, quality, reduced camera motion, fullscreen and the personal ghost. Sound starts after a gesture. SAVE RUN CARD downloads a PNG. Records and ghosts stay in this browser and do not sync between devices. Private browsing or storage restrictions can prevent persistence without preventing play.
+Touch devices get short vibration cues for impacts, rival contact and landings where the Vibration API exists; reduced camera motion also disables them. Settings include sound, quality, reduced camera motion, fullscreen and the personal ghost. Sound starts after a gesture. SAVE RUN CARD downloads a PNG. Records and ghosts stay in this browser and do not sync between devices. Private browsing or storage restrictions can prevent persistence without preventing play.
 
 ## Daily events, challenges and replays
 

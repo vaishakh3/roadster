@@ -167,13 +167,7 @@ function announce(small, title, duration = 2) {
   $("announcement-title").textContent = title;
   announcementTime = duration;
 }
-const HAPTICS = {
-  hit: 45,
-  contact: 20,
-  land: 12,
-  launch: 18,
-  fail: [40, 40, 40],
-};
+const HAPTICS = { hit: 45, "rival-hit": 30, contact: 20, land: 12 };
 function haptic(type) {
   if (reduced || !coarse() || !HAPTICS[type]) return;
   try {
