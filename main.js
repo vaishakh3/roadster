@@ -167,6 +167,15 @@ function announce(small, title, duration = 2) {
   $("announcement-title").textContent = title;
   announcementTime = duration;
 }
+const HAPTICS = { hit: 45, "rival-hit": 30, contact: 20, land: 12 };
+function haptic(type) {
+  if (reduced || !coarse() || !HAPTICS[type]) return;
+  try {
+    navigator.vibrate?.(HAPTICS[type]);
+  } catch {
+    /* Vibration is optional. */
+  }
+}
 function toast(text, type = "gate", points = 0) {
   $("event").textContent = text + (points ? " +" + num(points) : "");
   $("event").style.color = type === "hit" ? "var(--orange)" : "var(--mint)";
@@ -673,6 +682,7 @@ function tick(dt) {
 
   for (const e of run.events.splice(0)) {
     audio.event(e.type);
+    haptic(e.type);
     if (!reduced) {
       if (e.type === "rival-hit") {
         const rival = run.rivals.find((r) => r.id === e.rivalId);
@@ -697,6 +707,7 @@ function tick(dt) {
         "overtake",
         "branch",
         "draft",
+        "flyover",
       ].includes(e.type)
     )
       toast(e.text, e.type, e.points);
@@ -1101,6 +1112,7 @@ function frame(now) {
   const dt = Math.min(0.05, frameSeconds);
   lastTime = now;
   if (!initialized || document.hidden || orientationBlocked) return;
+  if (phase === "playing" || phase === "paused") controls.poll();
   if (!frozen) {
     clock += dt;
     tick(dt);
@@ -1129,7 +1141,7 @@ function frame(now) {
   );
   renderer.render(scene, camera);
   if (clip && phase === "replay") clip.draw(film?.elapsed || 0);
-  if (quality === "auto" && !frozen && phase === "playing" && countdown <= 0) {
+  if (quality === "auto" && !frozen && phase === "playing") {
     const ceiling = Math.min(devicePixelRatio || 1, qualityLow ? 1.25 : 1.75);
     const ratio = frameBudget.sample(
       frameSeconds,

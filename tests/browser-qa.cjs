@@ -7,8 +7,9 @@ async function main(){
  let browser,server;
  try{
   server=http.createServer((req,res)=>{
-   const f=path.resolve(root,'.'+new URL(req.url,'http://localhost').pathname);
+   let f=path.resolve(root,'.'+new URL(req.url,'http://localhost').pathname);
    if(!f.startsWith(root+path.sep)){res.writeHead(403);return res.end();}
+   if(fs.existsSync(f)&&fs.statSync(f).isDirectory())f=path.join(f,'index.html');
    if(!fs.existsSync(f)||!fs.statSync(f).isFile()){res.writeHead(404);return res.end();}
    res.setHeader('Content-Type',f.endsWith('.js')?'text/javascript':f.endsWith('.css')?'text/css':'text/html');res.end(fs.readFileSync(f));
   });

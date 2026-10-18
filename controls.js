@@ -65,17 +65,51 @@ export function createControls(target, onAction, enabled = () => true) {
     bound.push(button);
   }
   const has = (...codes) => codes.some((k) => keys.has(k));
+  // Standard-mapping gamepads: left stick or d-pad steers, right trigger or A
+  // boosts, left trigger or X flies, B brakes, Start pauses. Polled, never
+  // stored, so a disconnected pad releases everything at once.
+  const pad = { steer: 0, boost: false, fly: false, brake: false };
+  let padStart = false;
+  function poll() {
+    pad.steer = 0;
+    pad.boost = pad.fly = pad.brake = false;
+    const list =
+      typeof navigator !== "undefined" && navigator.getGamepads
+        ? navigator.getGamepads()
+        : null;
+    if (!list) return;
+    let start = false;
+    for (const gp of list) {
+      if (!gp || !gp.connected) continue;
+      const pressed = (i) => !!gp.buttons[i]?.pressed;
+      const axis = gp.axes[0] || 0;
+      const stick =
+        Math.abs(axis) > 0.18
+          ? Math.sign(axis) * Math.min(1, (Math.abs(axis) - 0.18) / 0.72)
+          : 0;
+      pad.steer =
+        stick || Number(pressed(15)) - Number(pressed(14)) || pad.steer;
+      pad.boost ||= pressed(7) || pressed(0);
+      pad.fly ||= pressed(6) || pressed(2);
+      pad.brake ||= pressed(1);
+      start ||= pressed(9);
+    }
+    if (start && !padStart) onAction("pause");
+    padStart = start;
+  }
   function read() {
     const active = new Set(touches.values());
+    const keySteer =
+      Number(has("ArrowRight", "KeyD") || active.has("right")) -
+      Number(has("ArrowLeft", "KeyA") || active.has("left"));
     return {
-      steer:
-        Number(has("ArrowRight", "KeyD") || active.has("right")) -
-        Number(has("ArrowLeft", "KeyA") || active.has("left")),
+      steer: keySteer || pad.steer,
       boost:
         has("ShiftLeft", "ShiftRight", "ArrowUp", "KeyW") ||
-        active.has("boost"),
-      fly: has("Space", "KeyH") || active.has("fly"),
-      brake: has("ArrowDown", "KeyS") || active.has("brake"),
+        active.has("boost") ||
+        pad.boost,
+      fly: has("Space", "KeyH") || active.has("fly") || pad.fly,
+      brake: has("ArrowDown", "KeyS") || active.has("brake") || pad.brake,
     };
   }
   function clear() {
@@ -83,5 +117,5 @@ export function createControls(target, onAction, enabled = () => true) {
     touches.clear();
     bound.forEach((b) => b.classList.remove("pressed"));
   }
-  return { read, clear, bind, keys, touches };
+  return { read, clear, bind, poll, keys, touches };
 }
