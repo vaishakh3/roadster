@@ -83,8 +83,12 @@ export function createControls(target, onAction, enabled = () => true) {
       if (!gp || !gp.connected) continue;
       const pressed = (i) => !!gp.buttons[i]?.pressed;
       const axis = gp.axes[0] || 0;
-      const stick = Math.abs(axis) > 0.18 ? Math.sign(axis) * Math.min(1, (Math.abs(axis) - 0.18) / 0.72) : 0;
-      pad.steer = stick || Number(pressed(15)) - Number(pressed(14)) || pad.steer;
+      const stick =
+        Math.abs(axis) > 0.18
+          ? Math.sign(axis) * Math.min(1, (Math.abs(axis) - 0.18) / 0.72)
+          : 0;
+      pad.steer =
+        stick || Number(pressed(15)) - Number(pressed(14)) || pad.steer;
       pad.boost ||= pressed(7) || pressed(0);
       pad.fly ||= pressed(6) || pressed(2);
       pad.brake ||= pressed(1);

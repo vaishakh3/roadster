@@ -612,13 +612,18 @@ test("Hovering directly over a live rival scores a flyover once per pass", () =>
   const s = createRun();
   const rival = s.rivals[0];
   Object.assign(rival, { d: 400, x: 0, speed: 40, y: 0 });
-  for (const other of s.rivals.slice(1)) Object.assign(other, { d: 1200, x: 6 });
+  for (const other of s.rivals.slice(1))
+    Object.assign(other, { d: 1200, x: 6 });
   Object.assign(s, { d: 385, x: 0, y: 5.8, vy: 0, speed: 60, energy: 100 });
   const shadow = (seconds) => {
     for (let i = 0; i < seconds * 120; i++)
       stepRun(
         s,
-        { steer: Math.max(-1, Math.min(1, (rival.x - s.x) * 2)), fly: true, boost: true },
+        {
+          steer: Math.max(-1, Math.min(1, (rival.x - s.x) * 2)),
+          fly: true,
+          boost: true,
+        },
         1 / 120,
       );
   };
@@ -629,7 +634,8 @@ test("Hovering directly over a live rival scores a flyover once per pass", () =>
   assert.equal(s.flyoverCount, 1);
   const ground = createRun();
   Object.assign(ground.rivals[0], { d: 400, x: 0, speed: 40 });
-  for (const other of ground.rivals.slice(1)) Object.assign(other, { d: 1200, x: 6 });
+  for (const other of ground.rivals.slice(1))
+    Object.assign(other, { d: 1200, x: 6 });
   Object.assign(ground, { d: 385, x: 0, speed: 60 });
   advance(ground, { boost: true }, 3);
   assert.equal(ground.flyoverCount, 0);
@@ -638,9 +644,19 @@ test("A standard gamepad steers, boosts, flies, brakes and pauses", () => {
   const actions = [];
   const target = { addEventListener() {} };
   const controls = createControls(target, (a) => actions.push(a), () => true);
-  const pads = [null, { connected: true, axes: [0.6], buttons: Array.from({ length: 17 }, () => ({ pressed: false })) }];
+  const pads = [
+    null,
+    {
+      connected: true,
+      axes: [0.6],
+      buttons: Array.from({ length: 17 }, () => ({ pressed: false })),
+    },
+  ];
   const previous = globalThis.navigator;
-  Object.defineProperty(globalThis, "navigator", { value: { getGamepads: () => pads }, configurable: true });
+  Object.defineProperty(globalThis, "navigator", {
+    value: { getGamepads: () => pads },
+    configurable: true,
+  });
   try {
     controls.poll();
     assert(controls.read().steer > 0.5 && controls.read().steer < 0.6);
@@ -651,14 +667,27 @@ test("A standard gamepad steers, boosts, flies, brakes and pauses", () => {
     pads[1].buttons[1].pressed = true;
     pads[1].buttons[9].pressed = true;
     controls.poll();
-    assert.deepEqual(controls.read(), { steer: -1, boost: true, fly: true, brake: true });
+    assert.deepEqual(controls.read(), {
+      steer: -1,
+      boost: true,
+      fly: true,
+      brake: true,
+    });
     controls.poll();
     assert.deepEqual(actions, ["pause"]);
     pads[1].connected = false;
     controls.poll();
-    assert.deepEqual(controls.read(), { steer: 0, boost: false, fly: false, brake: false });
+    assert.deepEqual(controls.read(), {
+      steer: 0,
+      boost: false,
+      fly: false,
+      brake: false,
+    });
   } finally {
-    Object.defineProperty(globalThis, "navigator", { value: previous, configurable: true });
+    Object.defineProperty(globalThis, "navigator", {
+      value: previous,
+      configurable: true,
+    });
   }
 });
 console.log(`${count} gameplay/input checks passed.`);
