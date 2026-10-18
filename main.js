@@ -2,6 +2,13 @@ import * as THREE from "./vendor/three.module.js";
 import { createRaceEffects } from "./effects.js";
 import { rampSurface } from "./stunts.js";
 import { FrameBudget } from "./quality.js";
+import {
+  ensurePlayerId,
+  fetchBoard,
+  submitResult,
+  renderBoard,
+  leaderboardAvailable,
+} from "./leaderboard.js";
 import { createRivalField } from "./rivals-mesh.js";
 import {
   dailyEvent,
@@ -93,6 +100,8 @@ if (!records || typeof records !== "object" || Array.isArray(records))
   records = {};
 let paintIndex = storage.get("roadster-paint", 0);
 let trimIndex = storage.get("roadster-trim", 0);
+const playerId = ensurePlayerId(storage);
+let lastDaily = null;
 let saver = storage.get("breakwater-saver", false) === true,
   renderDebt = 0;
 const perf = new URLSearchParams(location.search).has("perf"),
@@ -102,6 +111,7 @@ let coached = storage.get("roadster-coached", false) === true,
   coachTimer = 0,
   coachShown = 0,
   coachGate = false;
+const TOUR_STAGES = 3;
 const totalCups = () =>
   COURSES.reduce((sum, c) => sum + cupsEarned(career, c.id), 0);
 let ghostOn = storage.get("roadster-ghost", false) === true,
@@ -253,6 +263,41 @@ function coachTick(dt) {
     $("coach").hidden = false;
     coachShown = 1e-3;
   }
+}
+// Daily leaderboard panel on the results sheet. Posts the run when a name is
+// known, otherwise shows the board and asks for one; hidden when the API is
+// absent (local preview, standalone file) or unreachable.
+async function showLeaderboard(submission) {
+  const event = activeEvent;
+  if (!event || !leaderboardAvailable()) return;
+  $("lb-form").hidden = true;
+  const name = storage.get("roadster-name", "");
+  $("lb-name").value = name;
+  let posted = null;
+  if (submission) posted = await submitResult({ ...submission, name });
+  const data = await fetchBoard(event.day, playerId, submission ? 0 : 30000);
+  if (!data || activeEvent !== event || phase !== "results") return;
+  renderBoard($("lb-rows"), data, playerId, formatTime);
+  $("lb-total").textContent = data.total
+    ? `${num(data.total)} RUN${data.total === 1 ? "" : "S"} / ${event.date}`
+    : event.date;
+  $("lb-mine").textContent = data.mine
+    ? `YOU · #${data.mine.rank} OF ${num(data.total)} · ${formatTime(data.mine.time)} / ${num(data.mine.score)} PTS` +
+      (posted?.kept ? " (YOUR BETTER RUN STANDS)" : "")
+    : name
+      ? "YOUR RUN WAS NOT RANKED YET."
+      : "POST YOUR RUN TO JOIN THE BOARD.";
+  $("lb-form").hidden = !!name;
+  $("leaderboard").hidden = false;
+  if (!data.rows.length && !name) $("lb-total").textContent = "BE THE FIRST TODAY";
+}
+async function refreshDailyRank() {
+  if (!leaderboardAvailable() || phase !== "home") return;
+  const daily = dailyEvent();
+  const data = await fetchBoard(daily.day, playerId);
+  if (data?.mine && phase === "home")
+    $("daily-name").innerHTML =
+      daily.name + ` · #${data.mine.rank} ` + GO_ICON;
 }
 function toast(text, type = "gate", points = 0) {
   $("event").textContent = text + (points ? " +" + num(points) : "");
@@ -419,7 +464,8 @@ function selectCourse(id, keepLoading = false) {
       : "");
   $("start").querySelector("span").textContent =
     incomingChallenge?.courseId === course.id ? "RACE THE GHOST" : "RACE HERE";
-  $("venue-index").textContent = course.number + " / 03";
+  $("venue-index").textContent =
+    course.number + " / " + String(COURSES.length).padStart(2, "0");
   $("course-location").textContent = course.number + " / " + course.location;
   $("course-description").textContent = course.subtitle;
   $("route-meta").textContent =
@@ -537,6 +583,7 @@ function refreshBest() {
     dailyRecord = storage.get("roadster-daily-" + daily.day, null);
   $("daily-name").innerHTML =
     daily.name + (dailyRecord?.passed ? " ✓" : " " + GO_ICON);
+  refreshDailyRank();
   $("start-daily").title = daily.description + " Resets at 00:00 UTC.";
   const best = records[course.id];
   const target = nextMission(career, course.id);
@@ -573,7 +620,7 @@ function refreshBest() {
   const total = completedCount(records);
   $("tour-record").textContent =
     COURSES.reduce((sum, c) => sum + cupsEarned(career, c.id), 0) +
-    " / 9 CAREER CUPS" +
+    ` / ${COURSES.length * 3} CAREER CUPS` +
     (storage.get("roadster-tour-best", 0)
       ? " / TOUR BEST " + num(storage.get("roadster-tour-best", 0))
       : "");
@@ -623,7 +670,7 @@ function beginTour() {
 function nextStage() {
   if (!tour || !run.finished || document.body.dataset.preparing === "true")
     return;
-  if (tour.index >= 2) {
+  if (tour.index >= TOUR_STAGES - 1) {
     home();
     return;
   }
@@ -657,11 +704,11 @@ function endRun() {
   }
   $("result-kicker").textContent = complete
     ? tour
-      ? `WORLD TOUR / STAGE ${tour.index + 1} OF 3`
+      ? `WORLD TOUR / STAGE ${tour.index + 1} OF ${TOUR_STAGES}`
       : course.name + " / FINISH"
     : `${(run.d / 1000).toFixed(2)} KM INTO THE CROSSING.`;
   $("result-title").innerHTML = complete
-    ? tour && tour.index === 2
+    ? tour && tour.index === TOUR_STAGES - 1
       ? "TOUR<br /> COMPLETE."
       : (run.finishPosition || run.position) === 1
         ? "VICTORY."
@@ -705,6 +752,18 @@ function endRun() {
       score: Math.max(old?.score || 0, run.score),
       passed: !!old?.passed || dailyPassed(activeEvent, run),
     });
+    lastDaily = {
+      day: activeEvent.day,
+      courseId: course.id,
+      id: playerId,
+      time: run.time,
+      score: Math.round(run.score),
+      passed: dailyPassed(activeEvent, run),
+    };
+    showLeaderboard(storage.get("roadster-name", "") ? lastDaily : null);
+  } else {
+    $("leaderboard").hidden = true;
+    lastDaily = null;
   }
   if (tour && complete) {
     tour.stages[tour.index] = { score: run.score, time: run.time, rank };
@@ -712,10 +771,12 @@ function endRun() {
   }
   $("next-stage").hidden = !tour || !complete;
   $("next-stage").innerHTML =
-    tour?.index === 2 ? "TOUR GARAGE " + GO_ICON : "NEXT COURSE " + GO_ICON;
+    tour?.index === TOUR_STAGES - 1
+      ? "TOUR GARAGE " + GO_ICON
+      : "NEXT COURSE " + GO_ICON;
   $("tour-summary").hidden = !tour;
   $("tour-summary").textContent = tour
-    ? `WORLD TOUR / ${tour.stages.length} OF 3 FINISHED / ${num(tour.score)} TOTAL POINTS`
+    ? `WORLD TOUR / ${tour.stages.length} OF ${TOUR_STAGES} FINISHED / ${num(tour.score)} TOTAL POINTS`
     : "";
   $("result-badges").innerHTML = ["FINISH", "NO DAMAGE", "ALL GATES"]
     .map(
@@ -729,7 +790,7 @@ function endRun() {
         "</span>",
     )
     .join("");
-  if (tour && complete && tour.index === 2) {
+  if (tour && complete && tour.index === TOUR_STAGES - 1) {
     const old = storage.get("roadster-tour-best", 0);
     if (tour.score > old) storage.set("roadster-tour-best", tour.score);
     $("result-tip").textContent =
@@ -1935,6 +1996,13 @@ async function boot() {
       refreshBest();
     };
     $("perf").hidden = !perf;
+    $("lb-form").onsubmit = (e) => {
+      e.preventDefault();
+      const name = $("lb-name").value.trim().slice(0, 14);
+      if (!name || !lastDaily) return;
+      storage.set("roadster-name", name);
+      showLeaderboard(lastDaily);
+    };
     $("install-hint").onclick = () => {
       storage.set("roadster-install-hint", true);
       $("install-hint").hidden = true;
@@ -2207,6 +2275,27 @@ async function boot() {
 $("reload").onclick = () => location.reload();
 $("loading-retry").onclick = () => location.reload();
 boot();
+
+// iOS Safari zooms on double-tap and pinch regardless of touch-action, which
+// shoves the controls off screen mid-race. Block the gestures; text fields
+// (the challenge link) keep native behaviour.
+let lastTouchEnd = 0;
+const editable = (t) => t?.closest?.("input, textarea, [contenteditable]");
+for (const type of ["gesturestart", "gesturechange", "gestureend"])
+  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+document.addEventListener("dblclick", (e) => {
+  if (!editable(e.target)) e.preventDefault();
+}, { passive: false });
+document.addEventListener(
+  "touchend",
+  (e) => {
+    const now = performance.now();
+    if (now - lastTouchEnd < 350 && !editable(e.target) && e.cancelable)
+      e.preventDefault();
+    lastTouchEnd = now;
+  },
+  { passive: false },
+);
 
 // Offline shell for installed/hosted play. Skipped for file://, QA runs and
 // local development unless ?pwa is present, so dev servers are never cached.

@@ -41,6 +41,9 @@ body {
   -webkit-touch-callout: none;
   touch-action: none;
 }
+html {
+  touch-action: manipulation;
+}
 button {
   font: inherit;
   color: inherit;
@@ -111,15 +114,16 @@ button:active {
 #boost-fx {
   pointer-events: none;
   opacity: 0;
+  /* Soft edge glow only: hard side borders read as a stray line on phones
+     whose fullscreen viewport extends into the rounded display corners. */
   background: linear-gradient(
     90deg,
-    #9cffe52b,
-    transparent 18%,
-    transparent 82%,
-    #9cffe52b
+    #9cffe538,
+    transparent 16%,
+    transparent 84%,
+    #9cffe538
   );
-  border-left: 3px solid #9cffe5;
-  border-right: 3px solid #9cffe5;
+  box-shadow: inset 0 0 60px -20px #9cffe5;
   transition: opacity 0.2s;
 }
 body[data-phase="playing"] #shade {
@@ -2353,6 +2357,9 @@ body[data-course="port"] {
 #course-select [data-course="nightshift"] {
   background-image: url("assets/venues/nightshift.png");
 }
+#course-select [data-course="mcgregor"] {
+  background-image: url("assets/venues/mcgregor.png");
+}
 .home-bottom {
   display: contents;
 }
@@ -3657,5 +3664,142 @@ body[data-phase="replay"] #shade {
 @media (max-height: 360px) and (orientation: landscape) {
   #trim-note {
     display: none;
+  }
+}
+
+/* Installed / fullscreen phones between the address-bar case and tablets:
+   keep the title clear of the route label and the objective clear of the
+   venue picker. */
+@media (min-height: 331px) and (max-height: 430px) and (orientation: landscape) {
+  .home-copy {
+    top: 60px;
+  }
+  .home-copy .kicker {
+    margin-bottom: 5px;
+  }
+  .home-copy h1 {
+    font-size: clamp(34px, 5vw, 46px);
+    line-height: 0.95;
+  }
+  .route-label {
+    top: 136px;
+    gap: 3px;
+  }
+  .route-label b {
+    font-size: 18px;
+  }
+  #contract-home {
+    margin-top: 3px;
+  }
+  #contract-title {
+    font-size: 17px;
+    line-height: 1.05;
+  }
+  #contract-progress {
+    display: none;
+  }
+  #course-badges {
+    display: none;
+  }
+}
+
+#leaderboard {
+  margin-top: 14px;
+  max-width: 560px;
+  font-family: Plex, monospace;
+}
+.lb-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid #d1e5dc66;
+  padding-bottom: 5px;
+  margin-bottom: 4px;
+}
+.lb-head .kicker {
+  margin: 0;
+}
+.lb-head b {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #ced6d8;
+}
+#lb-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 24px;
+}
+#lb-rows li {
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid #d1e5dc22;
+}
+#lb-rows li i {
+  font-style: normal;
+  color: var(--orange);
+}
+#lb-rows li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#lb-rows li b {
+  color: var(--mint);
+}
+#lb-rows li em {
+  font-style: normal;
+  color: #ced6d8;
+}
+#lb-rows li.mine {
+  color: var(--paper);
+  background: #9cffe514;
+}
+#lb-mine {
+  margin: 6px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--mint);
+}
+#lb-form {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  align-items: center;
+}
+#lb-form input {
+  width: 180px;
+  padding: 8px 10px;
+  font: 13px Plex, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: #ffffff0a;
+  border: 1px solid #ffffff55;
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
+}
+#lb-form input:focus {
+  outline: 2px solid var(--mint);
+  outline-offset: 1px;
+}
+@media (max-height: 430px) and (orientation: landscape) {
+  #leaderboard {
+    margin-top: 8px;
+  }
+  #lb-rows li:nth-child(n + 7) {
+    display: none;
+  }
+  #lb-rows li {
+    font-size: 10px;
+    padding: 2px 0;
   }
 }
