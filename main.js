@@ -152,6 +152,7 @@ let lastTime = performance.now(),
   toastTime = 0,
   announcementTime = 0,
   impactTime = 0,
+  landTime = 0,
   frozen = false;
 let soundOn = storage.get("breakwater-sound", true),
   quality = storage.get("breakwater-quality", "auto"),
@@ -684,6 +685,22 @@ function nextStage() {
   if (pending?.then) return pending.then(ready);
   ready(pending);
 }
+/** Counts a results figure up over 0.9 s; the final frame always writes the exact value. */
+function tally(el, value, format) {
+  cancelAnimationFrame(el._tally);
+  if (reduced || !value) {
+    el.textContent = format(value);
+    return;
+  }
+  const start = performance.now();
+  const frame = (now) => {
+    const t = Math.min(1, (now - start) / 900),
+      eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = format(value * eased);
+    if (t < 1) el._tally = requestAnimationFrame(frame);
+  };
+  el._tally = requestAnimationFrame(frame);
+}
 function endRun() {
   if (!replay.length || replay.at(-1)[0] < run.time) recordFrame();
   audio.event(run.failed ? "fail" : "finish");
@@ -723,10 +740,12 @@ function endRun() {
     : run.reason === "THE BRIDGE WAS OUT"
       ? "Take the mint ramp for an automatic jump, or hold FLY before the orange strips and across the gap."
       : "Steer around orange barriers, or fly over them. You have three hits.";
-  $("result-time").textContent = formatTime(run.time);
-  $("result-score").textContent = num(run.score);
-  $("result-gates").textContent = `${run.gates} / ${course.gates.length}`;
-  $("result-rank").textContent = complete ? rank : "—";
+  tally($("result-time"), run.time, formatTime);
+  tally($("result-score"), run.score, (v) => num(Math.round(v)));
+  tally($("result-gates"), run.gates, (v) => `${Math.round(v)} / ${course.gates.length}`);
+  const rankEl = $("result-rank");
+  rankEl.textContent = complete ? rank : "—";
+  rankEl.className = complete ? `reveal ${String(rank).toLowerCase()}` : "";
   $("result-position").textContent = complete
     ? `${run.finishPosition || run.position || 4} / 4`
     : "DNF";
@@ -871,7 +890,7 @@ function tick(dt) {
   }
 
   for (const e of run.events.splice(0)) {
-    audio.event(e.type);
+    audio.event(e.type, run.chain);
     haptic(e.type);
     if (e.type === "gate") coachGate = true;
     if (!reduced) {
@@ -884,6 +903,7 @@ function tick(dt) {
       }
     }
     if (e.type === "sector") toast(`0${run.sector + 1} / ${e.text}`, "gate");
+    else if (e.type === "land") landTime = 0.5;
     else if (e.type === "hit") {
       impactTime = 0.45;
       toast(e.text, "hit");
@@ -1207,9 +1227,9 @@ function updateVisuals(dt, snap = false, visual = run) {
       innerHeight,
     );
     camera.position.set(
-      x + Math.sin(Math.PI / 4) * 8.5 + Math.sin(clock * 0.11) * 0.2,
-      y + 2.3,
-      -visual.d - Math.cos(Math.PI / 4) * 8.5,
+      x + Math.sin(Math.PI / 4 + Math.sin(clock * 0.07) * 0.14) * 8.5,
+      y + 2.3 + Math.sin(clock * 0.13) * 0.08,
+      -visual.d - Math.cos(Math.PI / 4 + Math.sin(clock * 0.07) * 0.14) * 8.5,
     );
     camera.lookAt(x, y + 0.38, -visual.d + 0.2);
   } else if (phase === "replay") {
@@ -1248,6 +1268,9 @@ function updateVisuals(dt, snap = false, visual = run) {
     if (!reduced) {
       cameraGoal.y += Math.sin(clock * 19) * 0.014 * (visual.boosting ? 2 : 1);
       cameraGoal.x += impactTime * Math.sin(clock * 70) * 0.2;
+      // Suspension settle after touchdown and a fine shiver while sliding.
+      cameraGoal.y -= landTime * landTime * Math.sin(landTime * 12) * 0.5;
+      cameraGoal.x += (visual.drift || 0) * Math.sin(clock * 53) * 0.04;
     }
     if (snap) camera.position.copy(cameraGoal);
     else camera.position.lerp(cameraGoal, 1 - Math.exp(-dt * 8));
@@ -1312,6 +1335,7 @@ function frame(now) {
     toastTime = Math.max(0, toastTime - dt);
     announcementTime = Math.max(0, announcementTime - dt);
     impactTime = Math.max(0, impactTime - dt);
+    landTime = Math.max(0, landTime - dt);
     if (!toastTime) $("event").textContent = "";
     if (!announcementTime) {
       $("announcement-small").textContent = "";
@@ -1331,6 +1355,7 @@ function frame(now) {
       !orientationBlocked &&
       countdown <= 0 &&
       !frozen,
+    car?.userData?.actuation,
   );
   renderDebt += frameSeconds;
   perfStats.seconds += frameSeconds;

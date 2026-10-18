@@ -46,7 +46,10 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     length = course.length;
   function activate() {
     root.visible = true;
-    scene.fog = new THREE.FogExp2(course.fog, night ? 0.00165 : 0.00085);
+    scene.fog = new THREE.FogExp2(
+      course.fog,
+      night ? 0.00165 : range ? 0.00105 : 0.00085,
+    );
     scene.background = new THREE.Color(course.fog);
     scene.environment = surfaces.environment || null;
     scene.environmentIntensity = night ? 0.43 : canyon ? 0.75 : 0.85;
@@ -1691,6 +1694,52 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     box(new THREE.CylinderGeometry(1, 1, 30, 8), darkSteel, 2480, 92, 15);
     box(new THREE.CylinderGeometry(6.5, 5, 8, 14), tankWhite, 2480, 92, 33);
     box(new THREE.CylinderGeometry(0.5, 1.3, 72, 8), hazardRed, 3620, 124, 36);
+    // Horizon test article: a white stage on a stand, far off the range.
+    box(new THREE.BoxGeometry(22, 10, 22), slab, 3500, 150, 5);
+    box(new THREE.CylinderGeometry(4.5, 4.5, 52, 16), tankWhite, 3500, 150, 36);
+    box(new THREE.ConeGeometry(4.5, 14, 16), tankWhite, 3500, 150, 69);
+    box(new THREE.CylinderGeometry(1.2, 1.2, 70, 8), darkSteel, 3500, 164, 35);
+    // Bleachers at the hover pad: the demo crowd faces the fleet flyover.
+    const seats = [];
+    for (let row = 0; row < 5; row++)
+      seats.push({ d: 5330, x: 24 + row * 2.4, y: 0.8 + row * 1.1 });
+    instances(new THREE.BoxGeometry(2.3, 1.1, 60), mat(0x4b5560, 0.7, 0.3), seats);
+    const crowd = [];
+    for (let i = 0; i < 70; i++)
+      crowd.push({
+        d: 5302 + (i % 14) * 4.2,
+        x: 24.2 + Math.floor(i / 14) * 2.4,
+        y: 2 + Math.floor(i / 14) * 1.1,
+      });
+    instances(
+      new THREE.CapsuleGeometry(0.28, 0.9, 2, 6),
+      mat(0x2b3138, 0.9),
+      crowd,
+    );
+    // Flame trenches under the gaps: a charred floor with a hot core line.
+    const char = new THREE.MeshBasicMaterial({ color: 0x2a2622 }),
+      glow = new THREE.MeshBasicMaterial({
+        color: 0xff8a3d,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      });
+    for (const gap of course.gaps || []) {
+      const length = gap.end - gap.start,
+        center = (gap.start + gap.end) / 2,
+        yaw = -Math.atan(roadSlope(center));
+      for (const [geometry, material, y] of [
+        [new THREE.PlaneGeometry(15, length - 6), char, -0.3],
+        [new THREE.PlaneGeometry(3, length - 10), glow, -0.28],
+      ]) {
+        const m = new THREE.Mesh(geometry, material);
+        m.position.copy(worldPos(center, 0, y));
+        m.rotation.x = -Math.PI / 2;
+        m.rotation.z = yaw;
+        root.add(m);
+      }
+    }
   }
   const hemi = new THREE.HemisphereLight(
     night ? 0x7fabc7 : 0xd5e9fa,

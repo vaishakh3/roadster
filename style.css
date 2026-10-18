@@ -3803,3 +3803,122 @@ body[data-phase="replay"] #shade {
     padding: 2px 0;
   }
 }
+
+/* Launch polish: results reveal, boost streaks, venue tile selection. */
+@keyframes medal-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.86);
+    filter: blur(6px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1.06);
+    filter: blur(0);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes stat-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+body[data-phase="results"] .result-stats > div {
+  animation: stat-reveal 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+body[data-phase="results"] .result-stats > div:nth-child(2) {
+  animation-delay: 0.08s;
+}
+body[data-phase="results"] .result-stats > div:nth-child(3) {
+  animation-delay: 0.16s;
+}
+body[data-phase="results"] .result-stats > div:nth-child(4) {
+  animation-delay: 0.24s;
+}
+body[data-phase="results"] .result-stats > div:nth-child(5) {
+  animation-delay: 0.32s;
+}
+#result-rank.reveal {
+  display: inline-block;
+  animation: medal-reveal 0.7s 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+#result-rank.gold {
+  color: #ffd166;
+  text-shadow: 0 0 24px #ffd16655;
+}
+#result-rank.silver {
+  color: #dfe7ea;
+}
+#result-rank.bronze {
+  color: #e3a774;
+}
+#boost-fx::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 7%,
+    #ffffff10 7% 7.4%,
+    transparent 7.4% 13%
+  );
+  mask: linear-gradient(90deg, #000, transparent 22%, transparent 78%, #000);
+  -webkit-mask: linear-gradient(
+    90deg,
+    #000,
+    transparent 22%,
+    transparent 78%,
+    #000
+  );
+  animation: boost-streaks 0.5s linear infinite;
+}
+@keyframes boost-streaks {
+  from {
+    transform: scaleX(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scaleX(1.35);
+    opacity: 0.4;
+  }
+}
+#course-select button {
+  transition:
+    opacity 0.25s,
+    border-color 0.25s,
+    transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+#course-select button.active {
+  transform: translateY(-2px);
+}
+#course-select button.active i,
+#course-select button.active b {
+  animation: tile-pop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes tile-pop {
+  0% {
+    transform: scale(0.94);
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-phase="results"] .result-stats > div,
+  #result-rank.reveal,
+  #boost-fx::after,
+  #course-select button.active i,
+  #course-select button.active b {
+    animation: none;
+  }
+}

@@ -1,5 +1,6 @@
 import * as THREE from "./vendor/three.module.js";
 import { PathHistory } from "./stunts.js";
+import { FLIGHT_PORTS } from "./propulsion.js";
 
 /** Reused world-space ribbons and pooled impact debris: no per-impact mesh allocation. */
 export function createRaceEffects(scene) {
@@ -81,9 +82,12 @@ export function createRaceEffects(scene) {
   // Keep all 36 original event slots available to crashes. Tire spray shares
   // this same draw call but has its own 24-slot ring, capped at 28 particles/s
   // and two emissions/frame. Sustained driving cannot evict impact clouds.
+  // Cold-gas puffs from the flight ports get their own 24-slot ring so a long
+  // hover never evicts crash smoke or tyre spray.
   const eventCloudCount = 36,
     wheelCloudCount = 24,
-    cloudCount = eventCloudCount + wheelCloudCount,
+    puffCloudCount = 24,
+    cloudCount = eventCloudCount + wheelCloudCount + puffCloudCount,
     smokeGeo = new THREE.BufferGeometry(),
     smokePositions = new Float32Array(cloudCount * 3),
     smokeSize = new Float32Array(cloudCount),
@@ -136,7 +140,11 @@ export function createRaceEffects(scene) {
   }));
   let cloudCursor = 0,
     wheelCursor = 0,
-    wheelDebt = 0;
+    wheelDebt = 0,
+    puffCursor = 0,
+    puffDebt = 0;
+  const puffDirection = new THREE.Vector3(),
+    carVelocity = new THREE.Vector3();
   // 0 = dry asphalt, 1 = wet terminal, 2 = dusty canyon, 3 = sea-spray zone.
   // The sheltered storm gallery stays dry; coastal spray occurs only around
   // exposed broken-bridge approaches and their landing decks.
@@ -280,6 +288,53 @@ export function createRaceEffects(scene) {
         p.drag = 1.7;
         p.opacity = surface === 2 ? 0.3 : surface === 3 ? 0.16 : 0.38;
         tintCloud(p, surface);
+      }
+    }
+    const actuation = car.userData?.actuation;
+    const puffRate =
+      active && !reduced && !s.failed && actuation
+        ? actuation.ports.reduce((sum, p) => sum + (p > 0.08 ? p : 0), 0) * 9
+        : 0;
+    puffDebt =
+      puffRate > 0
+        ? Math.min(3, puffDebt + Math.min(dt, 0.05) * Math.min(32, puffRate))
+        : 0;
+    if (puffDebt >= 1) {
+      carVelocity.set(s.vx || 0, s.vy || 0, -s.speed);
+      const ports = FLIGHT_PORTS;
+      for (let count = 0; count < 3 && puffDebt >= 1; count++) {
+        puffDebt--;
+        // Pick the strongest port not sampled most recently so puffs alternate
+        // between firing nozzles instead of stacking on one.
+        let best = -1,
+          bestPower = 0.08;
+        for (let i = 0; i < ports.length; i++) {
+          const power = actuation.ports[i] * (1 - ((puffCursor + i) % 3) * 0.2);
+          if (power > bestPower) {
+            bestPower = power;
+            best = i;
+          }
+        }
+        if (best < 0) break;
+        const port = ports[best],
+          power = actuation.ports[best],
+          p = clouds[eventCloudCount + wheelCloudCount + (puffCursor++ % puffCloudCount)];
+        emitter.fromArray(port.position);
+        car.localToWorld(emitter);
+        puffDirection.fromArray(port.exhaust).transformDirection(car.matrixWorld);
+        p.p.copy(emitter).addScaledVector(puffDirection, 0.25);
+        p.v.copy(puffDirection).multiplyScalar(3.5 + power * 5);
+        p.v.addScaledVector(carVelocity, 0.55);
+        p.v.x += ((puffCursor % 5) - 2) * 0.25;
+        p.life = p.total = port.kind === "lift" ? 0.42 : 0.3;
+        p.size = port.kind === "lift" ? 0.22 : 0.14;
+        p.growth = port.kind === "lift" ? 2.4 : 1.6;
+        p.gravity = -0.6;
+        p.drag = 2.6;
+        p.opacity = (port.kind === "lift" ? 0.34 : 0.26) * Math.min(1, power + 0.4);
+        p.red = 0.86;
+        p.green = 0.93;
+        p.blue = 1;
       }
     }
     for (const r of ribbons) {

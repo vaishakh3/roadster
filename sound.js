@@ -1,6 +1,7 @@
 /** All sound is synthesised locally after a player gesture. No network or autoplay. */
 export function createSound() {
-  let ctx, master, engine, motor, wind, windGain, tire, tireGain, noiseBuffer;
+  let ctx, master, engine, motor, wind, windGain, tire, tireGain, noiseBuffer,
+    hiss, hissGain;
   let enabled = true;
   function init() {
     if (ctx) {
@@ -49,6 +50,19 @@ export function createSound() {
     source.connect(tire);
     tire.connect(tireGain);
     tireGain.connect(master);
+    const hissSource = ctx.createBufferSource();
+    hissSource.buffer = noiseBuffer;
+    hissSource.loop = true;
+    hiss = ctx.createBiquadFilter();
+    hiss.type = "bandpass";
+    hiss.frequency.value = 2600;
+    hiss.Q.value = 0.9;
+    hissGain = ctx.createGain();
+    hissGain.gain.value = 0;
+    hissSource.connect(hiss);
+    hiss.connect(hissGain);
+    hissGain.connect(master);
+    hissSource.start();
   }
   function burst(duration, frequency, volume) {
     if (!ctx || !enabled) return;
@@ -99,7 +113,7 @@ export function createSound() {
       if (master)
         master.gain.setTargetAtTime(value ? 0.27 : 0, ctx.currentTime, 0.06);
     },
-    update(s, playing) {
+    update(s, playing, actuation) {
       if (!ctx) return;
       engine.frequency.setTargetAtTime(
         52 + s.speed * 2.7 + (s.boosting ? 55 : 0),
@@ -122,6 +136,17 @@ export function createSound() {
         ctx.currentTime,
         0.15,
       );
+      const thrust = s.failed ? 0 : (actuation?.lift || 0) + Math.abs(actuation?.yaw || 0) * 0.5;
+      hiss.frequency.setTargetAtTime(
+        2200 + thrust * 900 + speed * 300,
+        ctx.currentTime,
+        0.08,
+      );
+      hissGain.gain.setTargetAtTime(
+        playing ? Math.min(0.09, thrust * 0.11) : 0,
+        ctx.currentTime,
+        thrust > 0 ? 0.03 : 0.12,
+      );
       tire.frequency.setTargetAtTime(
         750 + (s.drift || 0) * 1900 + speed * 250,
         ctx.currentTime,
@@ -137,7 +162,7 @@ export function createSound() {
         0.1,
       );
     },
-    event(type) {
+    event(type, chain = 1) {
       if (type === "contact") {
         // A short padded bump, distinctly quieter than a damage collision.
         burst(0.075, 320, 0.14);
@@ -156,9 +181,12 @@ export function createSound() {
         tone(440, 0.2, 0.1);
         tone(659, 0.28, 0.08, 0.08);
       } else if (type === "gate" || type === "stunt") {
-        tone(523, 0.28, 0.22);
-        tone(784, 0.35, 0.16, 0.08);
-        tone(1047, 0.4, 0.1, 0.16);
+        // The gate chime climbs a step per chain link so a clean gate run is
+        // heard escalating, not repeating.
+        const step = Math.pow(1.0595, Math.min(Math.max(chain, 1) - 1, 4) * 2);
+        tone(523 * step, 0.28, 0.22);
+        tone(784 * step, 0.35, 0.16, 0.08);
+        tone(1047 * step, 0.4, 0.1 + Math.min(chain, 4) * 0.02, 0.16);
       } else if (type === "hit" || type === "fail") {
         burst(0.35, 2400, 0.55);
         tone(80, 0.35, 0.35);
