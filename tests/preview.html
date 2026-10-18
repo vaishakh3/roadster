@@ -43,6 +43,7 @@
   </nav>
   <nav>
     <button data-view="home">Start screen</button
+    ><button data-view="ghost">Ghost reference</button
     ><button data-view="drive">Drive</button
     ><button data-view="pack">Racing pack</button
     ><button data-view="gap">Bridge approach</button
@@ -74,6 +75,7 @@
   <iframe title="Game preview" src="../dist/?qa=1"></iframe>
   <script type="module">
     import { driveInput } from "./driver.js";
+    import { LAYOUT_VERSION } from "../courses.js";
     const frame = document.querySelector("iframe");
     document.getElementById("scenery").onclick = () => {
       const w = frame.contentWindow,
@@ -137,6 +139,19 @@
           }
           g.start();
           const v = b.dataset.view;
+          if (v === "ghost") {
+            g.records[g.course.id] = {
+              layout: LAYOUT_VERSION,
+              time: 90,
+              score: 12500,
+              medal: 1,
+              ghost: [
+                [0, 380, 1, 0],
+                [10, 880, 1, 0],
+              ],
+            };
+            g.setState({ d: 410, x: -2, time: 1, speed: 60 });
+          }
           if (v === "pack") {
             const w = frame.contentWindow;
             g.setState({});

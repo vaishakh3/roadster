@@ -8,6 +8,7 @@ import {
   rivalInput,
   updateDraft,
   updateRacePosition,
+  resolveRivalContacts,
 } from "./rivals.js";
 export const LENGTH = COURSES[0].length;
 export const ROAD_HALF = 10;
@@ -101,6 +102,17 @@ export function createRun(course = COURSES[0], options = {}) {
     landingAge: 10,
     exitDistance: 0,
     passCooldown: 0,
+    contactAge: 10,
+    contactSide: 0,
+    contactKind: "",
+    contactStrength: 0,
+    contactCooldown: 0,
+    contactYield: 0,
+    contactAway: 0,
+    contacts: 0,
+    contactPrevD: 0,
+    contactPrevX: 0,
+    contactPrevY: 0,
   };
   if (!options.rival) state.rivals = createRivals(resolved, createRun);
   return state;
@@ -138,6 +150,12 @@ export function stepRun(s, raw, frameDt) {
   }
 }
 function tick(s, raw, dt) {
+  s.contactPrevD = s.d;
+  s.contactPrevX = s.x;
+  s.contactPrevY = s.y;
+  s.contactAge += dt;
+  s.contactCooldown = Math.max(0, s.contactCooldown - dt);
+  s.contactYield = Math.max(0, s.contactYield - dt);
   s.time += dt;
   s.crashAge += dt;
   s.landingAge += dt;
@@ -533,6 +551,7 @@ function tick(s, raw, dt) {
       if (rival.failed) continue;
       tick(rival, rivalInput(rival, s), dt);
     }
+    resolveRivalContacts(s);
     const previousPosition = s.position;
     updateRacePosition(s);
     if (s.position < previousPosition && s.time > 2 && !s.passCooldown) {

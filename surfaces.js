@@ -44,45 +44,68 @@ export async function loadVisualAssets(renderer, onProgress) {
   );
 }
 
-export function roadMaterial(wet) {
+// A finite shadow map should fade at its boundary instead of exposing a hard
+// moving rectangle on asphalt. This alters only each material's shader source;
+// the shared Three.js chunks and other rendering programs stay untouched.
+const stableShadowChunk = THREE.ShaderChunk.shadowmap_pars_fragment.replace(
+  "return mix( 1.0, shadow, shadowIntensity );",
+  `float border=min(min(shadowCoord.x,1.0-shadowCoord.x),min(shadowCoord.y,1.0-shadowCoord.y));
+   float coverage=smoothstep(0.0,0.085,border)*smoothstep(0.0,0.035,1.0-shadowCoord.z);
+   return mix(1.0,shadow,shadowIntensity*coverage);`,
+);
+const roadNoise = `
+float roadHash(vec2 p){p=fract(p*vec2(.1031,.11369));p+=dot(p,p.yx+19.19);return fract((p.x+p.y)*p.x);}
+float roadNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(roadHash(i),roadHash(i+vec2(1,0)),f.x),mix(roadHash(i+vec2(0,1)),roadHash(i+1.),f.x),f.y);}
+`;
+export function roadMaterial(wet, type = "road") {
+  const road = type === "road";
   const material = new THREE.MeshStandardMaterial({
-    color: wet ? 0x929eac : 0xbfc2c7,
-    roughness: wet ? 0.27 : 0.88,
-    metalness: wet ? 0.18 : 0.015,
+    color: wet ? 0x8a949e : 0xa5a6a4,
+    roughness: wet ? 0.42 : 0.88,
+    metalness: wet ? 0.09 : 0.015,
     map: surfaces.road || null,
     normalMap: surfaces.roadNormal || null,
     roughnessMap: surfaces.roadRoughness || null,
-    normalScale: new THREE.Vector2(wet ? 0.24 : 0.52, wet ? 0.24 : 0.52),
-    envMapIntensity: wet ? 1.6 : 0.38,
+    normalScale: new THREE.Vector2(wet ? 0.22 : 0.4, wet ? 0.22 : 0.4),
+    envMapIntensity: wet ? 1.25 : 0.34,
   });
-  material.customProgramCacheKey = () => "scanned-road-" + wet;
+  material.customProgramCacheKey = () =>
+    "continuous-asphalt-v4-" + wet + "-" + type;
   material.onBeforeCompile = (shader) => {
     shader.vertexShader =
-      "varying vec3 vRoad; varying vec2 vRoadUv;\n" +
+      "varying vec2 vRoadUv;\n" +
       shader.vertexShader.replace(
         "#include <worldpos_vertex>",
-        "#include <worldpos_vertex>\nvRoad=(modelMatrix*vec4(transformed,1.)).xyz;vRoadUv=uv;",
+        "#include <worldpos_vertex>\nvRoadUv=uv;",
       );
     shader.fragmentShader =
-      "varying vec3 vRoad; varying vec2 vRoadUv;\n" +
-      shader.fragmentShader.replace(
-        "#include <color_fragment>",
-        `#include <color_fragment>
-      float tireLine=pow(abs(sin(vRoadUv.x*1.9)),24.);
-      float repaired=step(.94,sin(vRoad.z*.079+sin(vRoad.x*.4)));
-      float grain=.5+.5*sin(vRoad.z*.31+sin(vRoad.x*.43));
-      diffuseColor.rgb=mix(vec3(.035),diffuseColor.rgb*2.2,.88)*(1.-tireLine*.17-repaired*.08)*(.94+grain*.12);`,
-      );
-  };
-  const compile = material.onBeforeCompile;
-  material.onBeforeCompile = (shader) => {
-    compile(shader);
-    shader.fragmentShader = shader.fragmentShader.replace(
-      "#include <roughnessmap_fragment>",
-      `#include <roughnessmap_fragment>
-      float puddle=smoothstep(.4,.8,sin(vRoad.z*.075+sin(vRoad.x*.6))*sin(vRoad.x*.3+vRoad.z*.023));
-      roughnessFactor=mix(roughnessFactor,${wet ? ".10" : ".85"},puddle*${wet ? ".8" : ".25"});`,
-    );
+      "varying vec2 vRoadUv;\n" +
+      roadNoise +
+      shader.fragmentShader
+        .replace("#include <shadowmap_pars_fragment>", stableShadowChunk)
+        .replace(
+          "#include <color_fragment>",
+          `#include <color_fragment>
+        vec2 metres=vRoadUv*2.;
+        float macro=roadNoise(metres*vec2(.23,.065));
+        float patches=roadNoise(metres*vec2(.65,.18)+11.7);
+        float aggregate=roadNoise(metres*3.7);
+        float laneOffset=abs(mod(metres.x+3.3,6.6)-3.3);
+        float rubber=(1.-smoothstep(.13,.52,abs(laneOffset-.87)))*(.45+macro*.55);
+        float shoulder=smoothstep(7.7,9.7,abs(metres.x));
+        float repair=smoothstep(.69,.77,patches)*smoothstep(.54,.72,macro);
+        diffuseColor.rgb*=1.9*(.88+macro*.15+aggregate*.04-repair*.14${road ? "-rubber*.12" : ""});
+        ${road ? "diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(1.18,1.12,.98),shoulder*(.16+patches*.28));" : ""}
+      `,
+        )
+        .replace(
+          "#include <roughnessmap_fragment>",
+          `#include <roughnessmap_fragment>
+        float wetPatch=smoothstep(.44,.76,macro)*smoothstep(.35,.68,patches);
+        roughnessFactor=clamp(roughnessFactor,${wet ? ".25,.64" : ".68,.96"});
+        roughnessFactor=mix(roughnessFactor,${wet ? ".19" : ".8"},wetPatch*${wet ? ".76" : ".2"});
+      `,
+        );
   };
   return material;
 }
@@ -227,7 +250,7 @@ export function concreteMaterial(color) {
     roughness: 0.91,
     metalness: 0.025,
   });
-  material.customProgramCacheKey = () => "weathered-concrete-v1";
+  material.customProgramCacheKey = () => "weathered-concrete-v2";
   material.onBeforeCompile = (shader) => {
     shader.vertexShader =
       "varying vec3 vConcrete;\n" +
@@ -242,14 +265,16 @@ export function concreteMaterial(color) {
       );
     shader.fragmentShader =
       "varying vec3 vConcrete;\n" +
-      shader.fragmentShader.replace(
-        "#include <color_fragment>",
-        `#include <color_fragment>
+      shader.fragmentShader
+        .replace("#include <shadowmap_pars_fragment>", stableShadowChunk)
+        .replace(
+          "#include <color_fragment>",
+          `#include <color_fragment>
       float speck=fract(sin(dot(floor(vConcrete*24.),vec3(12.9898,78.233,39.425)))*43758.5453);
       float runoff=.5+.5*sin(vConcrete.x*1.7+sin(vConcrete.z*.64));
       diffuseColor.rgb*=.86+speck*.16-runoff*.065;
       diffuseColor.rgb*=.97+.03*sin(vConcrete.y*7.);`,
-      );
+        );
   };
   return material;
 }

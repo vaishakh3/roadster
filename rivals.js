@@ -102,6 +102,10 @@ export function rivalInput(r, race) {
     }
     if (ahead < 18 && Math.abs(other.x - r.x) < 2.6) blocked = true;
   }
+  if (r.contactYield > 0 && !ramp && !r.flight && !gap && !urgent) {
+    x = clamp(r.x + r.contactAway * 2.5, -7.3, 7.3);
+    r.overtaking = true;
+  }
   // A readable hesitation on clear road gives the field human rhythm without
   // manufacturing crashes or changing pace in response to the player's rank.
   const mistake =
@@ -164,4 +168,203 @@ export function updateRacePosition(s) {
   }
   s.position = place;
   if (s.finished) s.finishPosition = place;
+}
+
+// A modest safety envelope around the visible two-metre-wide, 4.7m-long cars.
+// No hull damage, restitution, vertical impulse, steering lock or stunt cancel.
+export const RIVAL_CONTACT = Object.freeze({
+  width: 2.18,
+  length: 4.8,
+  height: 1.3,
+});
+const worldHeight = (car, previous = false) => {
+  const d = previous ? car.contactPrevD : car.d;
+  const [a, b, c, e] = car.course.elevation;
+  return (
+    (previous ? car.contactPrevY : car.y) +
+    Math.sin(d / b) * a +
+    Math.sin(d / e) * c
+  );
+};
+function lateralBounds(car) {
+  const ramp =
+    car.attachedRamp >= 0 ? car.course.ramps[car.attachedRamp] : null;
+  return ramp
+    ? [
+        ramp.x - (ramp.width || 7) / 2 + 1.12,
+        ramp.x + (ramp.width || 7) / 2 - 1.12,
+      ]
+    : [-8.85, 8.85];
+}
+function sweepContact(a, b) {
+  const extents = [
+    RIVAL_CONTACT.width,
+    RIVAL_CONTACT.length,
+    RIVAL_CONTACT.height,
+  ];
+  const end = [a.x - b.x, a.d - b.d, worldHeight(a) - worldHeight(b)];
+  const start = [
+    a.contactPrevX - b.contactPrevX,
+    a.contactPrevD - b.contactPrevD,
+    worldHeight(a, true) - worldHeight(b, true),
+  ];
+  let entry = 0,
+    exit = 1,
+    axis = -1,
+    normal = 0;
+  for (let i = 0; i < 3; i++) {
+    const velocity = end[i] - start[i],
+      extent = extents[i];
+    if (Math.abs(velocity) < 1e-9) {
+      if (Math.abs(start[i]) >= extent) return null;
+      continue;
+    }
+    const t1 = (-extent - start[i]) / velocity,
+      t2 = (extent - start[i]) / velocity;
+    const lo = Math.min(t1, t2),
+      hi = Math.max(t1, t2);
+    if (lo > entry) {
+      entry = lo;
+      axis = i;
+      normal = velocity > 0 ? -1 : 1;
+    }
+    exit = Math.min(exit, hi);
+    if (entry > exit) return null;
+  }
+  if (exit < 0 || entry > 1) return null;
+  if (axis === 2) {
+    // Crossing vertically during flight never applies a vertical shove. If the
+    // envelopes actually meet, separate the lanes without altering trajectory.
+    if (
+      Math.abs(end[0]) >= extents[0] ||
+      Math.abs(end[1]) >= extents[1] ||
+      Math.abs(end[2]) >= extents[2]
+    )
+      return null;
+    axis = 0;
+    normal = Math.sign(end[0]) || Math.sign(start[0]) || 1;
+  }
+  if (axis < 0) {
+    if (extents.some((size, i) => Math.abs(end[i]) >= size)) return null;
+    axis =
+      extents[0] - Math.abs(end[0]) < extents[1] - Math.abs(end[1]) ? 0 : 1;
+    normal = Math.sign(end[axis]) || Math.sign(start[axis]) || 1;
+  }
+  // Never push a car forward/backward along an assisted flight, or off a ramp.
+  // There is room for a passing pair on every authored deck.
+  if (a.flight || b.flight || a.attachedRamp >= 0 || b.attachedRamp >= 0) {
+    axis = 0;
+    normal = Math.sign(end[0]) || Math.sign(start[0]) || (a.isRival ? -1 : 1);
+  }
+  return { axis, normal, depth: extents[axis] - end[axis] * normal + 0.003 };
+}
+
+/** Resolve the four-car field after the same 120Hz step, including swept
+ * crossings. AI gives the player room; a rear hit cannot accelerate the player.
+ * Repeated bounded passes also settle three-car contacts at a road edge. */
+export function resolveRivalContacts(race) {
+  const field = [race, ...race.rivals];
+  for (let pass = 0; pass < 7; pass++) {
+    let settled = true;
+    for (let i = 0; i < field.length; i++)
+      for (let j = i + 1; j < field.length; j++) {
+        const a = field[i],
+          b = field[j];
+        if (a.failed || b.failed || a.finished || b.finished) continue;
+        const beforeD = a.contactPrevD - b.contactPrevD,
+          afterD = a.d - b.d;
+        if (
+          Math.min(beforeD, afterD) > RIVAL_CONTACT.length ||
+          Math.max(beforeD, afterD) < -RIVAL_CONTACT.length
+        )
+          continue;
+        const beforeX = a.contactPrevX - b.contactPrevX,
+          afterX = a.x - b.x;
+        if (
+          Math.min(beforeX, afterX) > RIVAL_CONTACT.width ||
+          Math.max(beforeX, afterX) < -RIVAL_CONTACT.width
+        )
+          continue;
+        const contact = sweepContact(a, b);
+        if (!contact || contact.depth < 0.00001) continue;
+        settled = false;
+        const { axis, normal } = contact,
+          key = axis === 0 ? "x" : "d",
+          velocity = axis === 0 ? "vx" : "speed";
+        let aw = a.isRival ? 0.5 : 0.2,
+          bw = b.isRival ? 0.5 : 0.2;
+        if (
+          !a.isRival &&
+          ((axis === 1 && normal > 0) || (axis === 0 && a.vx * normal >= -0.01))
+        )
+          aw = 0;
+        if (
+          !b.isRival &&
+          ((axis === 1 && normal < 0) ||
+            (axis === 0 && b.vx * -normal >= -0.01))
+        )
+          bw = 0;
+        const total = aw + bw;
+        aw /= total;
+        bw /= total;
+        const beforeA = a[key],
+          beforeB = b[key];
+        const shift = (car, amount) => {
+          const before = car[key];
+          if (axis === 0) {
+            const [low, high] = lateralBounds(car);
+            car.x = clamp(car.x + amount, low, high);
+          } else car.d = Math.max(0, car.d + amount);
+          return car[key] - before;
+        };
+        const movedA = shift(a, normal * contact.depth * aw),
+          movedB = shift(b, -normal * contact.depth * bw);
+        const remaining = Math.max(
+          0,
+          contact.depth - (movedA - movedB) * normal,
+        );
+        if (remaining > 0.0001) {
+          const move = shift(b, -normal * remaining);
+          const rest = remaining + move * normal;
+          if (rest > 0.0001) shift(a, normal * rest);
+        }
+        const closing = (a[velocity] - b[velocity]) * normal;
+        if (closing < 0) {
+          a[velocity] -= closing * normal * aw;
+          b[velocity] += closing * normal * bw;
+        }
+        // Mark contact only for a physical correction, not a repeated solved pair.
+        if (Math.abs(a[key] - beforeA) + Math.abs(b[key] - beforeB) < 1e-6)
+          continue;
+        for (const [car, other, side] of [
+          [a, b, normal],
+          [b, a, -normal],
+        ]) {
+          car.contactAge = 0;
+          car.contactSide = axis === 0 ? side : 0;
+          car.contactKind = axis === 0 ? "side" : "rear";
+          car.contactStrength = clamp(-closing / 24, 0.08, 1);
+          if (car.isRival && !other.isRival) {
+            car.contactYield = 0.75;
+            car.contactAway =
+              Math.sign(car.x - other.x) || Math.sign(car.lane) || 1;
+          }
+          if (car.contactCooldown > 0) continue;
+          car.contactCooldown = 0.8;
+          car.contacts++;
+          if (!car.isRival) {
+            car.events.push({
+              type: "contact",
+              text:
+                axis === 0
+                  ? "SIDE CONTACT · KEEP STEERING"
+                  : "BUMPER CONTACT · STEER TO PASS",
+              points: 0,
+            });
+            if (car.events.length > 8) car.events.shift();
+          }
+        }
+      }
+    if (settled) break;
+  }
 }

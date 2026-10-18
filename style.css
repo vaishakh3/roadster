@@ -2091,9 +2091,10 @@ body[data-course="port"] {
 }
 .brief {
   position: absolute;
-  left: var(--pad);
+  left: auto;
+  right: var(--pad);
   bottom: 267px;
-  max-width: 320px;
+  width: 285px;
 }
 .brief #course-brief {
   display: none;
@@ -2941,4 +2942,179 @@ body[data-phase="replay"] #shade {
 }
 #challenge-url {
   -webkit-touch-callout: default;
+}
+
+/* Career goals are the primary racing task. Gold time remains a result bonus. */
+#course-gold,
+#course-badges,
+#route-tags {
+  display: none;
+}
+#contract-home {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-width: 325px;
+  margin-top: 8px;
+}
+#contract-tier {
+  color: var(--mint);
+  font: 11px Plex;
+  letter-spacing: 0.05em;
+}
+#contract-title {
+  font: 600 28px/1.05 Barlow;
+  color: #fff7e6;
+}
+#contract-detail {
+  font: 16px/1.3 Barlow;
+  color: #e1e6e6;
+  max-width: 310px;
+}
+#contract-progress {
+  font: 11px Plex;
+  letter-spacing: 0.05em;
+  color: #ffbf7b;
+  padding-top: 4px;
+}
+#race-target {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  max-width: 280px;
+  opacity: 1;
+  text-shadow: 0 2px 7px #020c15;
+}
+#objective-title {
+  font: 600 25px/1.05 Barlow;
+  color: #ffdda4;
+}
+#objective-detail {
+  font: 12px/1.25 Barlow;
+  color: #f2f5f2;
+  letter-spacing: 0.035em;
+  text-align: right;
+}
+#race-target.on-target #objective-title {
+  color: var(--mint);
+}
+#race-target.missed {
+  opacity: 1;
+}
+#race-target > span:not(#objective-detail),
+#target-time {
+  display: none;
+}
+#ghost-delta {
+  top: 177px;
+  left: auto;
+  right: var(--pad);
+  text-align: right;
+  color: #a7edff;
+}
+#event-objective {
+  display: none;
+}
+@media (max-height: 650px) and (orientation: landscape) {
+  .route-label {
+    top: 173px;
+  }
+  #contract-home {
+    gap: 3px;
+    margin-top: 5px;
+    max-width: 280px;
+  }
+  #contract-tier {
+    font-size: 9px;
+  }
+  #contract-title {
+    font-size: 22px;
+  }
+  #contract-detail {
+    font-size: 13px;
+    max-width: 270px;
+  }
+  #contract-progress {
+    font-size: 10px;
+    padding-top: 2px;
+  }
+  #race-target {
+    max-width: 230px;
+    top: 80px;
+  }
+  #objective-title {
+    font-size: 20px;
+  }
+  #objective-detail {
+    font-size: 11px;
+  }
+  #ghost-delta {
+    top: 132px;
+    max-width: 220px;
+    font-size: 10px;
+  }
+}
+@media (max-height: 420px) and (orientation: landscape) {
+  .route-label {
+    top: 134px;
+  }
+  #contract-home {
+    max-width: 250px;
+  }
+  #contract-detail {
+    display: none;
+  }
+  #contract-title {
+    font-size: 21px;
+  }
+}
+@media (max-width: 670px) and (orientation: landscape) {
+  .route-label {
+    top: 120px;
+  }
+  #route-meta {
+    display: none;
+  }
+  #contract-home {
+    margin-top: 0;
+    gap: 2px;
+    max-width: 180px;
+  }
+  #contract-tier {
+    font-size: 9px;
+  }
+  #contract-title {
+    font-size: 18px;
+  }
+  #contract-progress {
+    display: none;
+  }
+  #race-target {
+    max-width: 185px;
+  }
+  #objective-title {
+    font-size: 18px;
+  }
+  #objective-detail {
+    font-size: 10px;
+    max-width: 180px;
+  }
+  #ghost-delta {
+    top: 132px;
+    max-width: 180px;
+    font-size: 9px;
+  }
+}
+#orbit-car {
+  right: calc(var(--pad) + 180px);
+}
+@media (max-height: 650px) and (orientation: landscape) {
+  #orbit-car {
+    right: calc(var(--pad) + 160px);
+  }
+}
+@media (max-width: 670px) and (orientation: landscape) {
+  #orbit-car {
+    right: calc(var(--pad) + 145px);
+  }
 }

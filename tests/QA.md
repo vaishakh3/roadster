@@ -1,76 +1,70 @@
-# Roadster v5 race edition — 18 October 2026
+# Roadster v6 — objectives, contact and visual refinement
 
-## Release verification
+Verified on 18 October 2026. The game remains an independent, assisted arcade interpretation; this report distinguishes packaged-browser tests, source lighting checks and unverified hardware limits.
 
-- **71 Node checks pass:** 43 simulation/input/geometry, 12 driving/opponent, 8 challenge/replay and 8 sharing/recording checks. The recorder suite includes cancellation, size limits, startup failures, graphics-context failure and track cleanup.
-- **61 production-browser regression checks pass, zero failures.** These cover independent controls, racing, tour progression, records, rendered stunts, resource reuse and responsive layouts.
-- **16 production feature-browser checks pass, zero failures**, including the final replay fixes. The same sixteen also passed against source. Together with the original regression suite, this is **77 passing browser checks**.
-- **All 13 rendered ramp checks pass.** Steering and boost were applied during ascent. Minimum measured wheel/bumper clearance was **1.8–2.0 cm**, with attitude correction outlets and landing lift active on every ramp.
-- All three courses completed through production keyboard handlers with every gate and full condition. Saved fastest-run ghosts appeared afterward.
-- Final build and whitespace checks pass. Hosted and standalone HTML are identical: **2,638,059 bytes**, **1,395,147 bytes gzip**. Final startup, uncached venue selection, cached switches and representative rendering samples are measured below.
+## Verified checks
 
-The saved evidence is in `race-edition-browser.txt`, `race-edition-features.txt`, `race-edition-routes.txt`, `race-edition-ramps.txt`, `race-edition-tests.txt`, `race-edition-venue-switches.txt`, `race-edition-render-profile.txt` and `roadster-feature-regressions-source.txt` in the task's output directory. These reports identify source versus packaged-browser execution explicitly.
+- **88 Node checks pass:** 43 simulation/input/geometry, 20 driving/opponent/contact, 8 challenge/replay, 8 sharing/recording and 9 career-objective checks.
+- **89 production-browser checks pass, zero failures:** 61 original regressions, 16 daily/challenge/replay checks and 12 career/ghost checks.
+- **All 13 rendered ramps pass**, with minimum wheel/bumper clearance of **1.8–2.0 cm**. Attitude correction outlets and landing lift activate on every ramp.
+- **All three complete production routes pass** through the actual keyboard handlers, collecting every gate with full condition. Saved fastest-run ghosts appear afterward.
+- **12 lighting boundaries pass in both source and packaged rendering**, alongside finite geometry, 92 road-conforming overlays, 486 supported containers and 99 zero-intensity light relocations.
+- Final standalone/hosted bundle: **2,655,721 bytes**, **1,400,866 bytes gzip**, with fonts and assets included. No runtime asset requests.
+
+Evidence: `refinement-tests.txt`, `refinement-browser.txt`, `refinement-features.txt`, `refinement-objectives.txt`, `refinement-routes.txt`, `refinement-ramps.txt`, `refinement-lighting.json`, `refinement-lighting-production.json`, `refinement-render-profile.txt` and `refinement-venue-profile.txt` in the task's output directory.
 
 ## Complete race feasibility
 
-| Venue      | Length | Rendered run | Gates | Condition | Peak draw calls |
-| ---------- | -----: | -----------: | ----: | --------: | --------------: |
-| Breakwater | 5.4 km |      71.43 s | 26/26 |       3/3 |             219 |
-| Redshift   | 5.7 km |      77.53 s | 26/26 |       3/3 |             202 |
-| Nightshift | 6.0 km |      81.55 s | 28/28 |       3/3 |             207 |
+| Venue      | Length | Rendered time | Gates | Condition | Peak draw calls |
+| ---------- | -----: | ------------: | ----: | --------: | --------------: |
+| Breakwater | 5.4 km |       71.53 s | 26/26 |       3/3 |             220 |
+| Redshift   | 5.7 km |       77.66 s | 26/26 |       3/3 |             210 |
+| Nightshift | 6.0 km |       81.65 s | 28/28 |       3/3 |             212 |
 
-These are automated boosted runs, not average human completion times or phone performance measurements. All route assertions passed. They exercise the same keyboard handlers used by a player. A predictive test driver chooses safe corridors through moving traffic and tightly spaced hazards; it is excluded from the shipped game.
+These are automated boosted runs rather than average human completion times or phone performance measurements. The predictive test driver is excluded from the shipped game. Peak draw counts describe those route checks, not every possible camera or quality setting.
 
-The live map includes the player, three color-matched opponents, route progress, finish and stunt markers. Layout version **4** excludes incompatible old times and ghosts while preserving earned paints, medals and badges. Nine marked alternate lines, three per venue, occupy side lanes of the existing road. They provide speed and a one-time committed-line reward; they are not separate elevated tracks.
+The live map distinguishes the player and three color-matched rivals, shows progress and finish, and marks stunt locations. Nine alternate lines occupy side lanes of the existing road; they are not separate elevated tracks. Layout version **5** excludes incompatible old times and ghosts while retaining earned paints, medals and badges.
 
-## Driving and opponent behavior
+## Objectives and ghost clarity
 
-High-speed steering changes wheel angle and lateral response without disabling boost or flight. Bounded cornering slip, body roll and tire sound provide grip feedback. Releasing steering settles lateral movement. The original simultaneous-input and ramp-safety expectations still pass.
+Every venue offers three sequential career cups: **podium finish**, **first place**, then **first place without damage**. The garage explains the next objective, the live HUD shows the required pass or condition, and results state whether the cup was earned and what comes next. A run awards at most one cup. The nine-cup career is stored per venue; daily and friend challenges do not advance it. Optional time/gate ratings are separate from the career objective.
 
-Three deterministic opponents use the same integrator, energy system, obstacle contacts and ramp trajectories as the player. Their decisions anticipate moving obstacles, maintain separation, yield and overtake, and include short hesitations. Pace does not change with player position; cars do not teleport to catch up. They are **non-contact opponents**: the player does not receive damage from touching a rival. Slipstream requires an aligned opponent ahead on the road and provides bounded reserve and speed assistance.
+The twelve objective-browser checks verify the initial briefing, layout separation at 844×390 and 568×320, live objective feedback, fourth-place failure, podium and victory progression, persistence, damaged-versus-clean victories, daily isolation and actual ghost rendering. The career reducer also rejects duplicate rewards and sanitizes invalid local progress.
 
-The dynamics suite checks all three venues under three event seeds. Every opponent finishes with full condition and clears the venue's ramps; close passes preserve the tested vehicle separation. It also checks deterministic motion at 30/60/120 Hz, stable finish rankings, branch rewards, drift recovery, tunnel ceiling transients and opponent rendering limits.
+Recorded ghosts now use a **three-draw cyan hologram**: a translucent scanned shell, contour lines and a floating **GHOST / PASS THROUGH** label. They cast no shadow and fade near the player. Solid AI opponents remain opaque. A personal or shared ghost is a recorded time reference and intentionally has no physical collision.
 
-## Daily events, links and replay
+## Solid opponent contact
 
-The feature-browser suite verifies:
+Three rivals use the same integrator, energy system, hazards and ramps as the player, with predictive avoidance, passing decisions and deterministic hesitations. Their pace does not depend on player rank. Their shared lightweight rendering remains **eight instanced draw batches**.
 
-- Selected-venue-first startup, guarded starts during uncached venue loading, and cancellation that restores the chosen venue without leaving the loader visible.
-- Daily venue/seed selection, race position, opponent map colors, and daily results that preserve ordinary course records.
-- Daily ghost links retaining their event and deterministic seed, plus separate friend-challenge and event outcomes.
-- Explicit replay capturing finish position, advancing visible playback without altering records, preserving manual-flight pitch and sky-gate rolls, and completing rolls without a backward spin.
-- Bounded shareable ghost links, imported venue/target display, Enter starting the correct challenge, and replay/share actions fitting a landscape results screen.
+A swept contact solver now prevents cars from passing through one another. Bumper contact matches closing speed; side contact separates bodies. AI yields afterward, and a rival rear-ending the player cannot accelerate the player into hazards. Contact uses bounded inelastic response, preserves steering and boost, and does not remove condition bars. A short padded sound and contact message distinguish it from a damaging track collision.
 
-Daily events derive their venue, objective and rival timing from the UTC day. They use the authored tracks. Link payloads contain a recorded ghost and optional event metadata; they do not require an account or upload service. Payload checks reject malformed coordinates, times, lengths and incompatible layouts. They are not authenticated competitive records or an anti-cheat system.
+Regressions cover rear and side impacts, high-speed swept crossings, three-car crowding at a road edge, vertical clearance, and repeatable contact at 12/30/60/120 Hz. Ramp and assisted-flight contacts preserve vertical/stunt trajectories and deck limits. All opponents finish each venue safely across three seeds, and the original full-condition/all-gate gold runs still pass.
 
-Replay opens only when requested and shows the final ten seconds, or the available shorter duration. Silent clip capture is also explicit. Unit checks cover recorder cleanup and failure paths. An actual browser capture downloaded a **1,911,519-byte** clip; Chrome playback verified **960 × 540**, **9.96 seconds**, **300 decoded frames**, **zero dropped frames**, and 42/42 sampled frames nonblack, with no playback errors. Canvas capture and MediaRecorder support vary across browsers. No microphone or camera is used; no result, link or video is posted automatically.
+## Car and lighting refinement
 
-## Car, scenery and rendering budget
+The current racing car has **72,913 triangles across 56 meshes**, excluding its hidden showroom interior. Body, glazing, lights, wheel detail and integrated thruster housings remain locally generated; lighter opponent geometry avoids duplicating the garage model.
 
-The rebuilt racing car has **79,097 triangles across 56 meshes**, excluding its hidden showroom interior. Continuous body surfaces, fitted glazing, integrated wheel arches, revised lights and wheels, and incorporated thruster housings replace the earlier assembled appearance. The three opponents use lighter shared geometry in **eight instanced draw batches**, without additional lights or downloaded textures.
+Pooled point lights fade to zero before moving to their next road position. Emissive glow placement and the follow-shadow reference use the actual road elevation. This addresses illumination jumps and detached lighting on changing terrain without adding lights or changing controls.
 
-Each venue now has a stronger landmark sequence: storm-gallery and maritime structures at Breakwater, layered canyon and mine scenery at Redshift, and dense freight infrastructure at Nightshift. Marked lane choices, route signage and distinct final-district hazards provide variety. Scanned asphalt, wet-road roughness, HDR reflections, textured rock surfaces, eroded terrain tiles and vegetation remain locally bundled. World-space exhaust ribbons preserve the actual driven path; pooled debris, smoke and suspension response remain active for crashes and landings.
+The source and packaged continuity checks compared images **2 mm apart** across twelve handoff boundaries. Worst mean pixel change was **0.0644 on a 0–255 scale**; at most **0.01% of pixels** changed by more than **32/255**. These are targeted static continuity measurements, not a frame-rate benchmark or proof that every lighting condition is artifact-free. Visual review also caught and fixed overlap between the ghost timing label and obstacle warning, and between the garage keyboard guide and career briefing.
 
-Startup constructs and renders only the selected venue. Remaining venues are prepared incrementally in the garage or results screen, not during a race. A player selecting an unprepared venue sees a loading state; subsequent selections reuse prepared geometry and textures. Starts are guarded during transitions, stale asynchronous requests cannot start a different race, and background preparation restores the selected venue after failure.
+## Ramps, daily events and replay
 
-Near/far geometry, district culling and nearby spans of instanced scenery limit rendering work. AUTO resolution uses two-second windows and gradual recovery. The phone ceiling is 1.25 device pixels per CSS pixel with a floor of 0.8; desktop AUTO has a ceiling of 1.75. Mobile/low shadows use 1024 pixels; explicit HIGH and LOW remain available. Rendering stops while the page is hidden.
+Ramp contact samples a wheelbase-sized support plane, catches downward crossings, rejects entry through tall sides and aligns orientation to the rendered deck. Flips begin after the vehicle clears the lip. Complementary simulation checks cover 12/24/30/60/120 Hz, held flight, steering, braking and side entry; rendered checks measure the actual wheel/bumper envelope.
 
-The final venue benchmark measured the selected menu ready in **697 ms**. Selecting unprepared Redshift took **1,874.4 ms** and unprepared Nightshift took **284.3 ms**. The six subsequent cached switches took **4.6–7.8 ms**; all retained **153 geometries and 17 textures** across those prepared menu views. These measurements include construction, shader preparation and the first rendered frame. Uncached selection still causes a visible wait, and shader caches, GPU drivers and browser scheduling affect these timings.
+Separate actuator state drives underside lift, opposing perimeter attitude jets, rear acceleration jets and suction fans. Automatic landing fires the underside outlets, while opposing pulses arrest rotation. Collective belly thrust stays off while inverted or in unpowered freefall. Primary references remain [Tesla Roadster](https://www.tesla.com/roadster) and [Tesla — The Ramp](https://www.youtube.com/watch?v=7p5LxFdc-Qg); exact geometry and control laws are original game interpretations. No marketing images are distributed.
 
-At an **844×390** viewport with **DPR 1.25**, nine representative race checkpoints submitted **159,065–327,041 triangles** and **122–203 draw calls**. Browser animation-frame intervals were **8.33–8.50 ms on the desktop GPU**. These are not physical-phone measurements or GPU timing queries. Additional district resources became resident as previously unseen track sections rendered; the final sampled renderer counters were **781 geometries and 58 textures**, so the 153/17 menu figures are not a whole-race memory limit.
+The sixteen feature-browser checks cover selected-venue-first loading, cancellation and guarded starts; UTC daily venue/seed selection; separate daily records; imported ghost links; explicit replay without modifying results; manual-flight and sky-gate-roll continuity; and landscape replay/share actions. A daily friend challenge preserves its event seed and reports both outcomes.
 
-No phone frame-rate, thermal or memory guarantee is inferred from these samples. Route peak draw counts and checkpoint profiles describe specific cameras and quality settings rather than a maximum for every scene. The final packaged HTML is **1,395,147 bytes gzip**.
+Ghost links contain bounded, validated local trajectory data. No account or upload service is required; they are not authenticated competitive records or an anti-cheat system. Replay is explicit and shows up to the final ten seconds. Silent clip capture is also explicit; Node checks cover cancellation, recorder failure, size limits and graphics-error cleanup. This v6 verification does not claim a newly repeated downloaded-video playback result. Browser capture/codec support varies; no microphone, camera or automatic posting is used.
 
-## Ramp and thruster safety
+## Performance policy and remaining limits
 
-Ramp support samples a wheelbase-sized plane, catches downward deck crossings, rejects entry through tall sides and aligns the car with the rendered deck normal. Flips begin after the whole car clears the lip. Simulation checks cover the thirteen ramps at complementary 12/24/30/60/120 Hz rates, held flight, steering, braking, side entry, finite states and gentle landing. The rendered ramp suite confirms actual wheel/bumper clearance rather than relying only on centre height.
+Startup prepares the selected venue first. Other venues prepare incrementally in the garage or results screen, never during racing. An uncached selection can still visibly wait; cached selections reuse geometry and textures. Near/far geometry, district culling and nearby spans of instanced scenery limit work. AUTO pixel density remains bounded from 0.8 to the device-limited mobile ceiling of 1.25, with gradual recovery; desktop AUTO caps at 1.75. Mobile/low shadows use 1024 pixels. Rendering stops while hidden.
 
-Separate actuator state drives underside lift jets, opposing perimeter attitude jets, rear acceleration jets and suction fans. Automatic landing activates the underside outlets, while opposing pulses brake rotation. Collective belly thrust stays off while inverted or in unpowered freefall. Plumes follow each nozzle's body orientation.
+The final local Chrome profile at **844×390 / DPR 1.25** sampled three locations per venue: **123–204 draw calls** and **155,003–322,345 triangles**. Browser frame intervals were 8.33–8.34 ms on this desktop GPU; this is browser cadence, not a measured physical-phone GPU time. A separate venue benchmark became ready in **657 ms**; the first Redshift/Nightshift switches took **408.3/253.2 ms**, and the six cached switches took **1.5–7.7 ms**. Cached switching held at 155 geometries and 17 textures in that benchmark. These timings are local observations, not guaranteed network or phone load times.
 
-Primary references remain [Tesla Roadster](https://www.tesla.com/roadster) and [Tesla — The Ramp](https://www.youtube.com/watch?v=7p5LxFdc-Qg). Exact nozzle placement and control laws are original game interpretations. This is an independent fan game with assisted arcade physics, not manufacturer CAD or a full rigid-body simulation. Reference images are not distributed in the game.
+Verified layouts include 1280×720 desktop, 844×390, 667×375 and 568×320 landscape, and 390×844 and 320×568 portrait. Portrait pauses with deliberate resume. Simultaneous Shift/arrows/Space, independent synthetic touch pointers, and suppression of selection/context menus/scrolling pass. QA records are isolated from personal progress.
 
-## Layout and remaining limits
-
-Validated viewports: 1280×720 desktop; 844×390, 667×375 and 568×320 landscape; 390×844 and 320×568 portrait. The HUD, map and controls stay in bounds without critical overlap. Portrait pauses and requires deliberate resume. Shift/arrows/Space work simultaneously, independent synthetic touch pointers pass, and selection, context menus and touch scrolling remain suppressed. QA uses isolated records rather than overwriting personal progress.
-
-Physical iPhone Safari and Android Chrome still require sustained multitouch, safe-area/browser-chrome, thermal, memory and battery testing. Desktop emulation does not establish phone frame rates. Automated complete races establish feasibility rather than human enjoyment. Records remain browser-local, and neither live multiplayer nor a server leaderboard is included.
+**Physical iPhone Safari and Android Chrome remain unverified.** Sustained multitouch, browser chrome/safe areas, thermal behavior, battery use, memory limits and real mobile frame pacing still need hardware testing. Automated completion establishes feasibility rather than human enjoyment. Records are browser-local; no live multiplayer or server leaderboard is included.

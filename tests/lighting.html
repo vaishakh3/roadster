@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <title>Roadster lighting regression</title>
+  <style>
+    body {
+      background: #132127;
+      color: #fff;
+      margin: 16px;
+      font: 15px system-ui;
+    }
+    button {
+      padding: 12px;
+      margin: 0 8px 8px 0;
+    }
+    iframe {
+      width: 1180px;
+      max-width: 100%;
+      height: 664px;
+      border: 0;
+      display: block;
+    }
+    pre {
+      white-space: pre-wrap;
+    }
+  </style>
+  <h1>Road lighting continuity</h1>
+  <p>
+    Tests finite world geometry, conforming road overlays, grounded container
+    tiers and 12 night-light handoffs. Default renders the production build; add
+    <code>?source=1</code> to render source.
+  </p>
+  <button id="run" disabled>Run lighting checks</button>
+  <button data-id="breakwater" data-d="390" disabled>Coastal road</button>
+  <button data-id="redshift" data-d="1280" disabled>Quarry road</button>
+  <button data-id="nightshift" data-d="2550" disabled>Wet terminal</button>
+  <pre id="status" aria-live="polite">Loading…</pre>
+  <iframe title="Roadster lighting test scene"></iframe>
+  <script type="module">
+    import * as THREE from "../vendor/three.module.js";
+    import { createCoast } from "../coast.js";
+    import { COURSES } from "../courses.js";
+    import { createRun, roadY } from "../run.js";
+
+    const frame = document.querySelector("iframe"),
+      status = document.querySelector("#status");
+    frame.src = new URLSearchParams(location.search).has("source")
+      ? "../?qa=1"
+      : "../dist/?qa=1";
+    let game;
+    const assert = (condition, message) => {
+      if (!condition) throw new Error(message);
+    };
+
+    function structuralChecks() {
+      const reports = [];
+      for (const course of COURSES) {
+        const start = performance.now(),
+          scene = new THREE.Scene();
+        const world = createCoast(
+          scene,
+          { shadowMap: { enabled: true } },
+          course,
+        );
+        try {
+          let meshes = 0,
+            vertices = 0,
+            pools = 0,
+            shadow,
+            stacks;
+          const lights = [];
+          world.root.traverse((o) => {
+            if (o.isMesh) {
+              meshes++;
+              vertices += o.geometry.attributes.position.count;
+              for (const name of ["position", "normal"]) {
+                const a = o.geometry.attributes[name];
+                if (a)
+                  for (const value of a.array)
+                    assert(
+                      Number.isFinite(value),
+                      `${course.id}: non-finite ${name}`,
+                    );
+              }
+            }
+            if (o.userData.role === "road-contact-shadow") shadow = o;
+            if (o.userData.role === "pooled-dock-light") lights.push(o);
+            if (o.userData.role === "grounded-container-stacks") stacks = o;
+            if (o.userData.roadOverlay) {
+              pools++;
+              const a = o.geometry.attributes.position;
+              for (let i = 0; i < a.count; i++)
+                assert(
+                  Math.abs(a.getY(i) - roadY(-a.getZ(i), course) - 0.065) <
+                    0.0001,
+                  `${course.id}: pool intersects grade`,
+                );
+            }
+          });
+          let stackInstances = 0;
+          if (stacks) {
+            const matrix = new THREE.Matrix4(),
+              points = [],
+              keys = new Set();
+            const key = (x, y, z) =>
+              [x, y, z].map((v) => v.toFixed(2)).join(":");
+            for (let i = 0; i < stacks.count; i++) {
+              stacks.getMatrixAt(i, matrix);
+              const x = matrix.elements[12],
+                y = matrix.elements[13],
+                z = matrix.elements[14];
+              points.push([x, y, z]);
+              keys.add(key(x, y, z));
+            }
+            for (const [x, y, z] of points) {
+              const tier = Math.round((y - roadY(-z, course) - 1.15) / 3);
+              assert(tier >= 0 && tier <= 2, "Invalid container tier");
+              if (tier > 0)
+                assert(keys.has(key(x, y - 3, z)), "Floating container tier");
+            }
+            stackInstances = points.length;
+          }
+          const s = createRun(course);
+          for (const d of [3, 245, 850, 1430, 2512, course.length - 350]) {
+            s.d = d;
+            s.y = 0;
+            world.update(s, 0, 25);
+            const a = shadow.geometry.attributes.position;
+            for (let i = 0; i < a.count; i++)
+              assert(
+                Math.abs(a.getY(i) - roadY(-a.getZ(i), course) - 0.075) <
+                  0.0001,
+                `${course.id}: shadow intersects grade`,
+              );
+          }
+          let handoffs = 0,
+            maxRelocationIntensity = 0;
+          for (let d = 90; lights.length && d < course.length; d += 60) {
+            s.d = d - 0.001;
+            world.update(s, 0, 25);
+            const before = lights.map((l) => ({
+              index: l.userData.lampIndex,
+              intensity: l.intensity,
+            }));
+            s.d = d + 0.001;
+            world.update(s, 0, 25);
+            lights.forEach((l, i) => {
+              if (l.userData.lampIndex !== before[i].index) {
+                handoffs++;
+                const intensity = Math.max(l.intensity, before[i].intensity);
+                maxRelocationIntensity = Math.max(
+                  maxRelocationIntensity,
+                  intensity,
+                );
+                assert(intensity < 0.000001, "Visible point light relocates");
+              }
+            });
+          }
+          reports.push({
+            course: course.id,
+            meshes,
+            vertices,
+            pools,
+            shadowVertices: shadow.geometry.attributes.position.count,
+            stackInstances,
+            handoffs,
+            maxRelocationIntensity,
+            buildMs: Math.round(performance.now() - start),
+          });
+        } finally {
+          world.dispose();
+        }
+      }
+      return reports;
+    }
+
+    async function pose(id, d) {
+      game.home();
+      await game.selectCourse(id);
+      game.start();
+      game.freeze();
+      game.setState({
+        d,
+        x: 0,
+        y: 0,
+        speed: 60,
+        time: 25,
+        sector: 1,
+        airborne: false,
+        lifting: false,
+        processed: new Set(),
+        flight: null,
+        attachedRamp: -1,
+      });
+      game.step(0);
+    }
+
+    async function renderChecks() {
+      await pose("nightshift", 150);
+      const source = frame.contentDocument.querySelector("#scene"),
+        probe = document.createElement("canvas");
+      probe.width = 160;
+      probe.height = 90;
+      const ctx = probe.getContext("2d", { willReadFrequently: true });
+      const capture = (d) => {
+        game.setState({ d });
+        game.step(0);
+        ctx.drawImage(source, 0, 0, 160, 90);
+        return ctx.getImageData(0, 0, 160, 90).data;
+      };
+      let maxMean = 0,
+        maxLarge = 0;
+      const samples = [];
+      for (const d of [
+        90, 150, 210, 270, 390, 450, 630, 750, 870, 1170, 1530, 2130,
+      ]) {
+        const a = capture(d - 0.001),
+          b = capture(d + 0.001);
+        let sum = 0,
+          large = 0,
+          luminance = 0;
+        for (let i = 0; i < a.length; i += 4) {
+          const delta =
+            (Math.abs(a[i] - b[i]) +
+              Math.abs(a[i + 1] - b[i + 1]) +
+              Math.abs(a[i + 2] - b[i + 2])) /
+            3;
+          sum += delta;
+          if (delta > 32) large++;
+          luminance += a[i] + a[i + 1] + a[i + 2];
+        }
+        assert(luminance > 160 * 90 * 3, "Blank frame cannot pass continuity");
+        const mean = sum / (160 * 90),
+          fraction = large / (160 * 90);
+        maxMean = Math.max(maxMean, mean);
+        maxLarge = Math.max(maxLarge, fraction);
+        assert(mean < 1 && fraction < 0.01, `Abrupt illumination at ${d}m`);
+        samples.push({
+          d,
+          mean: +mean.toFixed(4),
+          changedPixels: +fraction.toFixed(4),
+        });
+      }
+      return {
+        maxMeanPixelDelta: +maxMean.toFixed(4),
+        maxLargeChangeFraction: +maxLarge.toFixed(4),
+        samples,
+      };
+    }
+
+    const poll = setInterval(() => {
+      game = frame.contentWindow.__breakwater;
+      if (game) {
+        clearInterval(poll);
+        game.freeze();
+        status.textContent = "Ready";
+        for (const button of document.querySelectorAll("button"))
+          button.disabled = false;
+      }
+    }, 100);
+    for (const button of document.querySelectorAll("[data-id]"))
+      button.onclick = async () => {
+        await pose(button.dataset.id, +button.dataset.d);
+        status.textContent = `${button.textContent}: ${game.drawCalls} draw calls / ${game.triangles} triangles`;
+      };
+    document.querySelector("#run").onclick = async () => {
+      try {
+        status.textContent = "Checking geometry and rendered light boundaries…";
+        const geometry = structuralChecks(),
+          rendering = await renderChecks();
+        status.textContent = JSON.stringify(
+          { result: "PASS", geometry, rendering },
+          null,
+          2,
+        );
+      } catch (error) {
+        status.textContent = "FAIL: " + error.stack;
+      }
+    };
+  </script>
+</html>

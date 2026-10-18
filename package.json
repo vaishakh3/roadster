@@ -1,10 +1,10 @@
 {
   "name": "roadster-world-tour",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "description": "Three authored Roadster racing arenas, a World Tour, moving hazards, course records and personal ghosts",
   "scripts": {
     "start": "node scripts/serve.mjs",
-    "test": "node tests/run.test.mjs && node tests/dynamics.test.mjs && node tests/challenges.test.mjs && node tests/sharing.test.mjs",
+    "test": "node tests/run.test.mjs && node tests/dynamics.test.mjs && node tests/challenges.test.mjs && node tests/sharing.test.mjs && node tests/missions.test.mjs",
     "build": "node scripts/build.mjs",
     "test:browser": "node tests/browser-qa.cjs"
   },

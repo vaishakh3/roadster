@@ -13,6 +13,14 @@ import {
 import { clipSupported, createClip } from "./replay-clip.js";
 import { flightActuators } from "./propulsion.js";
 import { createCar } from "./car.js";
+import { createGhost } from "./ghost.js";
+import {
+  cupsEarned,
+  nextMission,
+  missionStatus,
+  missionPassed,
+  awardMission,
+} from "./missions.js";
 import { loadVisualAssets } from "./surfaces.js";
 import {
   COURSES,
@@ -75,6 +83,9 @@ let film = null,
   venueRequest = 0;
 const todayEvent = dailyEvent();
 let records = storage.get("roadster-records", {});
+let career = storage.get("roadster-career", {});
+if (!career || typeof career !== "object" || Array.isArray(career)) career = {};
+let mission = nextMission(career, course.id);
 if (!records || typeof records !== "object" || Array.isArray(records))
   records = {};
 let paintIndex = storage.get("roadster-paint", 0);
@@ -153,6 +164,7 @@ function start() {
   }
   run = createRun(course);
   run.eventSeed = activeEvent?.seed || 0;
+  mission = nextMission(career, course.id);
   rivalField?.reset();
   film = null;
   effects.reset();
@@ -173,7 +185,7 @@ function start() {
       ? activeEvent.description
       : incomingChallenge && raceMode === "challenge"
         ? "CHASE THE CHALLENGER GHOST"
-        : "THREE RIVALS · FIND YOUR LINE",
+        : mission.title,
     "READY",
     1.5,
   );
@@ -387,6 +399,21 @@ function refreshBest() {
     daily.name + (dailyRecord?.passed ? " ✓" : " ↗");
   $("start-daily").title = daily.description + " Resets at 00:00 UTC.";
   const best = records[course.id];
+  const target = nextMission(career, course.id);
+  $("contract-tier").textContent = target.mastered
+    ? "ALL CUPS WON / DEFEND YOUR TITLE"
+    : `NEXT OBJECTIVE / ${target.name}`;
+  $("contract-title").textContent = target.title;
+  $("contract-detail").textContent = target.detail;
+  $("contract-progress").textContent = `${target.earned} / 3 CUPS WON`;
+  if (incomingChallenge?.courseId === course.id) {
+    $("contract-tier").textContent = "FRIEND CHALLENGE / RECORDED GHOST";
+    $("contract-title").textContent =
+      "BEAT " + formatTime(incomingChallenge.time);
+    $("contract-detail").textContent =
+      "Race the cyan hologram. It is a time reference you can pass through.";
+    $("contract-progress").textContent = "ONE GHOST / ONE TARGET TIME";
+  }
   $("personal-best").textContent =
     best?.layout === LAYOUT_VERSION && best?.time
       ? `BEST ${formatTime(best.time)} / ${num(best.score)} PTS / ${["", "BRONZE", "SILVER", "GOLD"][best.medal]}`
@@ -405,8 +432,8 @@ function refreshBest() {
     .join("");
   const total = completedCount(records);
   $("tour-record").textContent =
-    total +
-    " / 3 COURSES COMPLETED" +
+    COURSES.reduce((sum, c) => sum + cupsEarned(career, c.id), 0) +
+    " / 9 CAREER CUPS" +
     (storage.get("roadster-tour-best", 0)
       ? " / TOUR BEST " + num(storage.get("roadster-tour-best", 0))
       : "");
@@ -418,7 +445,7 @@ function refreshBest() {
   $("paint").setAttribute(
     "aria-label",
     total === 0
-      ? "Pearl paint. Complete a course to unlock more finishes"
+      ? "Launch Red paint. Complete a course to unlock more finishes"
       : "Change unlocked paint finish",
   );
   $("paint").title =
@@ -462,6 +489,13 @@ function endRun() {
   setPhase("results");
   const rank = rankRun(run),
     complete = !run.failed;
+  const careerRace = !activeEvent && raceMode !== "challenge";
+  const contractPassed = careerRace && missionPassed(mission, run);
+  if (careerRace) {
+    const reward = awardMission(career, course.id, mission, run);
+    career = reward.career;
+    if (reward.awarded) storage.set("roadster-career", career);
+  }
   $("result-kicker").textContent = complete
     ? tour
       ? `WORLD TOUR / STAGE ${tour.index + 1} OF 3`
@@ -470,7 +504,11 @@ function endRun() {
   $("result-title").innerHTML = complete
     ? tour && tour.index === 2
       ? "TOUR<br /> COMPLETE."
-      : "COURSE<br /> COMPLETE."
+      : (run.finishPosition || run.position) === 1
+        ? "VICTORY."
+        : (run.finishPosition || run.position) <= 3
+          ? "PODIUM<br /> FINISH."
+          : "FOURTH<br /> PLACE."
     : run.reason === "THE BRIDGE WAS OUT"
       ? "MISSED THE<br /> TAKEOFF."
       : "END OF<br /> THE RUN.";
@@ -564,6 +602,18 @@ function endRun() {
       ? $("record-message").textContent + " · " + challengeResult
       : challengeResult;
   }
+  if (careerRace) {
+    $("result-kicker").textContent =
+      `${course.name} / ${contractPassed ? (mission.mastered ? "TITLE DEFENDED" : mission.name + " SECURED") : mission.short + " / NOT YET"}`;
+    if (complete) {
+      const next = nextMission(career, course.id);
+      $("result-tip").textContent = contractPassed
+        ? next.mastered
+          ? "ALL THREE CUPS WON. Take on another venue or challenge a friend."
+          : `CUP WON. Next objective: ${next.title.toLowerCase()}.`
+        : `${mission.title}. ${mission.clean && run.hull < 3 ? "You took damage. Keep all three condition bars intact." : "Draft behind a rival to refill thrust, then boost past."}`;
+    }
+  }
   $(tour && complete ? "next-stage" : "retry").focus({ preventScroll: true });
   audio.update(run, false);
 }
@@ -615,6 +665,8 @@ function tick(dt) {
       ].includes(e.type)
     )
       toast(e.text, e.type, e.points);
+    else if (e.type === "contact")
+      toast("RIVAL CONTACT / HOLD YOUR LINE", "contact");
   }
   if (run.failed) controls.clear();
   if (run.finished) endRun();
@@ -627,6 +679,25 @@ function hud(force = false) {
   $("race-position").textContent = run.position || 4;
   $("draft-label").textContent =
     run.drafting > 0.1 ? "SLIPSTREAM" : run.drift > 0.25 ? "GRIP SLIDE" : "";
+  const objective = missionStatus(mission, run);
+  $("objective-title").textContent = activeEvent
+    ? activeEvent.name
+    : raceMode === "challenge"
+      ? "BEAT THE GHOST"
+      : mission.short;
+  $("objective-detail").textContent = activeEvent
+    ? activeEvent.kind === "precision"
+      ? `${run.gates} / ${course.gates.length} GATES · REACH THE FINISH`
+      : activeEvent.kind === "clean"
+        ? `${run.hull} / 3 CONDITION · REACH THE FINISH`
+        : `FINISH TOP 3 · BEAT ${formatTime(course.gold)}`
+    : raceMode === "challenge"
+      ? "BEAT " + formatTime(incomingChallenge.time)
+      : objective.text;
+  $("race-target").classList.toggle(
+    "on-target",
+    !activeEvent && raceMode !== "challenge" && objective.good,
+  );
   const branch =
     run.branch ||
     course.branches?.find((b) => b.start > run.d && b.start - run.d < 150);
@@ -872,11 +943,11 @@ function updateVisuals(dt, snap = false, visual = run) {
     ghost.rotation.y = -Math.atan(roadSlope(d, course));
     ghost.visible =
       Math.abs(d - visual.d) < 220 &&
-      Math.abs(d - visual.d) > 4 &&
       visual.time < samples[samples.length - 1][0];
+    ghost.userData.setProximity(Math.hypot(d - visual.d, gx - visual.x));
     $("ghost-delta").hidden = false;
     $("ghost-delta").textContent =
-      (challenger ? "CHALLENGER / " : "PERSONAL GHOST / ") +
+      (challenger ? "CHALLENGER GHOST / " : "PERSONAL GHOST / ") +
       (visual.d >= d ? "AHEAD " : "BEHIND ") +
       Math.abs(visual.d - d).toFixed(0) +
       " M";
@@ -1466,27 +1537,7 @@ async function boot() {
     scene.add(car);
     car.userData.interior.visible = false;
     car.userData.setDetail(!qualityLow && phase === "home");
-    ghost = new THREE.Group();
-    const ghostMaterial = new THREE.MeshBasicMaterial({
-      color: 0x98ffdb,
-      transparent: true,
-      opacity: 0.22,
-      depthWrite: false,
-      wireframe: false,
-    });
-    for (const part of car.children) {
-      if (
-        !part.isMesh ||
-        ![car.userData.paintMaterial, car.userData.glassMaterial].includes(
-          part.material,
-        )
-      )
-        continue;
-      const shell = new THREE.Mesh(part.geometry, ghostMaterial);
-      shell.position.copy(part.position);
-      shell.rotation.copy(part.rotation);
-      ghost.add(shell);
-    }
+    ghost = createGhost(car);
     scene.add(ghost);
     ghost.visible = false;
 
@@ -1722,6 +1773,20 @@ async function boot() {
         },
         get records() {
           return records;
+        },
+        get career() {
+          return { ...career };
+        },
+        get mission() {
+          return { ...mission };
+        },
+        get ghostAppearance() {
+          return {
+            name: ghost.name,
+            visible: ghost.visible,
+            draws: ghost.children.length,
+            shadows: ghost.children.some((n) => n.castShadow),
+          };
         },
         get trailHistory() {
           return effects.trails;

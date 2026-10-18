@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { COURSES } from "../courses.js";
 import { createRun, stepRun } from "../run.js";
-import { updateDraft, rivalInput } from "../rivals.js";
+import {
+  updateDraft,
+  rivalInput,
+  resolveRivalContacts,
+  RIVAL_CONTACT,
+} from "../rivals.js";
+import { rampContact, launchFlight, flightPose } from "../stunts.js";
 import { driveInput } from "./driver.js";
 import { createRivalField } from "../rivals-mesh.js";
 import * as THREE from "../vendor/three.module.js";
@@ -223,5 +229,189 @@ test("Three opponent cars reuse eight draw batches and reset releases visible in
   assert.equal(field.root.visible, false);
   field.dispose();
   assert.equal(scene.children.length, 0);
+});
+
+function contactPair() {
+  const s = createRun(clearCourse),
+    r = s.rivals[0];
+  s.rivals = [r];
+  Object.assign(s, { d: 100, x: 0, speed: 76 });
+  Object.assign(r, { d: 104.9, x: 0, speed: 32 });
+  return [s, r];
+}
+function captureContactStart(...cars) {
+  for (const c of cars) {
+    c.contactPrevD = c.d;
+    c.contactPrevX = c.x;
+    c.contactPrevY = c.y;
+  }
+}
+function separated(a, b, tolerance = 0.012) {
+  return (
+    Math.abs(a.y - b.y) >= RIVAL_CONTACT.height ||
+    Math.abs(a.x - b.x) >= RIVAL_CONTACT.width - tolerance ||
+    Math.abs(a.d - b.d) >= RIVAL_CONTACT.length - tolerance
+  );
+}
+
+test("Solid bumper contact prevents driving through an opponent without damage or a steering lock", () => {
+  const [s, r] = contactPair();
+  for (let i = 0; i < 60; i++) {
+    stepRun(s, { boost: true }, 1 / 120);
+    assert(separated(s, r));
+    assert(s.speed >= 27 && s.speed <= 90 && r.speed >= 27 && r.speed <= 90);
+  }
+  assert(s.contacts > 0 && s.events.some((e) => e.type === "contact"));
+  assert.equal(s.hull, 3);
+  assert.equal(r.hull, 3);
+  const x = s.x;
+  advance(s, { steer: -1, boost: true }, 0.4);
+  assert(s.x < x - 2 && s.boosting);
+});
+
+test("Side contact separates visible bodies and damps only closing lateral motion", () => {
+  const [s, r] = contactPair();
+  Object.assign(r, { d: 100, x: 2.05, vx: -3 });
+  s.vx = 8;
+  captureContactStart(s, r);
+  const speeds = [s.speed, r.speed];
+  resolveRivalContacts(s);
+  assert(separated(s, r));
+  assert.equal(s.contactKind, "side");
+  assert(s.vx >= -3 && s.vx <= 8 && r.vx >= -3 && r.vx <= 8);
+  assert.deepEqual([s.speed, r.speed], speeds);
+  assert.equal(s.y, 0);
+  assert.equal(s.hull, 3);
+});
+
+test("An opponent rear-ending the player yields without pushing the player into hazards", () => {
+  const [s, r] = contactPair();
+  Object.assign(s, { speed: 48 });
+  Object.assign(r, { d: 95.5, speed: 76 });
+  captureContactStart(s, r);
+  resolveRivalContacts(s);
+  assert.equal(s.d, 100);
+  assert.equal(s.speed, 48);
+  assert(r.d <= s.d - RIVAL_CONTACT.length + 0.01 && r.speed <= s.speed);
+  assert(r.contactYield > 0);
+  assert.equal(s.hull, 3);
+});
+
+test("Swept contacts catch a crossing within one step without reversed or explosive impulses", () => {
+  const [s, r] = contactPair();
+  Object.assign(s, { d: 100, speed: 140 });
+  Object.assign(r, { d: 106, speed: 30 });
+  captureContactStart(s, r);
+  s.d = 114;
+  r.d = 109;
+  resolveRivalContacts(s);
+  assert(r.d - s.d >= RIVAL_CONTACT.length - 0.01);
+  for (const c of [s, r])
+    assert(c.speed >= 30 && c.speed <= 140 && Number.isFinite(c.d));
+});
+
+test("Flying over a car stays clear while same-height aerial contact preserves the stunt trajectory", () => {
+  const [s, r] = contactPair();
+  r.d = s.d;
+  s.y = 5.8;
+  captureContactStart(s, r);
+  resolveRivalContacts(s);
+  assert.equal(s.contacts, 0);
+  assert.equal(s.x, 0);
+  const ramp = COURSES[0].ramps[0];
+  for (const c of [s, r]) {
+    c.d = ramp.d + 30;
+    c.flight = launchFlight(ramp, 65);
+    const pose = flightPose(c.flight, 0, c.d, 65);
+    Object.assign(c, {
+      y: pose.y,
+      vy: pose.vy,
+      stuntAngle: pose.angle,
+      flightPitch: pose.pitch,
+      airborne: true,
+    });
+  }
+  const before = [
+    s.y,
+    s.vy,
+    s.stuntAngle,
+    s.flight.clean,
+    r.y,
+    r.vy,
+    r.stuntAngle,
+    r.flight.clean,
+  ];
+  captureContactStart(s, r);
+  resolveRivalContacts(s);
+  assert(separated(s, r));
+  assert(s.contacts > 0);
+  assert.deepEqual(
+    [
+      s.y,
+      s.vy,
+      s.stuntAngle,
+      s.flight.clean,
+      r.y,
+      r.vy,
+      r.stuntAngle,
+      r.flight.clean,
+    ],
+    before,
+  );
+});
+
+test("Contact on grip ramps respects deck bounds and preserves automatic launch and landing", () => {
+  for (const course of COURSES) {
+    const ramp = course.ramps[0],
+      s = createRun({ ...course, obstacles: [], gates: [] }),
+      r = s.rivals[0];
+    s.rivals = [r];
+    Object.assign(s, { d: ramp.d - ramp.length + 10, x: ramp.x, speed: 65 });
+    Object.assign(r, { d: s.d + 4, x: ramp.x, speed: 32 });
+    for (const c of [s, r]) {
+      c.attachedRamp = 0;
+      c.y = rampContact(ramp, c.d).height;
+    }
+    while (s.d < ramp.land + 3 && !s.failed) {
+      stepRun(s, { boost: true }, 1 / 120);
+      if (s.attachedRamp >= 0) {
+        assert(Math.abs(s.y - rampContact(ramp, s.d).height) < 0.001);
+        assert(Math.abs(s.x - ramp.x) < ramp.width / 2 - 1.11);
+      }
+    }
+    assert(s.contacts > 0);
+    assert.equal(s.launches, 1);
+    assert.equal(s.stunts, 1);
+    assert(!s.failed && s.hull === 3);
+  }
+});
+
+test("Three-car contact against a road edge stays inside the road and leaves body clearance", () => {
+  const s = createRun(clearCourse);
+  s.rivals = s.rivals.slice(0, 2);
+  const cars = [s, ...s.rivals];
+  cars.forEach((c, i) =>
+    Object.assign(c, { d: 100, x: [8.7, 7, 5.5][i], speed: 50 }),
+  );
+  captureContactStart(...cars);
+  resolveRivalContacts(s);
+  for (const c of cars)
+    assert(Math.abs(c.x) <= 8.85 && Number.isFinite(c.vx) && c.hull === 3);
+  for (let i = 0; i < cars.length; i++)
+    for (let j = i + 1; j < cars.length; j++)
+      assert(separated(cars[i], cars[j]));
+});
+
+test("Repeated contact remains deterministic at 12,30,60,120Hz and clears after an overtake", () => {
+  const results = [12, 30, 60, 120].map((hz) => {
+    const [s, r] = contactPair();
+    advance(s, { boost: true }, 1, hz);
+    advance(s, { boost: true, steer: -0.55 }, 1, hz);
+    assert(s.contacts > 0 && s.hull === 3 && r.hull === 3);
+    assert(separated(s, r));
+    return [s.d, s.x, s.speed, r.d, r.x, r.speed, s.contacts];
+  });
+  for (const result of results)
+    result.forEach((v, i) => assert(Math.abs(v - results[3][i]) < 0.00001));
 });
 console.log(`${count} race dynamics checks passed.`);

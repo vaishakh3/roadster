@@ -90,7 +90,8 @@ export function boulderGeometry(segments = 28, rings = 20, mesa = false) {
       y + (mesa ? 0.07 : 0.12) * Math.sin(x * 4 + z * 3),
       z * n * strata * cut,
     );
-    const shade = 0.91 + 0.09 * Math.sin(y * 17 + Math.sin(angle * 3));
+    const contact = .78 + .22 * smooth(Math.max(0, Math.min(1, (y + .8) / .7)));
+    const shade = (.91 + .09 * Math.sin(y * 17 + Math.sin(angle * 3))) * contact;
     colors.push(shade, shade, shade);
   }
   g.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));

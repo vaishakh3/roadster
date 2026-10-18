@@ -106,36 +106,46 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     if (x1 > x2) [x1, x2] = [x2, x1];
     const pos = [],
       uvs = [],
+      normals = [],
       idx = [];
-    let n = 0;
-    for (let d = start; d < end; d += 4) {
-      const e = Math.min(end, d + 4);
-      if (skip && (gap(d + 0.01) || gap(e - 0.01))) continue;
-      pos.push(
-        roadX(d) + x1,
-        roadY(d) + y,
-        -d,
-        roadX(d) + x2,
-        roadY(d) + y,
-        -d,
-        roadX(e) + x1,
-        roadY(e) + y,
-        -e,
-        roadX(e) + x2,
-        roadY(e) + y,
-        -e,
-      );
-      idx.push(n, n + 1, n + 2, n + 1, n + 3, n + 2);
-      n += 4;
+    const steps = Math.ceil((end - start) / 4);
+    // Shared stations and analytic road normals remove the four-metre seams
+    // that used to split specular highlights into abruptly changing bands.
+    for (let i = 0; i <= steps; i++) {
+      const d = Math.min(end, start + i * 4),
+        slope = (roadY(d + 0.05) - roadY(d - 0.05)) / 0.1;
+      const n = Math.hypot(1, slope);
+      for (const x of [x1, x2]) {
+        pos.push(roadX(d) + x, roadY(d) + y, -d);
+        uvs.push(x * 0.5, -d * 0.5);
+        normals.push(0, 1 / n, slope / n);
+      }
+      if (i < steps) {
+        const next = Math.min(end, d + 4);
+        if (!skip || (!gap(d + 0.01) && !gap(next - 0.01))) {
+          const a = i * 2;
+          idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+        }
+      }
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    for (let i = 0; i < pos.length; i += 3)
-      uvs.push((i % 12 < 3 || i % 12 === 6 ? x1 : x2) * 0.5, pos[i + 2] * 0.5);
     g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    g.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
     g.setIndex(idx);
-    g.computeVertexNormals();
     return mesh(g, m);
+  }
+  function conformingPatch(width, depth, d, x, lift, rows = 12) {
+    const g = new THREE.PlaneGeometry(width, depth, 4, rows),
+      p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const offset = p.getX(i),
+        at = d + p.getY(i);
+      p.setXYZ(i, roadX(at) + x + offset, roadY(at) + lift, -at);
+    }
+    g.computeVertexNormals();
+    g.computeBoundingSphere();
+    return g;
   }
   function instances(g, m, items) {
     items = [...items].sort((a, b) => a.d - b.d);
@@ -171,7 +181,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   ribbon(-10, 10, 0, asphalt);
   for (const s of [-1, 1]) {
     ribbon(s * 9.15, s * 9.3, 0.025, edge);
-    ribbon(s * 10.25, s * 10.8, 0.04, night ? violet : orange);
+    ribbon(s * 10.35, s * 10.48, 0.04, night ? violet : orange);
   }
   const studs = [],
     dash = [],
@@ -441,7 +451,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       positions = [],
       uv = [],
       idx = [];
-    const rampMaterial = roadMaterial(false);
+    const rampMaterial = roadMaterial(false, "ramp");
     rampMaterial.color.setHex(0x65868a);
     for (let i = 0; i <= 48; i++) {
       const d = r.d - len + (i / 48) * len,
@@ -746,20 +756,28 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     }
     if (coast) {
       const crowns = [];
-      for (let i = 0; i < Math.ceil(length / 24); i++) {
-        const d = i * 24 - 150,
-          x = -92 - (i % 4) * 12,
-          h = 6 + (i % 5) * 1.3;
-        // Trees rooted on the first shoreline ridge, never over the track.
-        const ground = terrainHeight(d, Math.abs(x), -1, false, roadY);
-        for (const rotation of [0, Math.PI * 0.5])
-          crowns.push({
-            d,
-            x,
-            y: ground - roadY(d) + h * 0.5,
-            rotation,
-            scale: [h * 0.55, h, 1],
-          });
+      // Forest stands have openings and mixed ages instead of a single evenly
+      // spaced tree fence. Two crossed cutouts per tree keep the GPU cost small.
+      for (let cluster = 0; cluster < Math.ceil(length / 100); cluster++) {
+        const side = cluster % 4 === 0 ? 1 : -1;
+        for (let j = 0; j < 9; j++) {
+          const i = cluster * 9 + j,
+            n = Math.abs(Math.sin(i * 47.73));
+          const d = cluster * 100 + Math.sin(i * 3.17) * 38;
+          const x = side * (76 + n * 88),
+            h = 6.5 + Math.abs(Math.sin(i * 9.71)) * 9;
+          const ground = terrainHeight(d, Math.abs(x), side, false, roadY);
+          if (ground < 1.1) continue;
+          for (const rotation of [i * 2.39, i * 2.39 + Math.PI * 0.5])
+            crowns.push({
+              d,
+              x,
+              y: ground - roadY(d) + h * 0.5,
+              rotation,
+              scale: [h * (0.43 + n * 0.12), h, 1],
+              color: [0xbac6ab, 0xe2dbb6, 0xa7bc9c][i % 3],
+            });
+        }
       }
       instances(new THREE.PlaneGeometry(1, 1), pineMaterial(), crowns);
     }
@@ -837,9 +855,10 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   if (night) {
     const containers = [],
       ribs = [],
+      containerEdges = [],
       yardLines = [],
       bollards = [];
-    const apron = roadMaterial(false);
+    const apron = roadMaterial(false, "apron");
     apron.color.setHex(0x697681);
     apron.roughness = 0.68;
     const yardPaint = mat(0xa19a69, 0.9);
@@ -886,11 +905,18 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
 
     const containerRows = Math.ceil(length / 25) + 3;
     for (let i = 0; i < containerRows * 3; i++) {
-      const d = (i % containerRows) * 25 - 60,
-        side = i % 2 ? 1 : -1,
-        tier = Math.floor(i / containerRows),
-        x = side * (22 + (i % 3) * 5),
-        y = 1.6 + tier * 3.2;
+      const row = i % containerRows,
+        tier = Math.floor(i / containerRows);
+      // Every tier belongs to the same stack. The old global-index parity put
+      // upper tiers on the opposite side of the road, leaving floating boxes.
+      if (tier > row % 3) continue;
+      const d = row * 25 - 60,
+        side = row % 2 ? 1 : -1,
+        x = side * (22 + (row % 3) * 5),
+        y = 1.15 + tier * 3;
+      for (const z of [-6, 6])
+        for (const top of [-1, 1])
+          containerEdges.push({ d: d + z, x, y: y + top * 1.45 });
       containers.push({
         d,
         x,
@@ -906,7 +932,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
           scale: [1, 1, 1],
         });
     }
-    instances(
+    const containerMesh = instances(
       new THREE.BoxGeometry(3, 3, 12),
       new THREE.MeshStandardMaterial({
         color: 0xffffff,
@@ -917,7 +943,10 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       }),
       containers,
     );
+    containerMesh.castShadow = true;
+    containerMesh.userData.role = "grounded-container-stacks";
     instances(new THREE.BoxGeometry(0.06, 2.85, 0.13), metal, ribs);
+    instances(new THREE.BoxGeometry(3.05, 0.1, 0.14), metal, containerEdges);
     const facade = cityMaterial();
     for (let i = 0; i < Math.ceil(length / 145); i++) {
       const d = i * 145 - 200,
@@ -1015,27 +1044,46 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   poolContext.fillStyle = poolGradient;
   poolContext.fillRect(0, 0, 64, 64);
   const poolTexture = new THREE.CanvasTexture(poolCanvas);
+  const poolMaterials = [0x96cde0, 0xffc58d].map(
+    (color) =>
+      new THREE.MeshBasicMaterial({
+        color,
+        map: poolTexture,
+        transparent: true,
+        opacity: 0.085,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
+      }),
+  );
   for (let d = 30; d < length; d += night ? 60 : 125) {
-    const s = Math.floor(d / 60) % 2 ? 1 : -1,
+    const id = Math.floor(d / 60),
+      s = id % 2 ? 1 : -1,
       g = groupAt(d, s * 12);
     box(0.22, 10, 0.22, metal, 0, 5, 0, g);
     box(3.4, 0.22, 0.3, metal, -s * 1.6, 10, 0, g);
-    box(2.7, 0.07, 0.4, night ? violet : edge, -s * 1.6, 9.82, 0, g);
-    if (night) {
+    box(
+      2.7,
+      0.07,
+      0.4,
+      night ? (id % 2 ? amber : glow) : edge,
+      -s * 1.6,
+      9.82,
+      0,
+      g,
+    );
+    if (night && !gap(d)) {
+      // Flat decals cut through crests and disappear on grades. These bounded
+      // 12-segment pools follow the same road height/curve as their receiver.
       const glowPlane = mesh(
-        new THREE.PlaneGeometry(12, 27),
-        new THREE.MeshBasicMaterial({
-          color: d % 120 ? 0x618eb2 : 0xa47df0,
-          map: poolTexture,
-          transparent: true,
-          opacity: 0.12,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-        }),
-        g,
+        conformingPatch(12, 27, d, s * 4, 0.065),
+        poolMaterials[id % 2],
       );
-      glowPlane.rotation.x = -Math.PI / 2;
-      glowPlane.position.set(-s * 6, 0.08, 0);
+      glowPlane.userData.roadOverlay = true;
+      glowPlane.userData.lampDistance = d;
+      glowPlane.userData.clearance = 0.065;
       lamps.push(glowPlane);
     }
   }
@@ -1114,10 +1162,32 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   const water = mesh(
     new THREE.PlaneGeometry(24000, 24000),
     new THREE.ShaderMaterial({
-      uniforms: { time: { value: 0 }, night: { value: night ? 1 : 0 } },
+      uniforms: {
+        time: { value: 0 },
+        night: { value: night ? 1 : 0 },
+        skyScan: { value: surfaces.sky || null },
+        hasScan: { value: surfaces.sky ? 1 : 0 },
+      },
       vertexShader:
         "varying vec3 w;void main(){vec4 v=modelMatrix*vec4(position,1.);w=v.xyz;gl_Position=projectionMatrix*viewMatrix*v;}",
-      fragmentShader: `varying vec3 w;uniform float time;uniform float night;void main(){vec2 p=w.xz;float a=sin(p.x*.075+p.y*.11+time*.8);float b=sin(p.x*.17-p.y*.09-time*.6);float c=sin(p.x*.4+p.y*.28+time);vec3 n=normalize(vec3(a*.22+b*.09,1.,b*.16+c*.045));vec3 v=normalize(cameraPosition-w);vec3 l=normalize(vec3(-.6,.23,-1.));float spec=pow(max(0.,dot(reflect(-l,n),v)),90.);float fres=pow(1.-max(0.,dot(n,v)),3.);vec3 color=mix(vec3(.025,.17,.21),vec3(.19,.36,.4),fres)+vec3(.8,.65,.4)*spec*.65;color=mix(color,color*.25+vec3(.01,.025,.045),night);float fog=1.-exp(-distance(cameraPosition.xz,p)*.0014);color=mix(color,mix(vec3(.61,.74,.76),vec3(.09,.15,.2),night),fog);gl_FragColor=vec4(color,1.);}`,
+      fragmentShader: `varying vec3 w;uniform float time;uniform float night;uniform sampler2D skyScan;uniform float hasScan;
+      void main(){
+        vec2 p=w.xz;
+        float a=sin(p.x*.075+p.y*.11+time*.8),b=sin(p.x*.17-p.y*.09-time*.6),c=sin(p.x*.4+p.y*.28+time);
+        vec3 n=normalize(vec3(a*.17+b*.07,1.,b*.13+c*.035));
+        vec3 v=normalize(cameraPosition-w),l=normalize(vec3(-.6,.23,-1.));
+        float spec=pow(max(0.,dot(reflect(-l,n),v)),100.);
+        float fres=.08+.82*pow(1.-max(0.,dot(n,v)),4.);
+        vec3 reflection=mix(vec3(.28,.43,.48),vec3(.045,.08,.13),night);
+        if(hasScan>.5&&night<.5){vec3 r=reflect(-v,n);vec2 uv=vec2(atan(r.z,r.x)/6.283185+.5,.76+clamp(r.y,0.,1.)*.23);reflection=texture2D(skyScan,uv).rgb*.8;}
+        vec3 deep=mix(vec3(.018,.095,.12),vec3(.008,.025,.045),night);
+        vec3 color=mix(deep,reflection,fres)+vec3(.8,.65,.4)*spec*.45*(1.-night);
+        float fog=1.-exp(-distance(cameraPosition.xz,p)*.00125);
+        color=mix(color,mix(vec3(.5,.62,.64),vec3(.06,.1,.14),night),fog);
+        gl_FragColor=vec4(color,1.);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
     }),
   );
   water.rotation.x = -Math.PI / 2;
@@ -1136,15 +1206,16 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   Object.assign(sun.shadow.camera, {
-    left: -26,
-    right: 26,
-    top: 36,
-    bottom: -20,
+    left: -42,
+    right: 42,
+    top: 78,
+    bottom: -26,
     near: 1,
     far: 320,
   });
   sun.shadow.bias = -0.0006;
-  sun.shadow.normalBias = 0.05;
+  sun.shadow.normalBias = 0.035;
+  sun.shadow.intensity = night ? 0.72 : 0.88;
   root.add(sun, sun.target);
   const headlights = new THREE.SpotLight(
     night ? 0xb5eaff : 0xffffff,
@@ -1164,6 +1235,8 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
         58,
         1.3,
       );
+      light.userData.lampIndex = NaN;
+      light.userData.role = "pooled-dock-light";
       root.add(light);
       dockLights.push(light);
     }
@@ -1260,14 +1333,16 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 128, 128);
   const shadow = mesh(
-    new THREE.PlaneGeometry(4.2, 6.7),
+    conformingPatch(4.2, 6.7, 0, 0, 0.075, 6),
     new THREE.MeshBasicMaterial({
       map: new THREE.CanvasTexture(canvas),
       transparent: true,
       depthWrite: false,
     }),
   );
-  shadow.rotation.x = -Math.PI / 2;
+  shadow.userData.role = "road-contact-shadow";
+  shadow.frustumCulled = false;
+  const shadowPosition = shadow.geometry.attributes.position;
   dynamics.add(shadow);
   const particlePool = Array.from({ length: 96 }, () => ({
     life: 0,
@@ -1505,21 +1580,49 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       sun.target.position.set(x, y, -s.d - 20);
       headlights.position.set(x, y + s.y + 1.1, -s.d - 2);
       headlights.target.position.copy(worldPos(s.d + 28, s.x, 0.05));
-      headlights.intensity = night && !s.flight && !s.failed ? 95 : 0;
-      dockLights.forEach((l, i) => {
-        const d = Math.floor(s.d / 60) * 60 + 30 + i * 60,
-          side = i % 2 ? 1 : -1;
-        l.position.copy(worldPos(d, side * 10, 8));
-      });
+      headlights.intensity =
+        night && !s.failed
+          ? 95 * (1 - THREE.MathUtils.smoothstep(s.y, 1, 6))
+          : 0;
+      // Each slot stays on a real lamp until it has faded completely out.
+      // Previously every light teleported sixty metres at once, causing road
+      // gradients to abruptly disappear/reappear. Three slots cover near field.
+      const first = Math.floor((s.d - 30) / 60) - 1;
+      for (let i = 0; i < dockLights.length; i++) {
+        const l = dockLights[i],
+          index = first + ((((i - first) % 3) + 3) % 3),
+          d = 30 + index * 60;
+        if (l.userData.lampIndex !== index) {
+          l.userData.lampIndex = index;
+          const side = index % 2 ? 1 : -1;
+          l.position.set(roadX(d) + side * 10.4, roadY(d) + 9.8, -d);
+          l.color.setHex(index % 2 ? 0xffc58d : 0x96cde0);
+        }
+        const rel = d - s.d;
+        const fadeIn = 1 - THREE.MathUtils.smoothstep(rel, 30, 60);
+        const fadeOut = THREE.MathUtils.smoothstep(rel, -120, -75);
+        l.intensity =
+          d >= 0 && d < length && !gap(d) ? 18 * fadeIn * fadeOut : 0;
+      }
       if (rain) {
         rain.position.set(x, y, -s.d);
         rain.material.uniforms.time.value = time;
       }
-      shadow.position.set(x, y + 0.055, -s.d);
-      shadow.visible = !gap(s.d);
-      shadow.material.opacity = Math.max(0, 0.64 - s.y / 18);
-      shadow.rotation.z = Math.atan(roadSlope(s.d));
-      shadow.scale.setScalar(Math.min(2, 1 + s.y * 0.06));
+      const shadowScale = Math.min(2, 1 + s.y * 0.06);
+      for (let i = 0; i < shadowPosition.count; i++) {
+        const col = i % 5,
+          row = Math.floor(i / 5),
+          at = s.d + (3.35 - (row * 6.7) / 6) * shadowScale;
+        shadowPosition.setXYZ(
+          i,
+          roadX(at) + s.x + (col / 4 - 0.5) * 4.2 * shadowScale,
+          roadY(at) + 0.075,
+          -at,
+        );
+      }
+      shadowPosition.needsUpdate = true;
+      shadow.visible = !gap(s.d) && s.y < 12;
+      shadow.material.opacity = Math.max(0, 0.43 - s.y / 28);
       for (const { group, index } of gateMeshes) {
         group.visible =
           !s.processed.has("g" + index) &&

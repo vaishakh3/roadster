@@ -582,7 +582,7 @@ export function hazardPose(o, time) {
   };
 }
 export const PAINTS = [
-  { name: "PEARL", color: 0xf1f1e9, required: 0 },
+  { name: "LAUNCH RED", color: 0xb90824, required: 0 },
   { name: "SOLAR", color: 0xe95126, required: 1 },
   { name: "GLACIER", color: 0x5cc6c9, required: 2 },
   { name: "MIDNIGHT", color: 0x373a55, required: 3 },
@@ -594,7 +594,7 @@ export function badgesFor(s) {
     s.finished && s.gates === s.course.gates.length,
   ];
 }
-export const LAYOUT_VERSION = 4;
+export const LAYOUT_VERSION = 5;
 export function saveResult(records, s, ghost = []) {
   if (!s.finished) return { records, record: false };
   const old = records[s.course.id] || {},

@@ -138,7 +138,11 @@ export function createSound() {
       );
     },
     event(type) {
-      if (type === "land") {
+      if (type === "contact") {
+        // A short padded bump, distinctly quieter than a damage collision.
+        burst(0.075, 320, 0.14);
+        tone(105, 0.08, 0.055);
+      } else if (type === "land") {
         burst(0.16, 420, 0.38);
         tone(62, 0.16, 0.13);
       } else if (type === "draft") {
