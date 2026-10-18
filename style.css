@@ -2357,6 +2357,9 @@ body[data-course="port"] {
 #course-select [data-course="nightshift"] {
   background-image: url("assets/venues/nightshift.png");
 }
+#course-select [data-course="mcgregor"] {
+  background-image: url("assets/venues/mcgregor.png");
+}
 .home-bottom {
   display: contents;
 }

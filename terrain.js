@@ -28,6 +28,18 @@ function fbm(x, y) {
   );
 }
 export function terrainHeight(d, offset, side, canyon, roadY) {
+  if (canyon === "range") {
+    // Central Texas prairie: nearly flat, a soft swell, a distant rise.
+    return (
+      roadY(d) -
+      0.42 +
+      Math.min(offset, 6) * 0.08 +
+      fbm(d * 0.004, offset * 0.003 + side) * 2.6 +
+      Math.max(0, offset - 150) * 0.018 +
+      smooth(Math.min(1, Math.max(0, offset - 220) / 300)) *
+        (14 + fbm(d * 0.002 + 3, offset * 0.003) * 12)
+    );
+  }
   if (canyon) {
     // Erosion works at three scales: broad buttresses, a steep stratified face,
     // and narrow gullies. Shared sampling keeps LOD/chunk borders watertight.
@@ -214,8 +226,9 @@ export function createTerrainChunk({
     colors = [],
     normals = [],
     idx = [];
-  const base = new THREE.Color(canyon ? 0x79503b : 0x566057),
-    top = new THREE.Color(canyon ? 0xd0ad87 : 0x6d7b47);
+  const range = canyon === "range";
+  const base = new THREE.Color(range ? 0x8a8562 : canyon ? 0x79503b : 0x566057),
+    top = new THREE.Color(range ? 0xd3cba4 : canyon ? 0xd0ad87 : 0x6d7b47);
   const sample = (d, o) => terrainHeight(d, o, side, canyon, roadY);
   for (let j = 0; j <= rows; j++)
     for (let i = 0; i <= cols; i++) {
@@ -230,7 +243,8 @@ export function createTerrainChunk({
       const dx = (roadX(d + 0.2) - roadX(d - 0.2)) / 0.4;
       const n = new THREE.Vector3(-dyx, 1, dyd - dyx * dx).normalize();
       normals.push(n.x, n.y, n.z);
-      const band = canyon
+      const band =
+        canyon && !range
         ? 0.42 +
           0.16 * Math.sin(y * 0.37 + noise(d * 0.007, offset * 0.01)) +
           noise(d * 0.08, offset * 0.07) * 0.1

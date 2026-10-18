@@ -111,6 +111,7 @@ let coached = storage.get("roadster-coached", false) === true,
   coachTimer = 0,
   coachShown = 0,
   coachGate = false;
+const TOUR_STAGES = 3;
 const totalCups = () =>
   COURSES.reduce((sum, c) => sum + cupsEarned(career, c.id), 0);
 let ghostOn = storage.get("roadster-ghost", false) === true,
@@ -463,7 +464,8 @@ function selectCourse(id, keepLoading = false) {
       : "");
   $("start").querySelector("span").textContent =
     incomingChallenge?.courseId === course.id ? "RACE THE GHOST" : "RACE HERE";
-  $("venue-index").textContent = course.number + " / 03";
+  $("venue-index").textContent =
+    course.number + " / " + String(COURSES.length).padStart(2, "0");
   $("course-location").textContent = course.number + " / " + course.location;
   $("course-description").textContent = course.subtitle;
   $("route-meta").textContent =
@@ -618,7 +620,7 @@ function refreshBest() {
   const total = completedCount(records);
   $("tour-record").textContent =
     COURSES.reduce((sum, c) => sum + cupsEarned(career, c.id), 0) +
-    " / 9 CAREER CUPS" +
+    ` / ${COURSES.length * 3} CAREER CUPS` +
     (storage.get("roadster-tour-best", 0)
       ? " / TOUR BEST " + num(storage.get("roadster-tour-best", 0))
       : "");
@@ -668,7 +670,7 @@ function beginTour() {
 function nextStage() {
   if (!tour || !run.finished || document.body.dataset.preparing === "true")
     return;
-  if (tour.index >= 2) {
+  if (tour.index >= TOUR_STAGES - 1) {
     home();
     return;
   }
@@ -702,11 +704,11 @@ function endRun() {
   }
   $("result-kicker").textContent = complete
     ? tour
-      ? `WORLD TOUR / STAGE ${tour.index + 1} OF 3`
+      ? `WORLD TOUR / STAGE ${tour.index + 1} OF ${TOUR_STAGES}`
       : course.name + " / FINISH"
     : `${(run.d / 1000).toFixed(2)} KM INTO THE CROSSING.`;
   $("result-title").innerHTML = complete
-    ? tour && tour.index === 2
+    ? tour && tour.index === TOUR_STAGES - 1
       ? "TOUR<br /> COMPLETE."
       : (run.finishPosition || run.position) === 1
         ? "VICTORY."
@@ -769,10 +771,12 @@ function endRun() {
   }
   $("next-stage").hidden = !tour || !complete;
   $("next-stage").innerHTML =
-    tour?.index === 2 ? "TOUR GARAGE " + GO_ICON : "NEXT COURSE " + GO_ICON;
+    tour?.index === TOUR_STAGES - 1
+      ? "TOUR GARAGE " + GO_ICON
+      : "NEXT COURSE " + GO_ICON;
   $("tour-summary").hidden = !tour;
   $("tour-summary").textContent = tour
-    ? `WORLD TOUR / ${tour.stages.length} OF 3 FINISHED / ${num(tour.score)} TOTAL POINTS`
+    ? `WORLD TOUR / ${tour.stages.length} OF ${TOUR_STAGES} FINISHED / ${num(tour.score)} TOTAL POINTS`
     : "";
   $("result-badges").innerHTML = ["FINISH", "NO DAMAGE", "ALL GATES"]
     .map(
@@ -786,7 +790,7 @@ function endRun() {
         "</span>",
     )
     .join("");
-  if (tour && complete && tour.index === 2) {
+  if (tour && complete && tour.index === TOUR_STAGES - 1) {
     const old = storage.get("roadster-tour-best", 0);
     if (tour.score > old) storage.set("roadster-tour-best", tour.score);
     $("result-tip").textContent =

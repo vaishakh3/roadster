@@ -33,8 +33,11 @@ import { COURSES, hazardPose } from "./courses.js";
 export function createCoast(scene, renderer, course = COURSES[0]) {
   const root = new THREE.Group();
   scene.add(root);
+  // "range" (McGregor) reuses the desert pipeline with a flat prairie, no
+  // mesas, and a test-site skyline instead of canyon walls.
   const night = course.theme === "port",
-    canyon = course.theme === "canyon",
+    range = course.theme === "range",
+    canyon = course.theme === "canyon" ? true : range ? "range" : false,
     coast = !night && !canyon;
   const roadX = (d) => routeX(d, course),
     roadSlope = (d) => routeSlope(d, course),
@@ -54,7 +57,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   const mat = (color, roughness = 0.8, metalness = 0) =>
     new THREE.MeshStandardMaterial({ color, roughness, metalness });
   const concrete = concreteMaterial(
-      night ? 0x344653 : canyon ? 0x99795e : 0xc4cbc3,
+      night ? 0x344653 : range ? 0xb5b0a2 : canyon ? 0x99795e : 0xc4cbc3,
     ),
     edge = mat(0xe4dcc8),
     dark = mat(0x12232b),
@@ -702,8 +705,12 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
         side = cluster % 2 ? 1 : -1,
         a = (Math.sin(i * 91.31) * 43758.54) % 1,
         n = Math.abs(a);
-      const h = canyon ? 1.5 + n * n * 12 : 2 + n * n * 13,
-        x = side * (canyon ? 24 + n * 18 : 58 + n * 40);
+      const h = range
+          ? 0.5 + n * n * 2.2
+          : canyon
+            ? 1.5 + n * n * 12
+            : 2 + n * n * 13,
+        x = side * (range ? 34 + n * 40 : canyon ? 24 + n * 18 : 58 + n * 40);
       rocks.push({
         d,
         x,
@@ -723,9 +730,9 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       });
     }
     const stoneMat = rockMaterial(canyon);
-    stoneMat.color.setHex(canyon ? 0xb38d6c : 0x7d8877);
+    stoneMat.color.setHex(range ? 0xa39b86 : canyon ? 0xb38d6c : 0x7d8877);
     const crags = [];
-    if (canyon) {
+    if (canyon === true) {
       for (let i = 0; i < Math.ceil(length / 185); i++) {
         const d = i * 185 + 80,
           side = i % 2 ? 1 : -1,
@@ -780,7 +787,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     // Small gravel does not need a district draw per cluster. The shared row
     // is windowed by instance count, freeing draws for dimensional vegetation.
     instances(lowGeo, stoneMat, gravel);
-    if (canyon) {
+    if (canyon === true) {
       const mesa = boulderGeometry(32, 28, true),
         mesaLow = boulderGeometry(16, 14, true);
       for (let i = 0; i < Math.ceil(length / 330); i++) {
@@ -1633,6 +1640,58 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   water.rotation.x = -Math.PI / 2;
   water.position.y = canyon ? -30 : -1;
   dynamics.add(water);
+  if (range) {
+    // McGregor test range: stands, tanks, hangar, water tower, flood masts.
+    const slab = mat(0xb9b4a6, 0.9),
+      darkSteel = mat(0x3a4044, 0.6, 0.4),
+      tankWhite = mat(0xeceee9, 0.35, 0.1),
+      hazardRed = mat(0xc9412f, 0.7),
+      lamp = new THREE.MeshStandardMaterial({
+        color: 0xf2f4ef,
+        emissive: 0x9cffe5,
+        emissiveIntensity: 0.7,
+      });
+    const stands = [],
+      towers = [],
+      tanks = [],
+      masts = [],
+      lamps = [];
+    for (let i = 0; i < 4; i++) {
+      const d = 1480 + i * 210,
+        side = i % 2 ? 1 : -1;
+      stands.push({ d, x: side * 72, y: 15 });
+      towers.push({ d: d + 9, x: side * 72, y: 21 });
+      for (let k = 0; k < 3; k++)
+        tanks.push({ d: d - 22 + k * 9, x: side * 92, y: 8 });
+    }
+    for (let k = 0; k < 6; k++)
+      tanks.push({ d: 5120 + k * 11, x: -78, y: 8 });
+    for (let i = 0; i < 16; i++) {
+      const d = 320 + i * 340,
+        side = i % 2 ? -1 : 1;
+      masts.push({ d, x: side * 15.5, y: 13 });
+      lamps.push({ d, x: side * 15.5, y: 26.3 });
+    }
+    instances(new THREE.BoxGeometry(14, 30, 14), slab, stands);
+    instances(new THREE.BoxGeometry(5, 42, 5), darkSteel, towers);
+    instances(new THREE.CylinderGeometry(3.2, 3.2, 16, 14), tankWhite, tanks);
+    instances(new THREE.CylinderGeometry(0.35, 0.55, 26, 8), darkSteel, masts);
+    instances(new THREE.BoxGeometry(3.2, 1.2, 1.4), lamp, lamps);
+    const box = (geometry, material, d, x, y) => {
+      const m = new THREE.Mesh(geometry, material);
+      m.position.copy(worldPos(d, x, y));
+      m.rotation.y = -Math.atan(roadSlope(d));
+      m.castShadow = false;
+      m.receiveShadow = true;
+      root.add(m);
+      return m;
+    };
+    box(new THREE.BoxGeometry(64, 18, 42), slab, 4330, -118, 9);
+    box(new THREE.BoxGeometry(12, 5, 9), slab, 560, -22, 2.5);
+    box(new THREE.CylinderGeometry(1, 1, 30, 8), darkSteel, 2480, 92, 15);
+    box(new THREE.CylinderGeometry(6.5, 5, 8, 14), tankWhite, 2480, 92, 33);
+    box(new THREE.CylinderGeometry(0.5, 1.3, 72, 8), hazardRed, 3620, 124, 36);
+  }
   const hemi = new THREE.HemisphereLight(
     night ? 0x7fabc7 : 0xd5e9fa,
     canyon ? 0x8d6040 : 0x40555c,
