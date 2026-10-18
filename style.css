@@ -927,11 +927,16 @@ h1 b {
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   background: linear-gradient(90deg, #0b27336b, transparent);
   padding: 30px var(--pad);
   overflow-y: auto;
+}
+.sheet-inner,
+.result-inner {
+  margin-top: auto;
+  margin-bottom: auto;
 }
 .sheet-inner {
   width: min(900px, 100%);
@@ -3639,5 +3644,18 @@ body[data-phase="replay"] #shade {
   }
   #coach b {
     font-size: 14px;
+  }
+}
+
+#trim-note {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  font: 12px/1.4 Plex, monospace;
+  letter-spacing: 0.1em;
+  color: var(--mint);
+}
+@media (max-height: 360px) and (orientation: landscape) {
+  #trim-note {
+    display: none;
   }
 }
