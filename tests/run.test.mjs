@@ -407,6 +407,19 @@ test("Adaptive resolution is bounded, gradual and ignores background pauses", ()
   for (let i = 0; i < 3600; i++) ratio = budget.sample(1 / 60, ratio, 1.25);
   assert.equal(ratio, 1.15);
 });
+test("A device far below the frame budget still gets a lower resolution", () => {
+  const budget = new FrameBudget();
+  let ratio = 1.25;
+  for (let i = 0; i < 12; i++) ratio = budget.sample(0.2, ratio, 1.25);
+  assert.equal(ratio, 1.05);
+  for (let i = 0; i < 60; i++) ratio = budget.sample(0.2, ratio, 1.25);
+  assert.equal(ratio, 0.7);
+  assert.equal(budget.sample(0.2, ratio, 1.25), 0.7);
+  const gentle = new FrameBudget();
+  ratio = 1.25;
+  for (let i = 0; i < 600; i++) ratio = gentle.sample(1 / 30, ratio, 1.25);
+  assert.equal(ratio, 0.8);
+});
 test("Ground hazards trigger a visible directional impact and damage only once", () => {
   for (const kind of ["cargo", "rubble", "drums"]) {
     const c = COURSES.find((c) => c.obstacles.some((o) => o.kind === kind));
@@ -594,5 +607,58 @@ test("Timer never displays 00:60.0 at a minute boundary", () => {
   assert.equal(formatTime(59.99), "00:59.9");
   assert.equal(formatTime(60), "01:00.0");
   assert.equal(formatTime(60.1), "01:00.1");
+});
+test("Hovering directly over a live rival scores a flyover once per pass", () => {
+  const s = createRun();
+  const rival = s.rivals[0];
+  Object.assign(rival, { d: 400, x: 0, speed: 40, y: 0 });
+  for (const other of s.rivals.slice(1)) Object.assign(other, { d: 1200, x: 6 });
+  Object.assign(s, { d: 385, x: 0, y: 5.8, vy: 0, speed: 60, energy: 100 });
+  const shadow = (seconds) => {
+    for (let i = 0; i < seconds * 120; i++)
+      stepRun(
+        s,
+        { steer: Math.max(-1, Math.min(1, (rival.x - s.x) * 2)), fly: true, boost: true },
+        1 / 120,
+      );
+  };
+  shadow(3);
+  assert.equal(s.flyoverCount, 1);
+  assert(s.events.some((e) => e.type === "flyover" && e.points === 250));
+  shadow(1);
+  assert.equal(s.flyoverCount, 1);
+  const ground = createRun();
+  Object.assign(ground.rivals[0], { d: 400, x: 0, speed: 40 });
+  for (const other of ground.rivals.slice(1)) Object.assign(other, { d: 1200, x: 6 });
+  Object.assign(ground, { d: 385, x: 0, speed: 60 });
+  advance(ground, { boost: true }, 3);
+  assert.equal(ground.flyoverCount, 0);
+});
+test("A standard gamepad steers, boosts, flies, brakes and pauses", () => {
+  const actions = [];
+  const target = { addEventListener() {} };
+  const controls = createControls(target, (a) => actions.push(a), () => true);
+  const pads = [null, { connected: true, axes: [0.6], buttons: Array.from({ length: 17 }, () => ({ pressed: false })) }];
+  const previous = globalThis.navigator;
+  Object.defineProperty(globalThis, "navigator", { value: { getGamepads: () => pads }, configurable: true });
+  try {
+    controls.poll();
+    assert(controls.read().steer > 0.5 && controls.read().steer < 0.6);
+    pads[1].axes[0] = 0.05;
+    pads[1].buttons[14].pressed = true;
+    pads[1].buttons[7].pressed = true;
+    pads[1].buttons[6].pressed = true;
+    pads[1].buttons[1].pressed = true;
+    pads[1].buttons[9].pressed = true;
+    controls.poll();
+    assert.deepEqual(controls.read(), { steer: -1, boost: true, fly: true, brake: true });
+    controls.poll();
+    assert.deepEqual(actions, ["pause"]);
+    pads[1].connected = false;
+    controls.poll();
+    assert.deepEqual(controls.read(), { steer: 0, boost: false, fly: false, brake: false });
+  } finally {
+    Object.defineProperty(globalThis, "navigator", { value: previous, configurable: true });
+  }
 });
 console.log(`${count} gameplay/input checks passed.`);

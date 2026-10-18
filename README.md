@@ -35,18 +35,19 @@ Open `http://127.0.0.1:4173/`. Node.js 20+ is required for development. The buil
 
 ## Play
 
-| Action | Keyboard                            | Landscape phone                                |
-| ------ | ----------------------------------- | ---------------------------------------------- |
-| Steer  | ← / → or A / D                      | Left / right buttons                           |
-| Fly    | Hold Space or H; release to descend | Hold FLY; release to descend                   |
-| Boost  | Hold Shift or ↑ / W                 | Hold BOOST                                     |
-| Brake  | ↓ or S                              | Automatic cruise; steer and fly around hazards |
-| Pause  | Escape or P                         | Ⅱ                                              |
-| Retry  | R or result button                  | ONE MORE RUN                                   |
+| Action | Keyboard                            | Landscape phone                                | Gamepad (standard mapping) |
+| ------ | ----------------------------------- | ---------------------------------------------- | -------------------------- |
+| Steer  | ← / → or A / D                      | Left / right buttons                           | Left stick or D-pad        |
+| Fly    | Hold Space or H; release to descend | Hold FLY; release to descend                   | Hold LT or X               |
+| Boost  | Hold Shift or ↑ / W                 | Hold BOOST                                     | Hold RT or A               |
+| Brake  | ↓ or S                              | Automatic cruise; steer and fly around hazards | B                          |
+| Pause  | Escape or P                         | Ⅱ                                              | Start                      |
+| Retry  | R or result button                  | ONE MORE RUN                                   | Result button              |
 
-Steering, boost and flight work simultaneously. Each touch pointer owns its own control. Landing and takeoff never clear held inputs. Pause, focus loss and portrait rotation clear input so it cannot stick.
+Steering, boost and flight work simultaneously. Each touch pointer owns its own control. Landing and takeoff never clear held inputs. Pause, focus loss and portrait rotation clear input so it cannot stick. Gamepads are polled each frame through the Gamepad API, so unplugging one releases every control; the stick has an 18% dead zone and reports analog steering.
 
 - **Three rival drivers** race the same routes with the same energy, ramps and obstacle contacts. They anticipate traffic, choose passing lanes and occasionally hesitate. There is no position-based catch-up speed adjustment or catch-up teleporting. The HUD and map show the field; the result records a finishing position from 1 to 4. Opponents are solid: bumper contact matches closing speed and side contact separates the bodies. They yield to create passing room, while steering and boost remain available. Player-caused hard impacts remove one HP from each car, with an impact cooldown so sustained contact cannot drain health frame by frame. Gentle rubbing and AI rear-ending the player do not cost player HP. Ramp and assisted-flight contacts preserve stunt trajectories; track hazards still cause damage. Flying above a rival avoids contact when the bodies are vertically clear.
+- **Flyovers** recreate the reveal's hover over other cars: passing directly above a live rival while airborne scores 250 points, once per rival per flight. Vertical clearance still avoids contact.
 - **Slipstream** builds when following a grounded opponent at a safe distance in the same lane. It reduces wind noise, adds a modest speed benefit and replenishes reserve. Pull out to overtake; getting too close, moving aside or leaving the road breaks the wake.
 - **Nine alternate lines**, three per venue, use the existing road's side lanes. Follow the marked route for extra speed; a sustained ground line earns a one-time bonus. These are side-lane choices within a shared road, not separate elevated tracks. Barriers and traffic make the faster line a decision rather than a guaranteed shortcut.
 - **Mint gates** refill 30% thrust and reward an accurate line. Consecutive gates raise the multiplier to 4×. Air gates can award a visual barrel roll without taking away control.
@@ -66,7 +67,7 @@ Phones play in landscape. Portrait pauses the race, displays a rotation prompt a
 
 The loading screen shows a Roadster silhouette, completed preparation stages and an accessible percentage. Progress advances when surface assets, the car, the venue and its first rendered frame are ready; it is weighted preparation progress, not downloaded-byte progress or a timer. Shader preparation uses `compileAsync`; race starts are guarded until the first frame is ready. Long stages show a retry option, and errors have an explicit recovery screen.
 
-Settings include sound, quality, reduced camera motion, fullscreen and the personal ghost. Sound starts after a gesture. SAVE RUN CARD downloads a PNG. Records and ghosts stay in this browser and do not sync between devices. Private browsing or storage restrictions can prevent persistence without preventing play.
+Touch devices get short vibration cues for impacts, rival contact, launches and landings where the Vibration API exists; reduced camera motion also disables them. Settings include sound, quality, reduced camera motion, fullscreen and the personal ghost. Sound starts after a gesture. SAVE RUN CARD downloads a PNG. Records and ghosts stay in this browser and do not sync between devices. Private browsing or storage restrictions can prevent persistence without preventing play.
 
 ## Daily events, challenges and replays
 
@@ -82,7 +83,7 @@ Each arena has its own geometry, palette, lighting and landmarks. Nearby pines a
 
 Rigid scenery is batched by material and district, moving objects are batched within their groups, and distant districts are culled. Startup constructs and renders the selected venue first. Remaining venues are prepared incrementally while the garage or results screen is open, not during a race. Selecting an unprepared venue shows a loading state; cached selections reuse their geometry and textures. First-load time still depends on device speed and shader compilation. Shared compact WebP maps and a 512-pixel HDR keep the texture payload bounded; source-resolution originals remain in the repository. Long instance rows draw only a precomputed nearby span, updated every 80 metres. Tire tread uses surface shading, and the three opponent cars share eight instanced draw batches and three small driver-name sprites, without extra lights or downloaded textures.
 
-Mobile AUTO uses 1024-pixel shadows and adapts pixel density between 0.8 and its device-limited ceiling of 1.25 using two-second frame windows; it recovers slowly after sustained headroom. Desktop AUTO has a ceiling of 1.75; HIGH uses 2048-pixel shadows. HIGH and LOW are available manually. Rendering stops while the page is hidden. Desktop testing at phone-sized viewports does not establish actual phone frame rates, thermal behavior or memory limits. Physical iPhone and Android testing remains required. Startup and venue measurements depend on shader caches and hardware; uncached selection still has a visible loading state. Recorded rendering samples and their limits are in `tests/QA.md`.
+Mobile AUTO uses 1024-pixel shadows and adapts pixel density between 0.8 and its device-limited ceiling of 1.25 using two-second frame windows, starting from the countdown; a device averaging under 20 fps steps down twice as fast and may go to 0.7, and recovery is slow after sustained headroom. Desktop AUTO has a ceiling of 1.75; HIGH uses 2048-pixel shadows. HIGH and LOW are available manually. Rendering stops while the page is hidden. Desktop testing at phone-sized viewports does not establish actual phone frame rates, thermal behavior or memory limits. Physical iPhone and Android testing remains required. Startup and venue measurements depend on shader caches and hardware; uncached selection still has a visible loading state. Recorded rendering samples and their limits are in `tests/QA.md`.
 
 ## Source map
 

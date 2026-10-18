@@ -78,6 +78,8 @@ export function createRun(course = COURSES[0], options = {}) {
     reason: "",
     processed: new Set(),
     passedGaps: new Set(),
+    flyovers: new Set(),
+    flyoverCount: 0,
     events: [],
     roll: 0,
     rollTime: 0,
@@ -578,6 +580,27 @@ function tick(s, raw, dt) {
       finish(s, true, "TOO MUCH DAMAGE");
       return;
     }
+    // The reveal's signature moment: hovering over another car. A clear pass
+    // directly above a live rival is rewarded once per rival per flight.
+    if (s.airborne && s.y > 1.6) {
+      for (const rival of s.rivals) {
+        if (
+          !rival.failed &&
+          !rival.finished &&
+          Math.abs(s.x - rival.x) < 2.8 &&
+          s.y - rival.y > 1.6 &&
+          s.d - rival.d > 0 &&
+          s.d - rival.d < 6 &&
+          prevD - rival.d <= 0 &&
+          !s.flyovers.has(rival.id)
+        ) {
+          s.flyovers.add(rival.id);
+          s.flyoverCount++;
+          s.score += 250;
+          event(s, "flyover", "FLYOVER · HOVERED " + rival.name, 250);
+        }
+      }
+    } else if (s.flyovers.size) s.flyovers.clear();
     const previousPosition = s.position;
     updateRacePosition(s);
     if (s.position < previousPosition && s.time > 2 && !s.passCooldown) {

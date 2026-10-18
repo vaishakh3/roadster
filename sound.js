@@ -148,7 +148,11 @@ export function createSound() {
       } else if (type === "draft") {
         tone(294, 0.25, 0.09);
         tone(440, 0.32, 0.07, 0.08);
-      } else if (type === "branch" || type === "overtake") {
+      } else if (
+        type === "branch" ||
+        type === "overtake" ||
+        type === "flyover"
+      ) {
         tone(440, 0.2, 0.1);
         tone(659, 0.28, 0.08, 0.08);
       } else if (type === "gate" || type === "stunt") {
