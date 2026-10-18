@@ -587,6 +587,47 @@ export const PAINTS = [
   { name: "GLACIER", color: 0x5cc6c9, required: 2 },
   { name: "MIDNIGHT", color: 0x373a55, required: 3 },
 ];
+// Reveal trims. Multipliers only; the default trim is the untouched baseline
+// so records, rivals and tests keep their meaning.
+export const TRIMS = [
+  {
+    id: "performance",
+    name: "PERFORMANCE",
+    short: "BALANCED",
+    detail: "Factory balance of road speed and thrust reserve.",
+    required: 0,
+    boostSpeed: 76,
+    boostDrain: 20,
+    liftDrain: 12,
+    liftAccel: 24,
+    regen: 17,
+  },
+  {
+    id: "thrust",
+    name: "THRUST",
+    short: "FASTER BOOST, THIRSTIER",
+    detail: "Boost tops out at 79 m/s and refills faster on the road, but burns 25% more reserve.",
+    required: 3,
+    boostSpeed: 79,
+    boostDrain: 25,
+    liftDrain: 12,
+    liftAccel: 24,
+    regen: 21,
+  },
+  {
+    id: "rocket",
+    name: "ROCKET",
+    short: "LONGER FLIGHT, HEAVIER",
+    detail: "Lift is stronger and sips reserve; the heavier tanks cost 2 m/s of boost.",
+    required: 6,
+    boostSpeed: 74,
+    boostDrain: 20,
+    liftDrain: 9,
+    liftAccel: 30,
+    regen: 17,
+  },
+];
+export const trimFor = (id) => TRIMS.find((t) => t.id === id) || TRIMS[0];
 export function badgesFor(s) {
   return [
     s.finished,

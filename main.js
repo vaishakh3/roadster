@@ -30,6 +30,7 @@ import {
   completedCount,
   saveResult,
   LAYOUT_VERSION,
+  TRIMS,
 } from "./courses.js";
 import { createCoast } from "./coast.js";
 import { createControls, requiresLandscape } from "./controls.js";
@@ -91,6 +92,18 @@ let mission = nextMission(career, course.id);
 if (!records || typeof records !== "object" || Array.isArray(records))
   records = {};
 let paintIndex = storage.get("roadster-paint", 0);
+let trimIndex = storage.get("roadster-trim", 0);
+let saver = storage.get("breakwater-saver", false) === true,
+  renderDebt = 0;
+const perf = new URLSearchParams(location.search).has("perf"),
+  perfStats = { frames: 0, seconds: 0 };
+let coached = storage.get("roadster-coached", false) === true,
+  coachStep = 0,
+  coachTimer = 0,
+  coachShown = 0,
+  coachGate = false;
+const totalCups = () =>
+  COURSES.reduce((sum, c) => sum + cupsEarned(career, c.id), 0);
 let ghostOn = storage.get("roadster-ghost", false) === true,
   ghost,
   ghostIndex = 0,
@@ -153,6 +166,7 @@ function setPhase(value) {
   $("menu").hidden = value !== "paused";
   $("results").hidden = value !== "results";
   $("replay-view").hidden = value !== "replay";
+  $("coach").hidden = true;
   controls?.clear();
 }
 function showError(message) {
@@ -162,6 +176,8 @@ function showError(message) {
   $("error-message").textContent = message;
   setPhase("error");
 }
+const GO_ICON = '<i class="ico ico-go" aria-hidden="true"></i>';
+let lastBranchCue = "";
 function announce(small, title, duration = 2) {
   $("announcement-small").textContent = small;
   $("announcement-title").textContent = title;
@@ -174,6 +190,68 @@ function haptic(type) {
     navigator.vibrate?.(HAPTICS[type]);
   } catch {
     /* Vibration is optional. */
+  }
+}
+// First-run coaching: one hint at a time, shown when it is relevant, cleared
+// as soon as the player does the thing (or after a few seconds). Never shown
+// in daily events or friend challenges, and never again after a finished race.
+const COACH = [
+  {
+    after: 0.6,
+    timeout: 7,
+    text: () => (coarse() ? "HOLD BOOST TO GO FASTER" : "HOLD SHIFT OR ↑ TO BOOST"),
+    done: () => run.boosting,
+  },
+  {
+    after: 0.8,
+    timeout: 8,
+    text: () =>
+      coarse()
+        ? "HOLD FLY TO LIFT OFF · RELEASE TO LAND"
+        : "HOLD SPACE TO LIFT OFF · RELEASE TO LAND",
+    done: () => run.y > 1,
+  },
+  {
+    timeout: 6,
+    when: () =>
+      run.course.gates.some((g) => g.d - run.d > 15 && g.d - run.d < 80),
+    text: () => "MINT GATES REFILL THRUST · CHAIN THEM FOR ×4",
+    done: () => coachGate,
+  },
+  {
+    timeout: 5,
+    when: () =>
+      run.y < 0.5 &&
+      run.rivals.some((r) => !r.failed && r.d - run.d > 8 && r.d - run.d < 45),
+    text: () => "HOVER OVER A RIVAL FOR +250",
+    done: () => run.flyoverCount > 0,
+  },
+  {
+    timeout: 5,
+    when: () =>
+      run.course.ramps.some((r) => r.d - run.d > 25 && r.d - run.d < 100),
+    text: () => "MINT RAMP · HOLD THE LANE, THE CAR FLIPS ITSELF",
+    done: () => run.airborne,
+  },
+];
+function coachTick(dt) {
+  if (coached || activeEvent || raceMode === "challenge") return;
+  const step = COACH[coachStep];
+  if (!step) return;
+  coachTimer += dt;
+  if (coachShown) {
+    coachShown += dt;
+    if (step.done?.() || coachShown > step.timeout) {
+      $("coach").hidden = true;
+      coachStep++;
+      coachTimer = coachShown = 0;
+    }
+    return;
+  }
+  if (coachTimer >= (step.after || 0) && (!step.when || step.when())) {
+    $("coach-text").textContent = step.text();
+    $("coach").hidden = false;
+    coachShown = 1e-3;
   }
 }
 function toast(text, type = "gate", points = 0) {
@@ -194,8 +272,10 @@ function start() {
     tour.stages = tour.stages.slice(0, tour.index);
     tour.score = tour.stages.reduce((sum, s) => sum + s.score, 0);
   }
-  run = createRun(course);
+  run = createRun(course, { trim: TRIMS[trimIndex] });
   run.eventSeed = activeEvent?.seed || 0;
+  coachStep = coachTimer = coachShown = 0;
+  coachGate = false;
   mission = nextMission(career, course.id);
   rivalField?.reset();
   film = null;
@@ -225,6 +305,27 @@ function start() {
   updateVisuals(0, true);
   hud(true);
   $("scene").focus({ preventScroll: true });
+  // Phones: take the whole screen for the race when the browser allows it
+  // (Android Chrome). iOS Safari has no page fullscreen; the installed app does.
+  if (
+    coarse() &&
+    !document.fullscreenElement &&
+    !installed() &&
+    document.documentElement.requestFullscreen
+  )
+    document.documentElement.requestFullscreen().catch(() => {});
+}
+const installed = () =>
+  matchMedia("(display-mode: standalone)").matches ||
+  matchMedia("(display-mode: fullscreen)").matches ||
+  navigator.standalone === true;
+function refreshInstallHint() {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  $("install-hint").hidden =
+    installed() ||
+    !coarse() ||
+    storage.get("roadster-install-hint", false) === true ||
+    (!ios && !!document.documentElement.requestFullscreen);
 }
 function pause() {
   if (phase !== "playing") return;
@@ -232,7 +333,7 @@ function pause() {
   setPhase("paused");
   $("menu-title").textContent = "ON HOLD.";
   $("menu-kicker").textContent = "TAKE A BREATH.";
-  $("resume").innerHTML = "BACK TO THE RUN <b>↗</b>";
+  $("resume").innerHTML = "BACK TO THE RUN <b>" + GO_ICON + "</b>";
   $("restart").hidden = false;
   $("go-home").hidden = false;
   $("resume").focus({ preventScroll: true });
@@ -243,7 +344,7 @@ function settings() {
   setPhase("paused");
   $("menu-title").textContent = "YOUR SETUP.";
   $("menu-kicker").textContent = "MAKE YOURSELF AT HOME.";
-  $("resume").innerHTML = "BACK TO START <b>↗</b>";
+  $("resume").innerHTML = "BACK TO START <b>" + GO_ICON + "</b>";
   $("restart").hidden = true;
   $("go-home").hidden = true;
   $("resume").focus({ preventScroll: true });
@@ -327,7 +428,7 @@ function selectCourse(id, keepLoading = false) {
   $("course-brief").textContent = course.description;
   $("course-gold").textContent =
     "GOLD / " + formatTime(course.gold) + " + " + course.goldGates + " GATES";
-  $("destination").textContent = course.name + " ↗";
+  $("destination").innerHTML = course.name + " " + GO_ICON;
   document.querySelectorAll("[data-course]").forEach((b) => {
     if (b.tagName === "BUTTON") {
       const meta = b.querySelector("small[data-region]");
@@ -434,8 +535,8 @@ function updateRaceMap() {
 function refreshBest() {
   const daily = dailyEvent(),
     dailyRecord = storage.get("roadster-daily-" + daily.day, null);
-  $("daily-name").textContent =
-    daily.name + (dailyRecord?.passed ? " ✓" : " ↗");
+  $("daily-name").innerHTML =
+    daily.name + (dailyRecord?.passed ? " ✓" : " " + GO_ICON);
   $("start-daily").title = daily.description + " Resets at 00:00 UTC.";
   const best = records[course.id];
   const target = nextMission(career, course.id);
@@ -480,6 +581,20 @@ function refreshBest() {
     paintIndex = 0;
   car?.userData.paintMaterial.color.setHex(PAINTS[paintIndex].color);
   $("paint-name").textContent = PAINTS[paintIndex].name;
+  const cups = totalCups();
+  if (!TRIMS[trimIndex] || TRIMS[trimIndex].required > cups) trimIndex = 0;
+  const lockedTrim = TRIMS.find((t) => t.required > cups);
+  $("trim").querySelector("b").textContent = TRIMS[trimIndex].name;
+  $("trim").title =
+    TRIMS[trimIndex].detail +
+    (lockedTrim
+      ? ` ${lockedTrim.name} unlocks at ${lockedTrim.required} career cups.`
+      : "");
+  $("trim-note").textContent =
+    TRIMS[trimIndex].short +
+    (lockedTrim
+      ? ` · ${lockedTrim.name} AT ${lockedTrim.required} CUPS`
+      : " · ALL TRIMS UNLOCKED");
   $("paint").disabled = total === 0;
   $("paint").setAttribute(
     "aria-label",
@@ -526,9 +641,14 @@ function endRun() {
   if (!replay.length || replay.at(-1)[0] < run.time) recordFrame();
   audio.event(run.failed ? "fail" : "finish");
   setPhase("results");
+  if (!coached && !activeEvent && raceMode !== "challenge" && !run.failed) {
+    coached = true;
+    storage.set("roadster-coached", true);
+  }
   const rank = rankRun(run),
     complete = !run.failed;
   const careerRace = !activeEvent && raceMode !== "challenge";
+  const cupsBefore = totalCups();
   const contractPassed = careerRace && missionPassed(mission, run);
   if (careerRace) {
     const reward = awardMission(career, course.id, mission, run);
@@ -591,8 +711,8 @@ function endRun() {
     tour.score = tour.stages.reduce((sum, s) => sum + s.score, 0);
   }
   $("next-stage").hidden = !tour || !complete;
-  $("next-stage").textContent =
-    tour?.index === 2 ? "TOUR GARAGE ↗" : "NEXT COURSE ↗";
+  $("next-stage").innerHTML =
+    tour?.index === 2 ? "TOUR GARAGE " + GO_ICON : "NEXT COURSE " + GO_ICON;
   $("tour-summary").hidden = !tour;
   $("tour-summary").textContent = tour
     ? `WORLD TOUR / ${tour.stages.length} OF 3 FINISHED / ${num(tour.score)} TOTAL POINTS`
@@ -624,6 +744,14 @@ function endRun() {
     $("record-message").textContent =
       PAINTS[completedCount(records)].name +
       " PAINT UNLOCKED / " +
+      $("record-message").textContent;
+  const newTrim = TRIMS.find(
+    (t) => t.required > cupsBefore && t.required <= totalCups(),
+  );
+  if (newTrim)
+    $("record-message").textContent =
+      newTrim.name +
+      " TRIM UNLOCKED / SETTINGS / " +
       $("record-message").textContent;
   if (activeEvent) {
     $("result-kicker").textContent =
@@ -674,6 +802,7 @@ function tick(dt) {
     return;
   }
   stepRun(run, controls.read(), dt);
+  coachTick(dt);
   replayClock += dt;
   if (replayClock >= 0.1) {
     replayClock = 0;
@@ -683,6 +812,7 @@ function tick(dt) {
   for (const e of run.events.splice(0)) {
     audio.event(e.type);
     haptic(e.type);
+    if (e.type === "gate") coachGate = true;
     if (!reduced) {
       if (e.type === "rival-hit") {
         const rival = run.rivals.find((r) => r.id === e.rivalId);
@@ -748,9 +878,11 @@ function hud(force = false) {
     run.branch ||
     course.branches?.find((b) => b.start > run.d && b.start - run.d < 150);
   $("branch-cue").hidden = !branch || countdown > 0 || !!run.flight;
-  $("branch-cue").textContent = branch
-    ? `${branch.side < 0 ? "↖" : "↗"} ${branch.name.toUpperCase()} / ${run.branch ? "ALTERNATE LINE" : Math.ceil(branch.start - run.d) + " M"}`
+  const branchCue = branch
+    ? `${branch.side < 0 ? '<i class="ico ico-go flip" aria-hidden="true"></i>' : GO_ICON} ${branch.name.toUpperCase()} / ${run.branch ? "ALTERNATE LINE" : Math.ceil(branch.start - run.d) + " M"}`
     : "";
+  if (branchCue !== lastBranchCue) $("branch-cue").innerHTML = branchCue;
+  lastBranchCue = branchCue;
   $("event-objective").hidden = !activeEvent || countdown > 0;
   $("event-objective").textContent = activeEvent
     ? `${activeEvent.name} / ${activeEvent.kind === "precision" ? run.gates + " / " + course.gates.length + " GATES" : activeEvent.kind === "clean" ? run.hull + " / 3 CONDITION" : formatTime(Math.max(0, course.gold - run.time)) + " TO GOLD"}`
@@ -805,16 +937,16 @@ function hud(force = false) {
     $("warning-title").textContent = warning.title;
     $("warning-detail").textContent = warning.detail;
     $("warning").dataset.kind = warning.kind;
-    $("warning").querySelector(".warning-icon").textContent =
+    $("warning").querySelector(".warning-icon").innerHTML =
       warning.kind === "gap" ||
       warning.kind === "ramp" ||
       warning.kind === "stunt"
-        ? "↗"
+        ? GO_ICON
         : warning.title === "KEEP RIGHT"
           ? "→"
           : warning.title === "KEEP LEFT"
             ? "←"
-            : "↔";
+            : "← →";
   }
   $("target-time").textContent = formatTime(
     Math.max(0, course.gold - run.time),
@@ -1139,9 +1271,27 @@ function frame(now) {
       countdown <= 0 &&
       !frozen,
   );
+  renderDebt += frameSeconds;
+  perfStats.seconds += frameSeconds;
+  if (saver && !frozen && renderDebt < 1 / 30 - 0.004) return;
+  renderDebt = 0;
   renderer.render(scene, camera);
   if (clip && phase === "replay") clip.draw(film?.elapsed || 0);
-  if (quality === "auto" && !frozen && phase === "playing") {
+  if (perf) {
+    perfStats.frames++;
+    if (perfStats.seconds >= 0.5) {
+      const info = renderer.info.render;
+      $("perf").textContent =
+        `${(perfStats.frames / perfStats.seconds).toFixed(0)} FPS · ` +
+        `${((perfStats.seconds / perfStats.frames) * 1000).toFixed(1)} MS · ` +
+        `PR ${renderer.getPixelRatio().toFixed(2)} · ${info.calls} CALLS · ` +
+        `${(info.triangles / 1000).toFixed(0)}K TRIS · ${quality.toUpperCase()}` +
+        `${qualityLow ? " LOW" : ""}${saver ? " · SAVER" : ""} · ` +
+        `${innerWidth}×${innerHeight} @${devicePixelRatio}`;
+      perfStats.frames = perfStats.seconds = 0;
+    }
+  }
+  if (quality === "auto" && !frozen && !saver && phase === "playing") {
     const ceiling = Math.min(devicePixelRatio || 1, qualityLow ? 1.25 : 1.75);
     const ratio = frameBudget.sample(
       frameSeconds,
@@ -1666,7 +1816,7 @@ async function boot() {
     };
     $("start-tour").onclick = beginTour;
     $("start-daily").onclick = startDaily;
-    $("daily-name").textContent = todayEvent.name + " ↗";
+    $("daily-name").innerHTML = todayEvent.name + " " + GO_ICON;
     $("start-daily").title = todayEvent.description + " Resets at 00:00 UTC.";
     $("watch-replay").onclick = () => startFilm();
     $("exit-replay").onclick = stopFilm;
@@ -1770,6 +1920,26 @@ async function boot() {
       storage.set("breakwater-reduced", reduced);
       $("motion").querySelector("b").textContent = reduced ? "REDUCED" : "FULL";
     };
+    $("saver").onclick = () => {
+      saver = !saver;
+      renderDebt = 0;
+      frameBudget.reset();
+      storage.set("breakwater-saver", saver);
+      $("saver").querySelector("b").textContent = saver ? "30 FPS" : "OFF";
+    };
+    $("saver").querySelector("b").textContent = saver ? "30 FPS" : "OFF";
+    $("trim").onclick = () => {
+      const unlocked = TRIMS.filter((t) => t.required <= totalCups()).length;
+      trimIndex = (trimIndex + 1) % unlocked;
+      storage.set("roadster-trim", trimIndex);
+      refreshBest();
+    };
+    $("perf").hidden = !perf;
+    $("install-hint").onclick = () => {
+      storage.set("roadster-install-hint", true);
+      $("install-hint").hidden = true;
+    };
+    refreshInstallHint();
     $("fullscreen").onclick = async () => {
       try {
         if (document.fullscreenElement) await document.exitFullscreen();
@@ -1888,6 +2058,18 @@ async function boot() {
         },
         selectCourse,
         beginTour,
+        get trim() {
+          return TRIMS[trimIndex].id;
+        },
+        get saver() {
+          return saver;
+        },
+        get coach() {
+          return $("coach").hidden ? null : $("coach-text").textContent;
+        },
+        set coached(value) {
+          coached = !!value;
+        },
         nextStage,
         get course() {
           return course;
@@ -2025,3 +2207,16 @@ async function boot() {
 $("reload").onclick = () => location.reload();
 $("loading-retry").onclick = () => location.reload();
 boot();
+
+// Offline shell for installed/hosted play. Skipped for file://, QA runs and
+// local development unless ?pwa is present, so dev servers are never cached.
+if (
+  "serviceWorker" in navigator &&
+  /^https?:$/.test(location.protocol) &&
+  !qa &&
+  (new URLSearchParams(location.search).has("pwa") ||
+    !/^(localhost|127\.0\.0\.1)$/.test(location.hostname))
+)
+  addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });

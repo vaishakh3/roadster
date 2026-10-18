@@ -1,0 +1,15 @@
+{
+  "name": "Roadster / World Tour",
+  "short_name": "Roadster",
+  "description": "Three arenas. One Roadster. Race the Atlantic, fly the canyon, and weave through the night port.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#112c34",
+  "theme_color": "#112c34",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
