@@ -16,6 +16,13 @@ const result = await build({
   format: "iife",
   write: false,
 });
+const analytics = await build({
+  entryPoints: ["scripts/analytics-client.js"],
+  bundle: true,
+  minify: true,
+  format: "iife",
+  write: false,
+});
 const html = await readFile("index.html", "utf8"),
   bundled = result.outputFiles[0].text;
 let js = bundled;
@@ -63,7 +70,9 @@ const bundledLicenses =
   "\n\n" +
   (await readFile("assets/LICENSE.txt", "utf8")) +
   "\n\n" +
-  (await readFile("vendor/THREE-LICENSE.txt", "utf8"));
+  (await readFile("vendor/THREE-LICENSE.txt", "utf8")) +
+  "\n\n@vercel/analytics\n" +
+  (await readFile("node_modules/@vercel/analytics/LICENSE", "utf8"));
 const standalone = html
   .replace(/<link\b[^>]*href="style\.css"[^>]*>/, () => `<style>${css}</style>`)
   .replace(
@@ -73,7 +82,7 @@ const standalone = html
   .replace(
     "</body>",
     () =>
-      `<script type="text/plain" id="asset-licenses">${bundledLicenses.replaceAll("</script", "<\\/script")}</script></body>`,
+      `<script type="text/plain" id="asset-licenses">${bundledLicenses.replaceAll("</script", "<\\/script")}</script><script id="vercel-analytics">${analytics.outputFiles[0].text.replaceAll("</script", "<\\/script")}</script></body>`,
   );
 await writeFile("Roadster-Flight-Lab.html", standalone);
 await rm("dist", { recursive: true, force: true });
@@ -156,7 +165,7 @@ function crc32(buffer) {
 console.log(
   "Built identical standalone and hosted HTML: " +
     Buffer.byteLength(standalone) +
-    " bytes, including fonts; no runtime asset requests. Service worker version " +
+    " bytes, including fonts; game assets embedded; optional hosted analytics loads asynchronously. Service worker version " +
     version +
     ".",
 );
