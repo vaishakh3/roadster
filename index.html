@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
     <meta name="theme-color" content="#112c34" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -197,7 +197,7 @@
               >BREAKWATER<small data-region="ATLANTIC"
                 >ATLANTIC / 5.4 KM</small
               ></span
-            ><b aria-hidden="true"><i class="ico ico-go"></i></b>
+            ><b aria-hidden="true"><em class="ico ico-go"></em></b>
           </button>
           <button data-course="redshift" aria-pressed="false">
             <i>02</i
@@ -205,7 +205,7 @@
               >REDSHIFT<small data-region="BADLANDS"
                 >BADLANDS / 5.7 KM</small
               ></span
-            ><b aria-hidden="true"><i class="ico ico-go"></i></b>
+            ><b aria-hidden="true"><em class="ico ico-go"></em></b>
           </button>
           <button data-course="nightshift" aria-pressed="false">
             <i>03</i
@@ -213,7 +213,7 @@
               >NIGHTSHIFT<small data-region="FREIGHT PORT"
                 >FREIGHT PORT / 6.0 KM</small
               ></span
-            ><b aria-hidden="true"><i class="ico ico-go"></i></b>
+            ><b aria-hidden="true"><em class="ico ico-go"></em></b>
           </button>
         </nav>
         <div class="home-copy">
@@ -487,6 +487,24 @@
             </button>
           </div>
           <p id="record-message"></p>
+          <section id="leaderboard" hidden aria-label="Global daily leaderboard">
+            <div class="lb-head">
+              <span class="kicker">GLOBAL TODAY</span><b id="lb-total"></b>
+            </div>
+            <ol id="lb-rows"></ol>
+            <p id="lb-mine"></p>
+            <form id="lb-form" hidden>
+              <input
+                id="lb-name"
+                maxlength="14"
+                placeholder="YOUR NAME"
+                autocomplete="nickname"
+                aria-label="Name for the leaderboard"
+              /><button id="lb-submit" class="text-button" type="submit">
+                POST MY RUN <i class="ico ico-go" aria-hidden="true"></i>
+              </button>
+            </form>
+          </section>
           <div id="challenge-share" hidden>
             <label for="challenge-url">COPY YOUR CHALLENGE LINK</label
             ><input
