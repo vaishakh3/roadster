@@ -1,6 +1,6 @@
 {
   "name": "roadster-world-tour",
-  "version": "6.0.0",
+  "version": "7.0.0",
   "description": "Three authored Roadster racing arenas, a World Tour, moving hazards, course records and personal ghosts",
   "scripts": {
     "start": "node scripts/serve.mjs",

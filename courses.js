@@ -594,7 +594,7 @@ export function badgesFor(s) {
     s.finished && s.gates === s.course.gates.length,
   ];
 }
-export const LAYOUT_VERSION = 5;
+export const LAYOUT_VERSION = 6;
 export function saveResult(records, s, ghost = []) {
   if (!s.finished) return { records, record: false };
   const old = records[s.course.id] || {},

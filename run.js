@@ -99,6 +99,8 @@ export function createRun(course = COURSES[0], options = {}) {
     crashAge: 10,
     crashDirection: 1,
     crashKind: "impact",
+    crashSeverity: 0,
+    crashOtherId: null,
     landingAge: 10,
     exitDistance: 0,
     passCooldown: 0,
@@ -248,11 +250,21 @@ function tick(s, raw, dt) {
       : s.boosting
         ? 76
         : 48 + s.sector * 2;
+  const paceLimit =
+    s.isRival && Number.isFinite(raw.paceLimit)
+      ? clamp(raw.paceLimit, 27, 88)
+      : Infinity;
   s.speed +=
-    (targetSpeed +
-      (brake ? 0 : s.drafting * 3.5 + (onBranch ? branch.speedBonus : 0)) -
+    (Math.min(
+      paceLimit,
+      targetSpeed +
+        (brake ? 0 : s.drafting * 3.5 + (onBranch ? branch.speedBonus : 0)),
+    ) -
       s.speed) *
-    (1 - Math.exp(-dt * (brake ? 3 : s.boosting ? 1.1 : 0.75)));
+    (1 -
+      Math.exp(
+        -dt * (brake || paceLimit < s.speed ? 3 : s.boosting ? 1.1 : 0.75),
+      ));
   if (onRoad && !brake) s.speed -= s.drift * 0.8 * dt;
   const prevD = s.d;
   s.d += s.speed * dt;
@@ -471,6 +483,8 @@ function tick(s, raw, dt) {
       s.crashAge = 0;
       s.crashDirection = s.x >= pose.x ? 1 : -1;
       s.crashKind = "impact";
+      s.crashSeverity = 0.75;
+      s.crashOtherId = null;
       if (s.flight) s.flight.clean = false;
       s.chain = 0;
       s.speed *= 0.62;
@@ -548,10 +562,22 @@ function tick(s, raw, dt) {
         );
         continue;
       }
-      if (rival.failed) continue;
+      if (rival.failed) {
+        rival.crashAge += dt;
+        rival.contactAge += dt;
+        continue;
+      }
+      updateDraft(rival, dt, [s, ...s.rivals]);
       tick(rival, rivalInput(rival, s), dt);
     }
     resolveRivalContacts(s);
+    for (const rival of s.rivals)
+      if (rival.hull <= 0 && !rival.failed)
+        finish(rival, true, "TOO MUCH DAMAGE");
+    if (s.hull <= 0) {
+      finish(s, true, "TOO MUCH DAMAGE");
+      return;
+    }
     const previousPosition = s.position;
     updateRacePosition(s);
     if (s.position < previousPosition && s.time > 2 && !s.passCooldown) {

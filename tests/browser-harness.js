@@ -662,6 +662,7 @@ document.getElementById("routes").onclick = async () => {
         send("ArrowRight", input.steer > 0.25);
         send("ArrowLeft", input.steer < -0.25);
         send("ShiftLeft", input.boost);
+        send("ArrowDown", input.brake);
         send("Space", input.fly);
         g.step(1 / 60);
         maxDraws = Math.max(maxDraws, g.drawCalls);
@@ -675,6 +676,8 @@ document.getElementById("routes").onclick = async () => {
     if (!ok) failed++;
     report.textContent += `${ok ? "PASS" : "FAIL"} ${c.name}: ${s.time.toFixed(2)} s / ${s.gates}/${c.gates.length} gates / hull ${s.hull}/3 / ${s.score} points / peak ${maxDraws} draw calls\n`;
     if (ok) {
+      if (!g.ghostAppearance.enabled)
+        w.document.getElementById("ghost").click();
       g.start();
       g.setState({ time: 8, d: 500 });
       g.step(0);

@@ -1,6 +1,13 @@
 Compact runtime textures — Poly Haven / CC0 1.0 Universal
 Derived 17 October 2026 from the unchanged originals in assets/realism/.
 
+Original procedural addition — 18 October 2026
+============================================
+surface_detail.webp is an original seamless RGB data texture generated locally
+by scripts/generate-surface-detail.py. It is not derived from third-party media.
+R encodes broad variation, G medium mottling, and B fine porous detail. The
+generator and texture are part of this game's original source assets.
+
 License and voluntary credit
 ============================
 These five media files are format/resolution derivatives of Poly Haven assets

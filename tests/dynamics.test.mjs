@@ -187,6 +187,36 @@ for (const c of COURSES)
     }
   });
 
+test("The staggered grid and fixed driving styles keep opponents visible through representative races", () => {
+  for (const course of COURSES)
+    for (const boosted of [false, true]) {
+      const s = createRun(course);
+      assert(s.rivals.every((r) => r.d >= 9 && r.d <= 34));
+      let visible = 0,
+        frames = 0;
+      while (!s.finished && !s.failed && s.time < 150) {
+        const input = driveInput(s);
+        if (!boosted) input.boost = false;
+        stepRun(s, input, 1 / 120);
+        frames++;
+        if (
+          s.rivals.some(
+            (r) =>
+              !r.finished && !r.failed && r.d - s.d > -18 && r.d - s.d < 100,
+          )
+        )
+          visible++;
+      }
+      assert(s.finished, course.id + " representative race must finish");
+      // Fast races retain a visible challenger; casual races can contest the
+      // slower driver. Their physics never reads the player's distant rank.
+      assert(
+        visible / frames > (boosted ? 0.8 : 0.3),
+        `${course.id}: ${Math.round((visible / frames) * 100)}% nearby race presence`,
+      );
+    }
+});
+
 test("Finish position freezes and repeated calls cannot award passes or branch rewards", () => {
   const s = createRun(clearCourse);
   s.d = clearCourse.length - 0.1;
@@ -211,16 +241,17 @@ test("Upward transients cannot penetrate a tunnel ceiling", () => {
   assert(s.y <= 9.55 && s.vy <= 0);
 });
 
-test("Three opponent cars reuse eight draw batches and reset releases visible instances", () => {
+test("Three opaque opponent cars share eight draw batches and three identity labels", () => {
   const scene = new THREE.Scene(),
     field = createRivalField(scene),
     s = createRun(clearCourse);
   field.update(
     s,
-    { worldPos: (d, x, y) => new THREE.Vector3(x, y, -d) },
+    { worldPos: (d, x, y) => new THREE.Vector3(x, y, -d), roadY: () => 0 },
     1 / 60,
   );
-  const meshes = field.root.children;
+  const meshes = field.root.children.filter((m) => m.isInstancedMesh);
+  assert.equal(field.root.children.filter((m) => m.isSprite).length, 3);
   assert.equal(meshes.length, 8);
   assert(meshes.every((m) => m.isInstancedMesh));
   assert.equal(meshes[0].count, 3);
@@ -254,22 +285,26 @@ function separated(a, b, tolerance = 0.012) {
   );
 }
 
-test("Solid bumper contact prevents driving through an opponent without damage or a steering lock", () => {
+test("Hard rear impacts lose one HP per car, preserve separation and leave steering available", () => {
   const [s, r] = contactPair();
   for (let i = 0; i < 60; i++) {
     stepRun(s, { boost: true }, 1 / 120);
     assert(separated(s, r));
     assert(s.speed >= 27 && s.speed <= 90 && r.speed >= 27 && r.speed <= 90);
   }
-  assert(s.contacts > 0 && s.events.some((e) => e.type === "contact"));
-  assert.equal(s.hull, 3);
-  assert.equal(r.hull, 3);
+  assert(s.contacts > 0 && s.events.some((e) => e.type === "hit"));
+  assert.equal(s.hull, 2);
+  assert.equal(r.hull, 2);
+  const hit = s.events.find((e) => e.type === "hit");
+  assert(hit.source === "rival" && hit.rivalId === r.id && hit.damage === 1);
+  assert(hit.closingSpeed > RIVAL_CONTACT.rearDamageSpeed);
+  assert(s.events.some((e) => e.type === "rival-hit" && e.hull === 2));
   const x = s.x;
   advance(s, { steer: -1, boost: true }, 0.4);
   assert(s.x < x - 2 && s.boosting);
 });
 
-test("Side contact separates visible bodies and damps only closing lateral motion", () => {
+test("Hard side contact separates bodies, costs one HP and only damps closing lateral motion", () => {
   const [s, r] = contactPair();
   Object.assign(r, { d: 100, x: 2.05, vx: -3 });
   s.vx = 8;
@@ -281,7 +316,8 @@ test("Side contact separates visible bodies and damps only closing lateral motio
   assert(s.vx >= -3 && s.vx <= 8 && r.vx >= -3 && r.vx <= 8);
   assert.deepEqual([s.speed, r.speed], speeds);
   assert.equal(s.y, 0);
-  assert.equal(s.hull, 3);
+  assert.equal(s.hull, 2);
+  assert.equal(r.hull, 2);
 });
 
 test("An opponent rear-ending the player yields without pushing the player into hazards", () => {
@@ -407,11 +443,84 @@ test("Repeated contact remains deterministic at 12,30,60,120Hz and clears after 
     const [s, r] = contactPair();
     advance(s, { boost: true }, 1, hz);
     advance(s, { boost: true, steer: -0.55 }, 1, hz);
-    assert(s.contacts > 0 && s.hull === 3 && r.hull === 3);
+    assert(s.contacts > 0 && s.hull === 2 && r.hull === 2);
     assert(separated(s, r));
     return [s.d, s.x, s.speed, r.d, r.x, r.speed, s.contacts];
   });
   for (const result of results)
     result.forEach((v, i) => assert(Math.abs(v - results[3][i]) < 0.00001));
 });
+test("Gentle bumper nudges and low-speed side rubbing remain harmless", () => {
+  for (const lateral of [false, true]) {
+    const [s, r] = contactPair();
+    Object.assign(s, { speed: 50, vx: lateral ? 3 : 0 });
+    Object.assign(r, {
+      d: lateral ? s.d : s.d + 4.7,
+      x: lateral ? 2.1 : 0,
+      speed: 47,
+      vx: 0,
+    });
+    captureContactStart(s, r);
+    resolveRivalContacts(s);
+    assert(separated(s, r));
+    assert.equal(s.hull, 3);
+    assert.equal(r.hull, 3);
+    assert(s.events.some((e) => e.type === "contact"));
+    assert(!s.events.some((e) => e.type === "hit"));
+  }
+});
+
+test("An AI side-swipe cannot punish a steady or retreating player", () => {
+  for (const playerVx of [0, -4]) {
+    const [s, r] = contactPair();
+    Object.assign(s, { vx: playerVx });
+    Object.assign(r, { d: s.d, x: 2.1, vx: -12 });
+    captureContactStart(s, r);
+    resolveRivalContacts(s);
+    assert.equal(s.hull, 3);
+    assert.equal(s.vx, playerVx);
+    assert(separated(s, r));
+  }
+});
+
+test("The collision cooldown prevents one impact draining multiple HP", () => {
+  const [s, r] = contactPair();
+  for (let i = 0; i < 12; i++) {
+    Object.assign(s, { d: 100, x: 0, speed: 80 });
+    Object.assign(r, { d: 104.6, x: 0, speed: 30 });
+    captureContactStart(s, r);
+    resolveRivalContacts(s);
+  }
+  assert.equal(s.hull, 2);
+  assert.equal(r.hull, 2);
+  assert.equal(s.events.filter((e) => e.type === "hit").length, 1);
+  assert.equal(s.invulnerable, RIVAL_CONTACT.damageCooldown);
+});
+
+test("Fatal hard contacts end the affected race and rival wreck time continues", () => {
+  const [s, r] = contactPair();
+  s.hull = 1;
+  stepRun(s, { boost: true }, 1 / 60);
+  assert(s.failed && s.hull === 0 && s.reason === "TOO MUCH DAMAGE");
+  const [race, opponent] = contactPair();
+  opponent.hull = 1;
+  stepRun(race, { boost: true }, 1 / 60);
+  assert(opponent.failed && opponent.hull === 0 && !race.failed);
+  assert.equal(race.position, 1);
+  advance(race, { boost: true, steer: -1 }, 0.6);
+  assert(opponent.crashAge > 0.5 && opponent.crashAge < 1);
+});
+
+test("A boosted elevated pass crosses a grounded car without contact or HP loss", () => {
+  const [s, r] = contactPair();
+  Object.assign(s, { y: 5.8, airborne: true, speed: 80 });
+  Object.assign(r, { speed: 32 });
+  const start = r.d;
+  advance(s, { fly: true, boost: true }, 0.3);
+  assert(s.d > r.d && s.d > start);
+  assert.equal(s.contacts, 0);
+  assert.equal(s.hull, 3);
+  assert.equal(r.hull, 3);
+});
+
 console.log(`${count} race dynamics checks passed.`);

@@ -25,10 +25,29 @@ document.getElementById("features").onclick = async () => {
       report.textContent += "FAIL " + name + ": " + e.message + "\n";
     }
   };
-  const frame = document.createElement("iframe");
+  let frame = document.createElement("iframe");
   frame.style.cssText = "width:844px;height:390px;border:0";
   frame.src = gameRoot + "?qa=1";
   stage.append(frame);
+  // A fresh document also releases the preceding WebGL context before the next
+  // imported-link case. Bound load waits so a stalled browser cannot hang QA.
+  const openChallenge = async (url) => {
+    const next = document.createElement("iframe");
+    next.style.cssText = frame.style.cssText;
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(Error("Challenge document load timed out")),
+        15000,
+      );
+      next.onload = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      next.src = url;
+      frame.replaceWith(next);
+      frame = next;
+    });
+  };
   const ready = async () => {
     for (let i = 0; i < 600 && !frame.contentWindow.__breakwater; i++)
       await wait(50);
@@ -182,6 +201,7 @@ document.getElementById("features").onclick = async () => {
         ["ArrowLeft", input.steer < -0.04],
         ["ArrowRight", input.steer > 0.04],
         ["Space", input.fly],
+        ["ArrowDown", input.brake],
         ["ShiftLeft", input.boost],
       ])
         w.dispatchEvent(
@@ -251,10 +271,7 @@ document.getElementById("features").onclick = async () => {
         }
       },
     );
-    await new Promise((resolve) => {
-      frame.onload = resolve;
-      frame.src = gameRoot + "?qa=1&challenge-preview=1#race=" + payload;
-    });
+    await openChallenge(gameRoot + "?qa=1&challenge-preview=1#race=" + payload);
     g = await ready();
     w = frame.contentWindow;
     d = w.document;
@@ -286,11 +303,9 @@ document.getElementById("features").onclick = async () => {
         ),
     );
     g.home();
-    await new Promise((resolve) => {
-      frame.onload = resolve;
-      frame.src =
-        gameRoot + "?qa=1&daily-challenge-preview=1#race=" + dailyPayload;
-    });
+    await openChallenge(
+      gameRoot + "?qa=1&daily-challenge-preview=1#race=" + dailyPayload,
+    );
     g = await ready();
     w = frame.contentWindow;
     d = w.document;
@@ -353,6 +368,7 @@ filmButton.onclick = async () => {
       ["ArrowLeft", input.steer < -0.04],
       ["ArrowRight", input.steer > 0.04],
       ["Space", input.fly],
+      ["ArrowDown", input.brake],
       ["ShiftLeft", input.boost],
     ])
       w.dispatchEvent(

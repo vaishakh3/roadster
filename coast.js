@@ -15,6 +15,8 @@ import {
   cityMaterial,
   scrubMaterial,
   concreteMaterial,
+  warehouseMaterial,
+  architecturalGlassMaterial,
 } from "./surfaces.js";
 import {
   inGap,
@@ -41,9 +43,9 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     scene.fog = new THREE.FogExp2(course.fog, night ? 0.00165 : 0.00085);
     scene.background = new THREE.Color(course.fog);
     scene.environment = surfaces.environment || null;
-    scene.environmentIntensity = night ? 0.3 : canyon ? 0.75 : 0.85;
+    scene.environmentIntensity = night ? 0.43 : canyon ? 0.75 : 0.85;
     scene.environmentRotation.set(0, canyon ? 1.1 : 0.4, 0);
-    renderer.toneMappingExposure = night ? 0.95 : 0.94;
+    renderer.toneMappingExposure = night ? 1 : 0.94;
   }
   activate();
   const mat = (color, roughness = 0.8, metalness = 0) =>
@@ -582,7 +584,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   let rockSurface;
   // Continuous eroded terrain: close cliffs, horizontal strata and distant ridgelines.
   if (!night) {
-    rockSurface = rockMaterial(canyon);
+    rockSurface = rockMaterial(canyon, true);
     for (const side of [-1, 1])
       for (let start = -480; start < length + 1200; start += 240) {
         const params = { start, end: start + 240, side, canyon, roadX, roadY };
@@ -701,7 +703,17 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       rocks.push({
         d,
         x,
-        y: canyon ? -0.35 + h * 0.37 : -roadY(d) - 5 + h * 0.35,
+        // Canyon rubble belongs on the talus floor. Sampling a steep face at
+        // its centre would suspend wide boulders in front of the cliff.
+        y: canyon
+          ? -0.35 + h * 0.28
+          : Math.min(
+              terrainHeight(d, Math.abs(x), side, false, roadY),
+              terrainHeight(d - 8, Math.abs(x) - 6, side, false, roadY),
+              terrainHeight(d + 8, Math.abs(x) - 6, side, false, roadY),
+            ) -
+            roadY(d) +
+            h * 0.28,
         rotation: i * 2.399,
         scale: [3 + n * 7, h, 4 + n * 12],
       });
@@ -725,7 +737,10 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       gravel.push({
         d,
         x,
-        y: canyon ? -0.28 + h * 0.4 : -roadY(d) - 5,
+        y:
+          terrainHeight(d, Math.abs(x), side, canyon, roadY) -
+          roadY(d) +
+          h * 0.3,
         rotation: i * 1.6,
         scale: [h * 1.7, h, h * 2.3],
       });
@@ -755,31 +770,43 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       }
     }
     if (coast) {
-      const crowns = [];
+      const crowns = [],
+        trunks = [];
       // Forest stands have openings and mixed ages instead of a single evenly
       // spaced tree fence. Two crossed cutouts per tree keep the GPU cost small.
-      for (let cluster = 0; cluster < Math.ceil(length / 100); cluster++) {
-        const side = cluster % 4 === 0 ? 1 : -1;
-        for (let j = 0; j < 9; j++) {
-          const i = cluster * 9 + j,
+      for (let cluster = 0; cluster < Math.ceil(length / 90); cluster++) {
+        const side = cluster % 7 === 0 ? 1 : -1;
+        for (let j = 0; j < 23; j++) {
+          const i = cluster * 23 + j,
             n = Math.abs(Math.sin(i * 47.73));
-          const d = cluster * 100 + Math.sin(i * 3.17) * 38;
-          const x = side * (76 + n * 88),
-            h = 6.5 + Math.abs(Math.sin(i * 9.71)) * 9;
+          const d = cluster * 90 + Math.sin(i * 3.17) * 44;
+          const x = side * ((side === 1 ? 450 : 61) + n * 105),
+            h = 9 + Math.abs(Math.sin(i * 9.71)) * 13;
           const ground = terrainHeight(d, Math.abs(x), side, false, roadY);
           if (ground < 1.1) continue;
+          trunks.push({
+            d,
+            x,
+            y: ground - roadY(d) + h * 0.32,
+            scale: [0.22 + n * 0.18, h * 0.64, 0.22 + n * 0.18],
+          });
           for (const rotation of [i * 2.39, i * 2.39 + Math.PI * 0.5])
             crowns.push({
               d,
               x,
               y: ground - roadY(d) + h * 0.5,
               rotation,
-              scale: [h * (0.43 + n * 0.12), h, 1],
-              color: [0xbac6ab, 0xe2dbb6, 0xa7bc9c][i % 3],
+              scale: [h * (0.57 + n * 0.16), h, 1],
+              color: [0x9aa98a, 0xc8c9a4, 0x879b78, 0xa5b48c][i % 4],
             });
         }
       }
       instances(new THREE.PlaneGeometry(1, 1), pineMaterial(), crowns);
+      instances(
+        new THREE.CylinderGeometry(0.55, 1, 1, 5),
+        mat(0x4c4539),
+        trunks,
+      );
     }
     // Low scrub clusters sit on the sampled terrain; varied spacing leaves clear
     // vistas around jumps and prevents the repeated roadside-tree fence effect.
@@ -932,38 +959,62 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
           scale: [1, 1, 1],
         });
     }
+    const containerSurface = warehouseMaterial(0xffffff, { night: true });
+    containerSurface.roughness = 0.72;
+    containerSurface.metalness = 0.25;
     const containerMesh = instances(
       new THREE.BoxGeometry(3, 3, 12),
-      new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 0.7,
-        metalness: 0.2,
-        emissive: 0x243c48,
-        emissiveIntensity: 0.3,
-      }),
+      containerSurface,
       containers,
     );
     containerMesh.castShadow = true;
     containerMesh.userData.role = "grounded-container-stacks";
     instances(new THREE.BoxGeometry(0.06, 2.85, 0.13), metal, ribs);
     instances(new THREE.BoxGeometry(3.05, 0.1, 0.14), metal, containerEdges);
-    const facade = cityMaterial();
+    const facade = cityMaterial(),
+      glazing = architecturalGlassMaterial(true);
     for (let i = 0; i < Math.ceil(length / 145); i++) {
       const d = i * 145 - 200,
         side = i % 2 ? 1 : -1,
         x = side * (110 + (i % 5) * 38),
-        h = 35 + (i % 6) * 16,
+        h = 32 + (i % 6) * 16,
         g = groupAt(d, x);
-      box(26, h, 35, facade, 0, h / 2 - 22, 0, g);
-      box(20, 0.65, 29, dark, 0, h - 21.7, 0, g);
-      box(7, 3, 5, metal, 6, h - 20, 7, g);
+      const w = 22 + (i % 3) * 6,
+        depth = 30 + (i % 4) * 5;
+      // Grounded waterfront podiums, setback crowns and mechanical penthouses
+      // break up the old identical extruded boxes without new light sources.
+      box(w + 12, 5, depth + 12, concrete, 0, -23, 0, g);
+      box(w + 8, 9, depth + 8, dark, 0, -16.5, 0, g);
+      box(w, h, depth, facade, 0, h / 2 - 18, 0, g);
+      box(w - 6, 8, depth - 6, facade, 0, h - 14, 0, g);
+      box(w + 0.8, 0.6, depth + 0.8, concrete, 0, h - 18, 0, g);
+      box(w - 4, 0.6, depth - 4, metal, 0, h - 9.7, 0, g);
+      box(7, 3, 5, metal, 6, h - 8, 7, g);
+      for (const s of [-1, 1]) {
+        for (const z of [-1, 1])
+          box(
+            0.65,
+            h,
+            0.65,
+            concrete,
+            s * (w / 2 + 0.1),
+            h / 2 - 18,
+            z * (depth / 2 + 0.1),
+            g,
+          );
+        box(0.28, h, 0.3, metal, 0, h / 2 - 18, s * (depth / 2 + 0.1), g);
+        box(w - 3, 3.2, 0.1, glazing, 0, -14, s * (depth / 2 + 4.1), g);
+      }
+      if (i % 2 === 0)
+        for (let y = 4; y < h - 5; y += 11)
+          box(w + 0.4, 0.4, depth + 0.4, metal, 0, y - 18, 0, g);
       if (i % 3 === 0) {
-        box(26, 0.25, 35, violet, 0, h - 22, 0, g);
+        box(w - 4, 0.18, depth - 4, amber, 0, h - 9.2, 0, g);
         sign(
           ["FREIGHT / 09", "PACIFIC LINE", "NIGHT TRANSIT"][i % 3],
           0,
           h - 27,
-          17.6,
+          depth / 2 + 0.2,
           g,
           22,
           3,
@@ -1009,30 +1060,186 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
         );
     }
   }
-  if (night)
-    for (let i = 0; i < 14; i++) {
-      const g = groupAt(170 + i * 285, (i % 2 ? 1 : -1) * 60),
-        wall = mat(0x35434c, 0.8, 0.15);
-      box(30, 14, 58, wall, 0, 7, 0, g);
-      for (let k = 0; k < 5; k++) {
-        box(0.12, 9, 8, dark, (i % 2 ? -1 : 1) * 15.05, 4.5, -22 + k * 11, g);
-        box(0.14, 0.25, 7, amber, (i % 2 ? -1 : 1) * 15.15, 9, -22 + k * 11, g);
-        for (let y = 1; y < 9; y += 1.1)
-          box(
-            0.15,
-            0.05,
-            7,
-            metal,
-            (i % 2 ? -1 : 1) * 15.16,
-            y,
-            -22 + k * 11,
-            g,
-          );
-      }
-      const roof = box(32, 0.6, 61, metal, 0, 14, 0, g);
-      roof.rotation.z = 0.07;
-      box(32, 0.15, 0.15, amber, 0, 14.5, 30.5, g);
+  // Structural bays, recessed doors and pitched roof silhouettes are modeled
+  // once per shed and join the existing material/district batches. No lights
+  // or transparent panes are added; glazing is an opaque reflective material.
+  const shedWall = warehouseMaterial(
+      night ? 0x61717d : canyon ? 0xa09b86 : 0x9da7a1,
+      { night },
+    ),
+    shedRoof = warehouseMaterial(night ? 0x263d4b : 0x42575b, {
+      roof: true,
+      night,
+    }),
+    shedGlass = architecturalGlassMaterial(night);
+  const shedSites = night
+    ? Array.from({ length: Math.ceil(length / 420) }, (_, i) => ({
+        d: 180 + i * 420,
+        x: (i % 2 ? 1 : -1) * (48 + (i % 3) * 4),
+        w: 26 + (i % 3) * 4,
+        depth: 52 + (i % 2) * 16,
+        h: 10 + (i % 3) * 2,
+      }))
+    : canyon
+      ? [
+          { d: 620, x: -23, w: 13, depth: 29, h: 7 },
+          { d: 2420, x: 25, w: 15, depth: 35, h: 8 },
+          { d: 4540, x: -23, w: 13, depth: 30, h: 6 },
+        ]
+      : [
+          { d: 570, x: -54, w: 15, depth: 30, h: 7 },
+          { d: 2040, x: -66, w: 17, depth: 36, h: 8 },
+          { d: 4200, x: -58, w: 15, depth: 29, h: 6 },
+        ];
+  for (let i = 0; i < shedSites.length; i++) {
+    const { d, x, w, depth, h } = shedSites[i],
+      side = Math.sign(x),
+      g = groupAt(d, x),
+      rise = night ? 3.1 : 2.2,
+      face = (-side * w) / 2,
+      ground = night
+        ? -0.35
+        : terrainHeight(d, Math.abs(x), side, canyon, roadY) - roadY(d);
+    g.position.y += ground;
+    const footing = coast ? 24 : 2.4;
+    box(w + 3, footing, depth + 3, concrete, 0, 0.15 - footing / 2, 0, g);
+    box(w, h, depth, shedWall, 0, h / 2, 0, g);
+    const slope = Math.atan2(rise, w / 2),
+      panel = Math.hypot(w / 2, rise) + 1;
+    for (const s of [-1, 1]) {
+      const roof = box(
+        panel,
+        0.28,
+        depth + 2,
+        shedRoof,
+        (s * w) / 4,
+        h + rise / 2,
+        0,
+        g,
+      );
+      roof.rotation.z = -s * slope;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(
+          [
+            -w / 2,
+            h,
+            (s * depth) / 2,
+            w / 2,
+            h,
+            (s * depth) / 2,
+            0,
+            h + rise,
+            (s * depth) / 2,
+          ],
+          3,
+        ),
+      );
+      geometry.setIndex(s > 0 ? [0, 1, 2] : [2, 1, 0]);
+      geometry.computeVertexNormals();
+      mesh(geometry, shedWall, g);
+      box(0.25, 0.35, depth + 2, metal, s * (w / 2 + 0.6), h - 0.1, 0, g);
+      for (const z of [-depth / 2 + 1, depth / 2 - 1])
+        box(0.18, h, 0.18, metal, s * (w / 2 + 0.35), h / 2, z, g);
     }
+    box(0.4, 0.3, depth + 2, metal, 0, h + rise, 0, g);
+    const bays = Math.floor(depth / 11);
+    for (let k = 0; k < bays; k++) {
+      const z = (k - (bays - 1) / 2) * 11,
+        doorH = night ? 5.6 : 4.4;
+      box(0.15, doorH, 7, dark, face - side * 0.09, doorH / 2 + 0.8, z, g);
+      box(
+        0.19,
+        doorH - 0.6,
+        6.2,
+        shedRoof,
+        face - side * 0.2,
+        doorH / 2 + 0.8,
+        z,
+        g,
+      );
+      box(3, 0.95, 8.2, concrete, face - side * 1.3, 0.35, z, g);
+      for (const e of [-1, 1]) {
+        box(
+          0.25,
+          doorH + 0.3,
+          0.3,
+          metal,
+          face - side * 0.33,
+          doorH / 2 + 0.8,
+          z + e * 3.6,
+          g,
+        );
+        box(0.4, 0.75, 0.45, dark, face - side * 2.8, 0.72, z + e * 2.7, g);
+      }
+      const canopy = box(
+        2.6,
+        0.18,
+        8.3,
+        shedRoof,
+        face - side * 1.1,
+        doorH + 1.3,
+        z,
+        g,
+      );
+      canopy.rotation.z = side * 0.06;
+      box(
+        0.12,
+        0.15,
+        3.6,
+        night ? amber : edge,
+        face - side * 1.5,
+        doorH + 1.05,
+        z,
+        g,
+      );
+      box(0.18, 1.1, 7, shedGlass, face - side * 0.15, h - 1.4, z, g);
+      box(0.28, h, 0.35, concrete, face - side * 0.18, h / 2, z + 5.1, g);
+    }
+    // Rooflights, turbine vents, and an access office establish human scale.
+    for (let z = -depth / 2 + 7; z < depth / 2 - 4; z += 12) {
+      const rooflight = box(
+        3.2,
+        0.16,
+        4.8,
+        shedGlass,
+        w * 0.24,
+        h + rise * 0.52 + 0.23,
+        z,
+        g,
+      );
+      rooflight.rotation.z = -slope;
+      const vent = mesh(
+        new THREE.CylinderGeometry(0.65, 0.75, 1.2, 10),
+        metal,
+        g,
+      );
+      vent.position.set(-w * 0.22, h + rise * 0.6 + 0.6, z);
+      const cap = mesh(
+        new THREE.CylinderGeometry(0.95, 0.95, 0.18, 10),
+        metal,
+        g,
+      );
+      cap.position.copy(vent.position);
+      cap.position.y += 0.7;
+    }
+    box(7, 4.6, 8, shedWall, face - side * 2.3, 2.3, depth / 2 - 5, g);
+    box(7.6, 0.3, 8.6, shedRoof, face - side * 2.3, 4.8, depth / 2 - 5, g);
+    box(0.15, 1.4, 5, shedGlass, face - side * 5.9, 2.8, depth / 2 - 5, g);
+    box(2.2, 2.8, 0.12, dark, face - side * 2.3, 1.4, depth / 2 - 0.9, g);
+    if (night)
+      sign(
+        "TERMINAL " + String(i + 1).padStart(2, "0"),
+        0,
+        h - 1.2,
+        depth / 2 + 0.15,
+        g,
+        w * 0.7,
+        1.4,
+        "#e2cbaa",
+      );
+  }
   const lamps = [];
   const poolCanvas = document.createElement("canvas");
   poolCanvas.width = poolCanvas.height = 64;
@@ -1173,8 +1380,9 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       fragmentShader: `varying vec3 w;uniform float time;uniform float night;uniform sampler2D skyScan;uniform float hasScan;
       void main(){
         vec2 p=w.xz;
-        float a=sin(p.x*.075+p.y*.11+time*.8),b=sin(p.x*.17-p.y*.09-time*.6),c=sin(p.x*.4+p.y*.28+time);
-        vec3 n=normalize(vec3(a*.17+b*.07,1.,b*.13+c*.035));
+        float a=sin(p.x*.075+p.y*.11+time*.8),b=sin(p.x*.31-p.y*.19-time*.6),c=sin(p.x*.83+p.y*.57+time*1.2);
+        float e=sin(p.x*1.73-p.y*.91-time*1.7),f=sin(p.x*.43+p.y*1.31+time*.7);
+        vec3 n=normalize(vec3(a*.055+b*.04+c*.02,1.,b*.035+c*.02+e*.012+f*.018));
         vec3 v=normalize(cameraPosition-w),l=normalize(vec3(-.6,.23,-1.));
         float spec=pow(max(0.,dot(reflect(-l,n),v)),100.);
         float fres=.08+.82*pow(1.-max(0.,dot(n,v)),4.);
@@ -1196,12 +1404,12 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   const hemi = new THREE.HemisphereLight(
     night ? 0x7fabc7 : 0xd5e9fa,
     canyon ? 0x8d6040 : 0x40555c,
-    night ? 0.42 : 0.48,
+    night ? 0.62 : canyon ? 0.34 : 0.4,
   );
   root.add(hemi);
   const sun = new THREE.DirectionalLight(
     night ? 0x9fc3ef : 0xffdfac,
-    night ? 1.1 : 3.4,
+    night ? 1.3 : 3.4,
   );
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -1576,7 +1784,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
         (r, i) => (r.rotation.z = time * (0.17 + (i % 3) * 0.025)),
       );
       if (beamGroup) beamGroup.rotation.y = time * 0.17;
-      sun.position.set(x - 65, y + 85, -s.d - 65);
+      sun.position.set(x - (night ? 65 : 80), y + (night ? 85 : 68), -s.d - 65);
       sun.target.position.set(x, y, -s.d - 20);
       headlights.position.set(x, y + s.y + 1.1, -s.d - 2);
       headlights.target.position.copy(worldPos(s.d + 28, s.x, 0.05));

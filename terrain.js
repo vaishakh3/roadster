@@ -29,33 +29,45 @@ function fbm(x, y) {
 }
 export function terrainHeight(d, offset, side, canyon, roadY) {
   if (canyon) {
-    // Talus at the verge, then a steep cut and eroded shelves. Slow variations
-    // establish whole canyon walls; fine gullies interrupt their silhouette.
-    const setback = 28 + noise(d * 0.006, side * 7) * 7;
+    // Erosion works at three scales: broad buttresses, a steep stratified face,
+    // and narrow gullies. Shared sampling keeps LOD/chunk borders watertight.
+    const buttress = noise(d * 0.01, side * 7);
+    const setback = 31 + buttress * 9;
     const t = Math.max(0, offset - setback);
-    const cliff = smooth(Math.min(1, t / 34));
-    const ridge = 45 + fbm(d * 0.006, side * 13) * 27;
-    const channel = Math.pow(Math.abs(noise(d * 0.024, offset * 0.012)), 2.2);
-    const gullies = channel * 17 + noise(d * 0.072, offset * 0.047) * 2;
-    const bench = Math.sin(t * 0.1 + noise(d * 0.012, side) * 0.8) * 2.2;
-    const talus = Math.min(t, 10) * 0.2;
+    const cliff = smooth(Math.min(1, t / (19 + 6 * buttress)));
+    const ridge = 57 + fbm(d * 0.004, side * 13) * 32;
+    const channel = Math.pow(1 - Math.abs(noise(d * 0.019, offset * 0.006)), 9);
+    const gullies = channel * 24 * smooth(Math.min(1, t / 9));
+    const raw = cliff * Math.max(18, ridge - gullies);
+    const terrace = raw / 10.5,
+      band = Math.floor(terrace),
+      fraction = terrace - band;
+    const stepped = (band + smooth(Math.min(1, fraction / 0.68))) * 10.5;
+    const talus = Math.min(t, 7) * 0.33;
     return (
       roadY(d) -
       0.38 +
       talus +
-      cliff * (ridge - gullies + bench) +
-      Math.max(0, offset - 110) * 0.037
+      mix(raw, stepped, 0.55) +
+      cliff * noise(d * 0.066, offset * 0.044) * 1.4 +
+      Math.max(0, offset - 110) * 0.025
     );
   }
-  const t = Math.max(0, offset - 57);
-  const rise = Math.sin(Math.min(1, t / 620) * Math.PI * 0.85);
-  const ridge = 70 + fbm(d * 0.0035, side * 5) * 85;
-  const detail = fbm(d * 0.021, offset * 0.021) * 16;
-  const drainage = Math.pow(Math.abs(noise(d * 0.013, offset * 0.012)), 2) * 18;
+  // The right bank opens onto the Atlantic. Left-bank promontories sit close
+  // enough to establish scale, then rise into forested ridges behind the road.
+  const shore = side === 1 ? 360 : 40;
+  const t = Math.max(0, offset - shore);
+  const headland = 0.62 + 0.38 * smooth((noise(d * 0.004, side * 5) + 1) * 0.5);
+  const cliff = smooth(Math.min(1, t / (side === 1 ? 90 : 38)));
+  const ridge = Math.sin(Math.min(1, t / 650) * Math.PI * 0.82);
+  const height = 42 + fbm(d * 0.0035, side * 5) * 48;
+  const fissure = Math.pow(1 - Math.abs(noise(d * 0.025, offset * 0.012)), 7);
+  const detail = fbm(d * 0.018, offset * 0.018) * 12;
   return (
-    -10 +
-    rise * (ridge + detail - drainage) * (side === 1 ? 0.6 : 1) +
-    smooth(Math.min(1, t / 25)) * 6
+    -8 +
+    cliff * (side === 1 ? 8 : 48 * headland) +
+    ridge * (height + detail) * (side === 1 ? 0.72 : 1.35) -
+    cliff * fissure * (side === 1 ? 4 : 9)
   );
 }
 // Curved, stratified boulders use shared indexed vertices: normals stay smooth.
@@ -83,15 +95,22 @@ export function boulderGeometry(segments = 28, rings = 20, mesa = false) {
     // shared smooth normals retain detail at the silhouette and in side light.
     const cut = mesa
       ? 1
-      : Math.min(1, 0.78 / Math.max(0.78, Math.abs(x * 0.8 + z * 0.6)));
+      : Math.min(
+          1,
+          0.71 / Math.max(0.71, Math.abs(x * 0.8 + z * 0.6)),
+          0.76 / Math.max(0.76, Math.abs(x * 0.45 - z * 0.9)),
+        );
     p.setXYZ(
       i,
       x * n * strata * cut,
-      y + (mesa ? 0.07 : 0.12) * Math.sin(x * 4 + z * 3),
+      (mesa ? y : Math.min(0.72, y) * 1.08) +
+        (mesa ? 0.07 : 0.065) * Math.sin(x * 4 + z * 3),
       z * n * strata * cut,
     );
-    const contact = .78 + .22 * smooth(Math.max(0, Math.min(1, (y + .8) / .7)));
-    const shade = (.91 + .09 * Math.sin(y * 17 + Math.sin(angle * 3))) * contact;
+    const contact =
+      0.78 + 0.22 * smooth(Math.max(0, Math.min(1, (y + 0.8) / 0.7)));
+    const shade =
+      (0.91 + 0.09 * Math.sin(y * 17 + Math.sin(angle * 3))) * contact;
     colors.push(shade, shade, shade);
   }
   g.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
@@ -126,21 +145,21 @@ export function createTerrainChunk({
   roadY,
   low = false,
 }) {
-  const cols = low ? 24 : 44,
-    rows = low ? 24 : 48,
+  const cols = low ? 24 : 48,
+    rows = low ? 24 : 56,
     width = canyon ? 550 : 900,
-    origin = canyon ? 26 : 57;
+    origin = canyon ? 26 : 38;
   const pos = [],
     colors = [],
     normals = [],
     idx = [];
-  const base = new THREE.Color(canyon ? 0x8c6048 : 0x293c2d),
-    top = new THREE.Color(canyon ? 0xc69d78 : 0x62734a);
+  const base = new THREE.Color(canyon ? 0x79503b : 0x566057),
+    top = new THREE.Color(canyon ? 0xd0ad87 : 0x6d7b47);
   const sample = (d, o) => terrainHeight(d, o, side, canyon, roadY);
   for (let j = 0; j <= rows; j++)
     for (let i = 0; i <= cols; i++) {
       const d = mix(start, end, j / rows),
-        offset = origin + Math.pow(i / cols, 1.7) * width;
+        offset = origin + Math.pow(i / cols, 1.85) * width;
       const y = sample(d, offset),
         x = roadX(d) + side * offset;
       pos.push(x, y, -d);
@@ -151,14 +170,14 @@ export function createTerrainChunk({
       const n = new THREE.Vector3(-dyx, 1, dyd - dyx * dx).normalize();
       normals.push(n.x, n.y, n.z);
       const band = canyon
-        ? 0.48 +
-          0.16 * Math.sin(y * 0.37) +
-          noise(d * 0.08, offset * 0.07) * 0.12
+        ? 0.42 +
+          0.16 * Math.sin(y * 0.37 + noise(d * 0.007, offset * 0.01)) +
+          noise(d * 0.08, offset * 0.07) * 0.1
         : Math.max(
             0.05,
             Math.min(
               0.95,
-              0.14 + 0.65 * n.y + fbm(d * 0.025, offset * 0.028) * 0.35,
+              -0.2 + 0.95 * n.y + fbm(d * 0.025, offset * 0.028) * 0.24,
             ),
           );
       const c = base

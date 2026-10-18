@@ -511,6 +511,12 @@ h1 b {
 #hull i.lost {
   background: #e2f4e52b;
 }
+#hull[data-low="true"] i:not(.lost) {
+  background: #ff795b;
+}
+#hull[data-low="true"] span {
+  color: #ffb297;
+}
 #hull span {
   font-size: 12px;
   margin-left: 7px;

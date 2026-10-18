@@ -224,7 +224,7 @@
           <div class="energy-track"><i id="energy-fill"></i></div>
           <span id="energy-note">RECHARGES ON THE ROAD</span>
           <div id="hull" aria-label="Vehicle condition: 3 of 3">
-            <i></i><i></i><i></i><span>CONDITION</span>
+            <i></i><i></i><i></i><span id="health-value">3 / 3 HP</span>
           </div>
         </div>
         <div id="desktop-controls">
@@ -271,8 +271,12 @@
               ><button id="fullscreen" class="setting">
                 <span>FULLSCREEN</span><b>↗</b>
               </button>
-              <button id="ghost" class="setting">
-                <span>PERSONAL GHOST</span><b>ON</b>
+              <button
+                id="ghost"
+                class="setting"
+                title="Show your recorded fastest run as a pass-through hologram"
+              >
+                <span>PERSONAL GHOST</span><b>OFF</b>
               </button>
               <p class="menu-help">
                 Steer with ← → or A / D.<br />Hold Space to fly. Release to
@@ -281,9 +285,8 @@
             </div>
           </div>
           <p class="menu-note">
-            Aim for the mint ramps. Suction grip carries you to the lip.<br />Flips
-            and landings are automatic. Keep steering. Clean stunts earn 800
-            points.
+            Hard crashes cost 1 HP. Pass rivals or hold FLY to clear them.<br />
+            Mint ramps handle flips and landings. Personal ghosts are optional.
           </p>
         </div>
       </section>

@@ -34,13 +34,20 @@
   <button data-id="breakwater" data-d="390" disabled>Coastal road</button>
   <button data-id="redshift" data-d="1280" disabled>Quarry road</button>
   <button data-id="nightshift" data-d="2550" disabled>Wet terminal</button>
+  <button data-id="breakwater" data-d="1000" disabled>Coastal headlands</button>
+  <button data-id="nightshift" data-d="2240" disabled>
+    Freight loading bays
+  </button>
+  <button id="phone" disabled>Landscape phone size</button>
+  <button id="desktop" disabled>Desktop size</button>
   <pre id="status" aria-live="polite">Loading…</pre>
   <iframe title="Roadster lighting test scene"></iframe>
   <script type="module">
     import * as THREE from "../vendor/three.module.js";
     import { createCoast } from "../coast.js";
     import { COURSES } from "../courses.js";
-    import { createRun, roadY } from "../run.js";
+    import { createRun, roadY, roadX } from "../run.js";
+    import { createTerrainChunk } from "../terrain.js";
 
     const frame = document.querySelector("iframe"),
       status = document.querySelector("#status");
@@ -48,6 +55,18 @@
       ? "../?qa=1"
       : "../dist/?qa=1";
     let game;
+    document.querySelector("#phone").onclick = () => {
+      frame.style.width = "844px";
+      frame.style.height = "390px";
+      status.textContent =
+        "Landscape phone viewport: 844 × 390. Select a venue pose to read its rendering budget.";
+    };
+    document.querySelector("#desktop").onclick = () => {
+      frame.style.width = "1180px";
+      frame.style.height = "664px";
+      status.textContent =
+        "Desktop viewport: 1180 × 664. Select a venue pose to read its rendering budget.";
+    };
     const assert = (condition, message) => {
       if (!condition) throw new Error(message);
     };
@@ -63,6 +82,50 @@
           course,
         );
         try {
+          let terrainSeams = 0;
+          if (course.theme !== "port")
+            for (const side of [-1, 1]) {
+              const options = {
+                start: 0,
+                end: 240,
+                side,
+                canyon: course.theme === "canyon",
+                roadX: (d) => roadX(d, course),
+                roadY: (d) => roadY(d, course),
+              };
+              const near = createTerrainChunk(options),
+                next = createTerrainChunk({ ...options, start: 240, end: 480 }),
+                far = createTerrainChunk({ ...options, low: true });
+              const a = near.attributes.position,
+                b = next.attributes.position,
+                c = far.attributes.position;
+              for (let col = 0; col < 49; col++) {
+                const j = a.count - 49 + col;
+                assert(
+                  Math.abs(a.getX(j) - b.getX(col)) +
+                    Math.abs(a.getY(j) - b.getY(col)) +
+                    Math.abs(a.getZ(j) - b.getZ(col)) <
+                    0.001,
+                  "Terrain chunk seam",
+                );
+                terrainSeams++;
+              }
+              for (let col = 0; col < 25; col++) {
+                const j = a.count - 49 + col * 2,
+                  k = c.count - 25 + col;
+                assert(
+                  Math.abs(a.getX(j) - c.getX(k)) +
+                    Math.abs(a.getY(j) - c.getY(k)) +
+                    Math.abs(a.getZ(j) - c.getZ(k)) <
+                    0.001,
+                  "Terrain LOD border seam",
+                );
+                terrainSeams++;
+              }
+              near.dispose();
+              next.dispose();
+              far.dispose();
+            }
           let meshes = 0,
             vertices = 0,
             pools = 0,
@@ -158,6 +221,7 @@
           }
           reports.push({
             course: course.id,
+            terrainSeams,
             meshes,
             vertices,
             pools,

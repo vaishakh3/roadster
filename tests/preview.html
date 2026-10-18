@@ -42,7 +42,10 @@
     ><button id="capture">Clean capture</button>
   </nav>
   <nav>
-    <button data-view="home">Start screen</button
+    <button data-view="impact">Rival impact</button
+    ><button data-view="flyover">Fly over rivals</button
+    ><button data-view="grid">Starting grid</button
+    ><button data-view="home">Start screen</button
     ><button data-view="ghost">Ghost reference</button
     ><button data-view="drive">Drive</button
     ><button data-view="pack">Racing pack</button
@@ -77,6 +80,8 @@
     import { driveInput } from "./driver.js";
     import { LAYOUT_VERSION } from "../courses.js";
     const frame = document.querySelector("iframe");
+    if (new URLSearchParams(location.search).has("source"))
+      frame.src = "../?qa=1";
     document.getElementById("scenery").onclick = () => {
       const w = frame.contentWindow,
         g = w.__breakwater;
@@ -140,6 +145,8 @@
           g.start();
           const v = b.dataset.view;
           if (v === "ghost") {
+            if (!g.ghostAppearance.enabled)
+              frame.contentDocument.getElementById("ghost").click();
             g.records[g.course.id] = {
               layout: LAYOUT_VERSION,
               time: 90,
@@ -152,6 +159,27 @@
             };
             g.setState({ d: 410, x: -2, time: 1, speed: 60 });
           }
+          if (v === "grid") g.setState({});
+          if (v === "impact" || v === "flyover") {
+            g.setState({
+              d: 100,
+              x: 0,
+              y: v === "flyover" ? 4.5 : 0,
+              speed: 76,
+              airborne: v === "flyover",
+              vy: 0,
+            });
+            Object.assign(g.state.rivals[0], {
+              d: 106,
+              x: 0,
+              y: 0,
+              speed: 30,
+              vx: 0,
+            });
+            g.state.rivals[1].d = 125;
+            g.state.rivals[2].d = 130;
+            for (let i = 0; i < (v === "flyover" ? 12 : 8); i++) g.step(1 / 60);
+          }
           if (v === "pack") {
             const w = frame.contentWindow;
             g.setState({});
@@ -161,6 +189,7 @@
                 ["ArrowLeft", input.steer < -0.04],
                 ["ArrowRight", input.steer > 0.04],
                 ["Space", input.fly],
+                ["ArrowDown", input.brake],
               ])
                 w.dispatchEvent(
                   new w.KeyboardEvent(on ? "keydown" : "keyup", {
@@ -337,6 +366,7 @@
         send("ArrowLeft", input.steer < -0.25);
         send("Space", input.fly);
         send("ShiftLeft", input.boost);
+        send("ArrowDown", input.brake);
         frames++;
         requestAnimationFrame(drive);
       };

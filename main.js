@@ -89,7 +89,7 @@ let mission = nextMission(career, course.id);
 if (!records || typeof records !== "object" || Array.isArray(records))
   records = {};
 let paintIndex = storage.get("roadster-paint", 0);
-let ghostOn = storage.get("roadster-ghost", true),
+let ghostOn = storage.get("roadster-ghost", false) === true,
   ghost,
   ghostIndex = 0,
   replay = [],
@@ -628,7 +628,7 @@ function tick(dt) {
     const was = countdown;
     countdown -= dt;
     if (countdown <= 0) {
-      announce("MINT GATES REFILL THRUST", "GO", 0.8);
+      announce("RACE THE CARS · FLY OVER OR PASS", "GO", 0.8);
       audio.event("start");
     } else if (was > 0.7 && countdown <= 0.7)
       $("announcement-title").textContent = "SET";
@@ -644,8 +644,13 @@ function tick(dt) {
   for (const e of run.events.splice(0)) {
     audio.event(e.type);
     if (!reduced) {
-      coast.emit(e.type, run);
-      effects.emit(e.type, coast.worldPos(run.d, run.x, run.y), run);
+      if (e.type === "rival-hit") {
+        const rival = run.rivals.find((r) => r.id === e.rivalId);
+        if (rival) effects.emit("hit", coast.worldPos(e.d, e.x, e.y), rival);
+      } else {
+        coast.emit(e.type, run);
+        effects.emit(e.type, coast.worldPos(run.d, run.x, run.y), run);
+      }
     }
     if (e.type === "sector") toast(`0${run.sector + 1} / ${e.text}`, "gate");
     else if (e.type === "hit") {
@@ -748,6 +753,8 @@ function hud(force = false) {
               ? "IN FLIGHT"
               : "ON THE ROAD";
   $("hull").setAttribute("aria-label", `Vehicle condition: ${run.hull} of 3`);
+  $("health-value").textContent = `${run.hull} / 3 HP`;
+  $("hull").dataset.low = run.hull <= 1 ? "true" : "false";
   [...$("hull").querySelectorAll("i")].forEach((el, i) =>
     el.classList.toggle("lost", i >= run.hull),
   );
@@ -1782,10 +1789,20 @@ async function boot() {
         },
         get ghostAppearance() {
           return {
+            enabled: ghostOn,
             name: ghost.name,
             visible: ghost.visible,
             draws: ghost.children.length,
             shadows: ghost.children.some((n) => n.castShadow),
+          };
+        },
+        get rivalAppearance() {
+          return {
+            visible: rivalField.visibleCount,
+            batches: rivalField.batchCount,
+            labels: rivalField.root.children
+              .filter((child) => child.isSprite && child.visible)
+              .map((child) => child.name),
           };
         },
         get trailHistory() {
