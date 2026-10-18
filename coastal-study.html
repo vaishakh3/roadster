@@ -273,6 +273,16 @@
         detail = "auto";
       const controls = [...document.querySelectorAll("button:not(#retry)")];
       const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const showRecovery = () => {
+        status.textContent =
+          "Still loading? Open FULL GAME to sign in if prompted, then return and retry.";
+        document.getElementById("retry").style.display = "block";
+      };
+      // An SSO redirect may never fire the iframe's load event. Keep recovery
+      // available even when the browser cannot finish that navigation in-frame.
+      const loadWatchdog = setTimeout(() => {
+        if (!g) showRecovery();
+      }, 25000);
       const overlays = (hidden) => {
         for (const id of ["app", "shade", "boost-fx"])
           frame.contentDocument.getElementById(id).style.display = hidden
@@ -330,15 +340,12 @@
         g.home();
         await g.selectCourse("breakwater");
         g.coached = true;
+        clearTimeout(loadWatchdog);
+        document.getElementById("retry").style.display = "none";
         controls.forEach((b) => (b.disabled = false));
         view("headland");
       }
-      frame.addEventListener("load", () =>
-        ready().catch((error) => {
-          status.textContent = error.message;
-          document.getElementById("retry").style.display = "block";
-        }),
-      );
+      frame.addEventListener("load", () => ready().catch(showRecovery));
       document.getElementById("retry").onclick = () => location.reload();
       document
         .querySelectorAll("[data-view]")
