@@ -30,6 +30,7 @@ import {
 } from "./missions.js";
 import { loadVisualAssets } from "./surfaces.js";
 import { createLoadingDisplay } from "./loading.js";
+import { createShowroomDrive } from "./showroom-drive.js";
 import {
   COURSES,
   getCourse,
@@ -128,6 +129,8 @@ let renderer, scene, camera, car, coast, controls, audio, effects, rivalField;
 const venues = new Map();
 let showroomAngle = 0;
 let showroomTurn = null;
+let showroomInspect = false;
+const showroomDrive = createShowroomDrive(course);
 function turnShowroom(amount, duration) {
   if (phase !== "home" || orientationBlocked) return;
   if (reduced) {
@@ -138,7 +141,13 @@ function turnShowroom(amount, duration) {
   showroomTurn = { from: showroomAngle, amount, elapsed: 0, duration };
 }
 function advanceShowroom(dt) {
-  if (!showroomTurn || phase !== "home") return;
+  if (
+    !showroomTurn ||
+    phase !== "home" ||
+    orientationBlocked ||
+    document.hidden
+  )
+    return;
   const turn = showroomTurn;
   turn.elapsed = Math.min(turn.duration, turn.elapsed + dt);
   const t = turn.elapsed / turn.duration,
@@ -210,7 +219,8 @@ const COACH = [
   {
     after: 0.6,
     timeout: 7,
-    text: () => (coarse() ? "HOLD BOOST TO GO FASTER" : "HOLD SHIFT OR ↑ TO BOOST"),
+    text: () =>
+      coarse() ? "HOLD BOOST TO GO FASTER" : "HOLD SHIFT OR ↑ TO BOOST",
     done: () => run.boosting,
   },
   {
@@ -290,15 +300,15 @@ async function showLeaderboard(submission) {
       : "POST YOUR RUN TO JOIN THE BOARD.";
   $("lb-form").hidden = !!name;
   $("leaderboard").hidden = false;
-  if (!data.rows.length && !name) $("lb-total").textContent = "BE THE FIRST TODAY";
+  if (!data.rows.length && !name)
+    $("lb-total").textContent = "BE THE FIRST TODAY";
 }
 async function refreshDailyRank() {
   if (!leaderboardAvailable() || phase !== "home") return;
   const daily = dailyEvent();
   const data = await fetchBoard(daily.day, playerId);
   if (data?.mine && phase === "home")
-    $("daily-name").innerHTML =
-      daily.name + ` · #${data.mine.rank} ` + GO_ICON;
+    $("daily-name").innerHTML = daily.name + ` · #${data.mine.rank} ` + GO_ICON;
 }
 function toast(text, type = "gate", points = 0) {
   $("event").textContent = text + (points ? " +" + num(points) : "");
@@ -366,7 +376,9 @@ const installed = () =>
   matchMedia("(display-mode: fullscreen)").matches ||
   navigator.standalone === true;
 function refreshInstallHint() {
-  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const ios =
+    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   $("install-hint").hidden =
     installed() ||
     !coarse() ||
@@ -398,7 +410,17 @@ function settings() {
 function resume() {
   if (orientationBlocked) return;
   if (previousPhase === "home") {
-    home();
+    setPhase("home");
+    // Settings can interrupt a paint turn. Settle that unfinished angle before
+    // driving again; deliberate manual inspection keeps its selected view.
+    if (!reduced && !showroomInspect) {
+      const offset = Math.atan2(
+        Math.sin(showroomAngle),
+        Math.cos(showroomAngle),
+      );
+      if (Math.abs(offset) > 0.001) turnShowroom(-offset, 0.7);
+    }
+    lastTime = performance.now();
     return;
   }
   setPhase("playing");
@@ -415,6 +437,8 @@ function home(keepLoading = false) {
   }
   showroomTurn = null;
   showroomAngle = 0;
+  showroomInspect = false;
+  showroomDrive.reset(course);
   cancelClip();
   film = null;
   tour = null;
@@ -442,6 +466,8 @@ function selectCourse(id, keepLoading = false) {
   course = getCourse(id);
   showroomAngle = 0;
   showroomTurn = null;
+  showroomInspect = false;
+  showroomDrive.reset(course);
   if (coast) coast.root.visible = false;
   coast = venues.get(course.id);
   coast.activate();
@@ -742,7 +768,11 @@ function endRun() {
       : "Steer around orange barriers, or fly over them. You have three hits.";
   tally($("result-time"), run.time, formatTime);
   tally($("result-score"), run.score, (v) => num(Math.round(v)));
-  tally($("result-gates"), run.gates, (v) => `${Math.round(v)} / ${course.gates.length}`);
+  tally(
+    $("result-gates"),
+    run.gates,
+    (v) => `${Math.round(v)} / ${course.gates.length}`,
+  );
   const rankEl = $("result-rank");
   rankEl.textContent = complete ? rank : "—";
   rankEl.className = complete ? `reveal ${String(rank).toLowerCase()}` : "";
@@ -1053,6 +1083,34 @@ function updateVisuals(dt, snap = false, visual = run) {
   const hero =
     phase === "home" || (phase === "paused" && previousPhase === "home");
   advanceShowroom(dt);
+  if (hero) {
+    showroomDrive.update(dt, {
+      paused:
+        phase !== "home" ||
+        showroomInspect ||
+        !!showroomTurn ||
+        loading.state.active ||
+        orientationBlocked ||
+        document.hidden,
+      reduced,
+    });
+    visual = showroomDrive.state;
+    const label = showroomInspect && !reduced ? "RESUME DRIVE ↻" : "VIEW CAR ↻";
+    const orbitButton = $("orbit-car");
+    if (orbitButton.textContent.trim() !== label) {
+      orbitButton.textContent = label;
+      orbitButton.setAttribute(
+        "aria-label",
+        showroomInspect && !reduced
+          ? "Resume driving preview"
+          : "Rotate car view",
+      );
+    }
+  }
+  const visualDt = hero && !showroomDrive.stats.moving ? 0 : dt;
+  const opacity = hero ? 1 - showroomDrive.fade : 1;
+  if ($("scene").style.opacity !== String(opacity))
+    $("scene").style.opacity = String(opacity);
   car.userData.setDetail(hero && !qualityLow);
   const x = roadX(visual.d, course) + visual.x,
     y = coast.roadY(visual.d) + Math.max(-8, visual.y);
@@ -1086,7 +1144,6 @@ function updateVisuals(dt, snap = false, visual = run) {
     bank,
     "YXZ",
   );
-  if (hero) car.rotation.y += showroomAngle;
   if (visual.attachedRamp >= 0) {
     const grade =
       (coast.roadY(visual.d + 0.2) - coast.roadY(visual.d - 0.2)) / 0.4 +
@@ -1104,6 +1161,7 @@ function updateVisuals(dt, snap = false, visual = run) {
     rampBasis.makeBasis(rampRight, rampNormal, rampForward);
     car.quaternion.setFromRotationMatrix(rampBasis);
   }
+  if (hero) car.rotation.y += showroomAngle;
   if (!hero) {
     const impact = Math.max(0, 1 - visual.crashAge / 1.05),
       jolt = Math.sin(visual.crashAge * 22) * impact;
@@ -1132,10 +1190,10 @@ function updateVisuals(dt, snap = false, visual = run) {
   d.wing.position.y = THREE.MathUtils.lerp(
     d.wing.position.y,
     visual.airborne || visual.boosting ? 0.99 : 0.49,
-    snap ? 1 : 1 - Math.exp(-dt * 4),
+    snap ? 1 : 1 - Math.exp(-visualDt * 4),
   );
   for (const wheel of d.wheels) {
-    if (wheel.spin) wheel.spin.rotation.x -= (visual.speed * dt) / 0.39;
+    if (wheel.spin) wheel.spin.rotation.x -= (visual.speed * visualDt) / 0.39;
     if (wheel.pivot && wheel.front)
       wheel.pivot.rotation.y = -(visual.steering || visual.vx * 0.025);
   }
@@ -1156,12 +1214,13 @@ function updateVisuals(dt, snap = false, visual = run) {
     jet.material.uniforms.time.value = clock;
   });
   for (const fan of d.flightHardware.fans)
-    fan.rotation.y += dt * (actuation.grip ? 95 : visual.airborne ? 12 : 30);
+    fan.rotation.y +=
+      visualDt * (actuation.grip ? 95 : visual.airborne ? 12 : 30);
   car.visible = true;
   coast.update(
     visual,
-    phase === "playing" || phase === "replay" ? dt : 0,
-    phase === "replay" ? visual.time : clock,
+    phase === "playing" || phase === "replay" || hero ? visualDt : 0,
+    phase === "replay" || hero ? visual.time : clock,
   );
   if (
     ["playing", "replay"].includes(phase) ||
@@ -1217,6 +1276,8 @@ function updateVisuals(dt, snap = false, visual = run) {
   }
 
   if (hero) {
+    const previewTime = reduced ? 0 : visual.time;
+    const orbit = Math.PI / 4 - heading + Math.sin(previewTime * 0.07) * 0.055;
     camera.fov = innerHeight < 600 ? 39 : 36;
     camera.setViewOffset(
       innerWidth,
@@ -1227,9 +1288,9 @@ function updateVisuals(dt, snap = false, visual = run) {
       innerHeight,
     );
     camera.position.set(
-      x + Math.sin(Math.PI / 4 + Math.sin(clock * 0.07) * 0.14) * 8.5,
-      y + 2.3 + Math.sin(clock * 0.13) * 0.08,
-      -visual.d - Math.cos(Math.PI / 4 + Math.sin(clock * 0.07) * 0.14) * 8.5,
+      x + Math.sin(orbit) * 8.5,
+      y + 2.3 + Math.sin(previewTime * 0.13) * 0.025,
+      -visual.d - Math.cos(orbit) * 8.5,
     );
     camera.lookAt(x, y + 0.38, -visual.d + 0.2);
   } else if (phase === "replay") {
@@ -1377,7 +1438,12 @@ function frame(now) {
       perfStats.frames = perfStats.seconds = 0;
     }
   }
-  if (quality === "auto" && !frozen && !saver && phase === "playing") {
+  if (
+    quality === "auto" &&
+    !frozen &&
+    !saver &&
+    (phase === "playing" || (phase === "home" && showroomDrive.stats.moving))
+  ) {
     const ceiling = Math.min(devicePixelRatio || 1, qualityLow ? 1.25 : 1.75);
     const ratio = frameBudget.sample(
       frameSeconds,
@@ -1419,7 +1485,8 @@ function saveCard() {
     const url = URL.createObjectURL(blob),
       a = document.createElement("a");
     a.href = url;
-    a.download = "fly-roadster-" + course.id + "-" + Math.round(run.score) + ".png";
+    a.download =
+      "fly-roadster-" + course.id + "-" + Math.round(run.score) + ".png";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 3000);
   });
@@ -1973,13 +2040,24 @@ async function boot() {
       }
     });
     $("orbit-car").onclick = () => {
-      turnShowroom(Math.PI / 2, 1.1);
+      if (!reduced && showroomInspect) {
+        showroomInspect = false;
+        const offset = Math.atan2(
+          Math.sin(showroomAngle),
+          Math.cos(showroomAngle),
+        );
+        turnShowroom(-offset, 0.9);
+      } else {
+        if (!reduced) showroomInspect = true;
+        turnShowroom(Math.PI / 2, 1.1);
+      }
       updateVisuals(0, true);
     };
     let orbitPointer = null;
     $("scene").addEventListener("pointerdown", (e) => {
       if (phase !== "home") return;
       showroomTurn = null;
+      if (!reduced) showroomInspect = true;
       orbitPointer = { id: e.pointerId, x: e.clientX };
       try {
         $("scene").setPointerCapture?.(e.pointerId);
@@ -2002,7 +2080,10 @@ async function boot() {
     };
     $("motion").onclick = () => {
       reduced = !reduced;
-      if (reduced) showroomTurn = null;
+      if (reduced) {
+        showroomTurn = null;
+        showroomInspect = false;
+      }
       storage.set("breakwater-reduced", reduced);
       $("motion").querySelector("b").textContent = reduced ? "REDUCED" : "FULL";
     };
@@ -2118,6 +2199,17 @@ async function boot() {
             autoRotating: !!showroomTurn,
             paintIndex,
             paintName: PAINTS[paintIndex].name,
+            drive: {
+              distance: showroomDrive.state.d,
+              speed:
+                phase === "home" && showroomDrive.stats.moving
+                  ? showroomDrive.state.speed
+                  : 0,
+              cycles: showroomDrive.stats.cycles,
+              fade: showroomDrive.fade,
+              moving: phase === "home" && showroomDrive.stats.moving,
+              inspecting: showroomInspect,
+            },
           };
         },
         get loadingState() {
@@ -2223,6 +2315,7 @@ async function boot() {
 
             position: car.position.toArray(),
             rotation: [car.rotation.x, car.rotation.y, car.rotation.z],
+            wheels: car.userData.wheels.map((wheel) => wheel.spin.rotation.x),
             visible: car.visible,
             actuation: car.userData.actuation,
             ports: car.userData.flightHardware.jets.map((j) => ({
@@ -2307,10 +2400,16 @@ boot();
 let lastTouchEnd = 0;
 const editable = (t) => t?.closest?.("input, textarea, [contenteditable]");
 for (const type of ["gesturestart", "gesturechange", "gestureend"])
-  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
-document.addEventListener("dblclick", (e) => {
-  if (!editable(e.target)) e.preventDefault();
-}, { passive: false });
+  document.addEventListener(type, (e) => e.preventDefault(), {
+    passive: false,
+  });
+document.addEventListener(
+  "dblclick",
+  (e) => {
+    if (!editable(e.target)) e.preventDefault();
+  },
+  { passive: false },
+);
 document.addEventListener(
   "touchend",
   (e) => {

@@ -4,7 +4,7 @@
   "description": "Fly Roadster: four racing venues, flight stunts, a World Tour and daily challenges",
   "scripts": {
     "start": "node scripts/serve.mjs",
-    "test": "node tests/run.test.mjs && node tests/dynamics.test.mjs && node tests/challenges.test.mjs && node tests/sharing.test.mjs && node tests/missions.test.mjs && node tests/pwa.test.mjs && node tests/leaderboard.test.mjs && node tests/effects.test.mjs && node tests/analytics.test.mjs",
+    "test": "node tests/run.test.mjs && node tests/dynamics.test.mjs && node tests/challenges.test.mjs && node tests/sharing.test.mjs && node tests/missions.test.mjs && node tests/pwa.test.mjs && node tests/leaderboard.test.mjs && node tests/effects.test.mjs && node tests/analytics.test.mjs && node tests/showroom-drive.test.mjs",
     "build": "node scripts/build.mjs",
     "test:browser": "node tests/browser-qa.cjs"
   },

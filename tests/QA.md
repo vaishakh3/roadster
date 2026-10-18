@@ -2,6 +2,36 @@
 
 Verified on 18 October 2026. This pass changes scenery, materials and garage/loading presentation. Racing controls, route layout version 6, opponent physics, objectives and saved progression remain compatible with v7.
 
+## Driving opening menu — 18 October 2026
+
+The menu now follows a private autonomous car through the selected venue, using
+existing physics, geometry and materials. Player race state, records, career
+progress and replay samples are independent. The build adds about 2 KB of HTML
+and no downloaded assets.
+
+The complete Node suite passes, including 11 new driver checks. Each of the four
+venues completes two private laps at both 30 and 60 Hz with full health and every
+gap cleared. Checks also cover independent player state, exact inspection/pause,
+reduced motion, bounded time steps, lap fades and recovery.
+
+Focused checks against the production WebGL bundle verify native animation,
+actual world-position and four-wheel rotation, paint-turn pauses, manual
+inspection and smooth return, settings, reduced motion, portrait pause, battery
+saver, all four venues, and a fresh player race/countdown. Two repeated rendered
+route loops retained 610 geometries / 45 textures after warming all venues.
+Visible-tab venue checks confirmed movement from 80 to 177.65 m over 2.4 seconds
+while the real player state stayed at 80 m, zero speed and zero elapsed time.
+The visibility guard correctly freezes preview motion when another tab is active.
+Six additional targeted checks pass after the final interaction refinements:
+interrupted paint turns and reduced-motion inspection return to the driving
+angle before moving, and both compact paint/inspection controls fit and measure
+44 px tall at 568×320. No application errors were reported.
+
+The moving menu uses the existing quality limits and now participates in AUTO
+resolution adjustment. Physical iPhone/Android frame rate and thermal behavior
+were not measured. These are desktop-browser lifecycle and responsive checks.
+Run the focused flow using **Check driving home preview** in `/tests/browser.html`.
+
 ## Verification
 
 - **94 Node checks pass:** 43 gameplay/input/geometry, 26 opponent/contact/dynamics, 8 challenge/replay, 8 recording/sharing and 9 career-objective checks. The recording-error fixture now supplies the loading controller and asserts that an error dismisses loading while releasing capture tracks.

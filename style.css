@@ -3558,13 +3558,13 @@ body[data-phase="replay"] #shade {
   }
   #paint {
     top: 56px;
-    min-height: 36px;
+    min-height: 44px;
     font-size: 12px;
     padding: 4px 9px;
   }
   #orbit-car {
     top: 56px;
-    min-height: 36px;
+    min-height: 44px;
     font-size: 12px;
   }
   .home-bottom {
