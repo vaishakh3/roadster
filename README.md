@@ -31,7 +31,9 @@ npm test
 npm run build
 ```
 
-Open `http://127.0.0.1:4173/`. Node.js 20+ is required for development. The build creates `dist/index.html` and an identical self-contained `Roadster-Flight-Lab.html`; the old filename remains for compatibility. Fonts, shaders, geometry, scanned textures, HDR lighting and synthesized audio are bundled locally. There are no runtime asset downloads, account requirements, environment variables, paid assets or backend.
+Open `http://127.0.0.1:4173/`. Node.js 20+ is required for development. The build creates `dist/index.html` and an identical self-contained `Roadster-Flight-Lab.html`; the old filename remains for compatibility. Fonts, shaders, geometry, scanned textures, HDR lighting and synthesized audio are bundled locally. Racing needs no runtime game-asset downloads, account, environment variables, paid assets or backend.
+
+Hosted HTTPS builds load the official `@vercel/analytics` client asynchronously for standard visits and page views. Enable Web Analytics for the Vercel project and deploy the build. Source previews, local/private hosts, standalone files and `?qa` runs skip analytics; no custom events are sent.
 
 ## Play
 

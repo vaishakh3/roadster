@@ -3626,7 +3626,7 @@ body[data-phase="replay"] #shade {
     font-size: 13px;
   }
   .preferences .setting {
-    min-height: 34px;
+    min-height: 44px;
     font-size: 11px;
   }
   .preferences .setting b {
