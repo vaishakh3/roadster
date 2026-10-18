@@ -289,6 +289,56 @@ document.getElementById("gpu").onclick = () =>
     });
     status.textContent = "GPU measurement complete.";
   });
+document.getElementById("small-phone").onclick = () =>
+  run(async () => {
+    frame.style.width = "568px";
+    frame.style.height = "320px";
+    await wait(150);
+    const g = game();
+    g.home();
+    g.start();
+    g.freeze();
+    g.pause();
+    hideUI = false;
+    hud();
+    const rows = [
+      "resume",
+      "restart",
+      "go-home",
+      "sound",
+      "quality",
+      "motion",
+      "ghost",
+      "fullscreen",
+      "saver",
+      "trim",
+    ].map((id) => {
+      const el = frame.contentDocument.getElementById(id),
+        r = el.getBoundingClientRect();
+      return {
+        id,
+        x: r.x,
+        y: r.y,
+        width: r.width,
+        height: r.height,
+        visible: el.getClientRects().length > 0,
+        inside: r.x >= 0 && r.y >= 0 && r.right <= 569 && r.bottom <= 321,
+        targetSize: r.height >= 44,
+      };
+    });
+    const passed = rows.every((r) => r.visible && r.inside && r.targetSize);
+    output({
+      kind: "small-phone-pause",
+      viewport: [568, 320],
+      rows,
+      passed,
+      errors,
+    });
+    status.textContent =
+      passed && !errors.length
+        ? "PASS small-phone pause"
+        : "FAIL small-phone pause";
+  });
 document.getElementById("live").onclick = () =>
   run(async () => {
     const g = game(),
