@@ -1,4 +1,4 @@
-import { COURSES, hazardPose, saveResult, completedCount } from "../courses.js";
+import { COURSES, TRIMS, trimFor, hazardPose, saveResult, completedCount } from "../courses.js";
 import { driveInput } from "./driver.js";
 import assert from "node:assert/strict";
 import {
@@ -689,5 +689,30 @@ test("A standard gamepad steers, boosts, flies, brakes and pauses", () => {
       configurable: true,
     });
   }
+});
+test("Trims change boost speed, reserve drain and lift; the default is the baseline", () => {
+  assert.equal(trimFor("nope"), TRIMS[0]);
+  assert.deepEqual(
+    [TRIMS[0].boostSpeed, TRIMS[0].boostDrain, TRIMS[0].liftDrain, TRIMS[0].liftAccel, TRIMS[0].regen],
+    [76, 20, 12, 24, 17],
+  );
+  const base = createRun(),
+    thrust = createRun(COURSES[0], { trim: trimFor("thrust") }),
+    rocket = createRun(COURSES[0], { trim: trimFor("rocket") });
+  for (const s of [base, thrust, rocket]) {
+    for (const r of s.rivals) r.d = 3000;
+    Object.assign(s, { d: 60, speed: 48, energy: 100 });
+    advance(s, { boost: true }, 2.5);
+  }
+  assert(thrust.speed > base.speed + 1.5, "thrust boosts harder");
+  assert(thrust.energy < base.energy - 8, "thrust burns more reserve");
+  assert(rocket.speed < base.speed - 1, "rocket is heavier on the road");
+  for (const s of [base, rocket]) {
+    Object.assign(s, { y: 0.2, vy: 0, energy: 100, speed: 60 });
+    advance(s, { fly: true }, 0.4);
+  }
+  assert(rocket.y > base.y + 0.3, "rocket lifts faster");
+  assert(rocket.energy > base.energy, "rocket sips reserve while lifting");
+  for (const rival of base.rivals) assert.equal(rival.trim, TRIMS[0]);
 });
 console.log(`${count} gameplay/input checks passed.`);

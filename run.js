@@ -1,7 +1,7 @@
 /** Breakwater's deterministic arcade simulation. Metres, seconds; X is across the road.
  * Steering and lift are independent of thrust, including during takeoff/landing.
  * The assisted route heading keeps the controls simple; this is not a vehicle simulator. */
-import { COURSES, getCourse, hazardPose } from "./courses.js";
+import { COURSES, TRIMS, getCourse, hazardPose } from "./courses.js";
 import { rampContact, launchFlight, flightPose } from "./stunts.js";
 import {
   createRivals,
@@ -36,6 +36,7 @@ export function createRun(course = COURSES[0], options = {}) {
   const state = {
     course: resolved,
     isRival: !!options.rival,
+    trim: options.trim || TRIMS[0],
     rivals: [],
     position: options.rival ? 1 : 4,
     finishPosition: 0,
@@ -250,7 +251,7 @@ function tick(s, raw, dt) {
     : s.padTime > 0
       ? 88
       : s.boosting
-        ? 76
+        ? s.trim.boostSpeed
         : 48 + s.sector * 2;
   const paceLimit =
     s.isRival && Number.isFinite(raw.paceLimit)
@@ -343,7 +344,11 @@ function tick(s, raw, dt) {
     }
   } else {
     if (s.lifting) {
-      s.liftAcceleration = clamp((5.8 - s.y) * 13 - s.vy * 5, -9.81, 24);
+      s.liftAcceleration = clamp(
+        (5.8 - s.y) * 13 - s.vy * 5,
+        -9.81,
+        s.trim.liftAccel,
+      );
       s.vy += s.liftAcceleration * dt;
     } else if (s.y > 0 || gap) s.vy -= 9.81 * dt;
     s.y += s.vy * dt;
@@ -411,9 +416,11 @@ function tick(s, raw, dt) {
     finish(s, true, "THE BRIDGE WAS OUT");
     return;
   }
-  const drain = (s.boosting ? 20 : 0) + (s.lifting ? 12 : 0);
+  const drain =
+    (s.boosting ? s.trim.boostDrain : 0) + (s.lifting ? s.trim.liftDrain : 0);
   s.energy = clamp(
-    s.energy + ((drain ? -drain : s.y < 0.3 ? 17 : 4) + s.drafting * 5) * dt,
+    s.energy +
+      ((drain ? -drain : s.y < 0.3 ? s.trim.regen : 4) + s.drafting * 5) * dt,
     0,
     100,
   );

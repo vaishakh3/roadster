@@ -7,6 +7,12 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <meta name="theme-color" content="#112c34" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Roadster" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
     <meta
       name="description"
       content="Three arenas. One Roadster. Race the Atlantic, fly the canyon, and weave through the night port."
@@ -172,7 +178,7 @@
         <span class="brand">ROADSTER <i>/</i></span
         ><span class="edition">FLIGHT DIVISION / WORLD TOUR</span
         ><button id="settings" class="text-button" aria-label="Open settings">
-          SETTINGS <span>↗</span>
+          SETTINGS <span><i class="ico ico-go" aria-hidden="true"></i></span>
         </button>
       </header>
       <section id="home" aria-labelledby="home-title">
@@ -191,7 +197,7 @@
               >BREAKWATER<small data-region="ATLANTIC"
                 >ATLANTIC / 5.4 KM</small
               ></span
-            ><b aria-hidden="true">↗</b>
+            ><b aria-hidden="true"><i class="ico ico-go"></i></b>
           </button>
           <button data-course="redshift" aria-pressed="false">
             <i>02</i
@@ -199,7 +205,7 @@
               >REDSHIFT<small data-region="BADLANDS"
                 >BADLANDS / 5.7 KM</small
               ></span
-            ><b aria-hidden="true">↗</b>
+            ><b aria-hidden="true"><i class="ico ico-go"></i></b>
           </button>
           <button data-course="nightshift" aria-pressed="false">
             <i>03</i
@@ -207,15 +213,18 @@
               >NIGHTSHIFT<small data-region="FREIGHT PORT"
                 >FREIGHT PORT / 6.0 KM</small
               ></span
-            ><b aria-hidden="true">↗</b>
+            ><b aria-hidden="true"><i class="ico ico-go"></i></b>
           </button>
         </nav>
         <div class="home-copy">
           <p class="kicker" id="course-location">01 / NORTH ATLANTIC</p>
           <h1 id="home-title">
-            BREAK<br /><span>WATER</span><b aria-hidden="true">↗</b>
+            BREAK<br /><span>WATER</span><b aria-hidden="true"><i class="ico ico-go"></i></b>
           </h1>
           <p id="challenge-banner" hidden role="status"></p>
+          <button id="install-hint" class="text-button" hidden>
+            FULL SCREEN ON IPHONE: SHARE → ADD TO HOME SCREEN <span>✕</span>
+          </button>
           <p class="home-description" id="course-description">
             The road ends. Your run doesn’t.
           </p>
@@ -267,12 +276,12 @@
           </div>
           <div class="start-actions">
             <button id="start" class="primary">
-              <span>RACE HERE</span><b>↗</b></button
+              <span>RACE HERE</span><b><i class="ico ico-go" aria-hidden="true"></i></b></button
             ><button id="start-tour" class="secondary">
-              WORLD TOUR <span>3 STAGES ↗</span>
+              WORLD TOUR <span>3 STAGES <i class="ico ico-go" aria-hidden="true"></i></span>
             </button>
             <button id="start-daily" class="secondary">
-              DAILY EVENT <span id="daily-name">↗</span>
+              DAILY EVENT <span id="daily-name"><i class="ico ico-go" aria-hidden="true"></i></span>
             </button>
           </div>
           <div class="home-foot">
@@ -290,7 +299,7 @@
           <div class="journey">
             <div class="journey-label">
               <span id="distance">5.4 KM TO GO</span
-              ><span id="destination">BREAKWATER ↗</span
+              ><span id="destination">BREAKWATER <i class="ico ico-go" aria-hidden="true"></i></span
               ><b id="map-percent">0%</b>
             </div>
             <svg
@@ -325,8 +334,11 @@
             Ⅱ
           </button>
         </div>
+        <div id="coach" hidden aria-live="polite">
+          <span>FIRST RUN</span><b id="coach-text"></b>
+        </div>
         <div id="warning" hidden>
-          <span class="warning-icon" aria-hidden="true">↗</span>
+          <span class="warning-icon" aria-hidden="true"><i class="ico ico-go"></i></span>
           <div>
             <strong id="warning-title">BRIDGE OUT</strong
             ><span id="warning-detail">HOLD FLY</span>
@@ -380,6 +392,7 @@
           </div>
         </div>
       </section>
+      <pre id="perf" hidden aria-hidden="true"></pre>
       <section id="menu" class="sheet" hidden aria-labelledby="menu-title">
         <div class="sheet-inner">
           <p class="kicker" id="menu-kicker">TAKE A BREATH.</p>
@@ -387,7 +400,7 @@
           <div class="menu-grid">
             <div class="menu-actions">
               <button id="resume" class="primary">
-                BACK TO THE RUN <b>↗</b></button
+                BACK TO THE RUN <b><i class="ico ico-go" aria-hidden="true"></i></b></button
               ><button id="restart" class="secondary">
                 RESTART COURSE <span>↻</span></button
               ><button id="go-home" class="text-button">RETURN TO START</button>
@@ -399,8 +412,20 @@
                 <span>GRAPHICS</span><b>AUTO</b></button
               ><button id="motion" class="setting">
                 <span>CAMERA MOTION</span><b>FULL</b></button
+              ><button
+                id="saver"
+                class="setting"
+                title="Render at 30 fps to save battery and heat; the simulation keeps its full rate"
+              >
+                <span>BATTERY SAVER</span><b>OFF</b></button
+              ><button
+                id="trim"
+                class="setting"
+                title="Roadster trim: Performance, Thrust or Rocket"
+              >
+                <span>ROADSTER TRIM</span><b>PERFORMANCE</b></button
               ><button id="fullscreen" class="setting">
-                <span>FULLSCREEN</span><b>↗</b>
+                <span>FULLSCREEN</span><b><i class="ico ico-go" aria-hidden="true"></i></b>
               </button>
               <button
                 id="ghost"
@@ -409,6 +434,7 @@
               >
                 <span>PERSONAL GHOST</span><b>OFF</b>
               </button>
+              <p id="trim-note"></p>
               <p class="menu-help">
                 Steer with ← → or A / D.<br />Hold Space to fly. Release to
                 land.<br />Hold Shift or ↑ to boost. ↓ brakes.<br />Gamepad:
@@ -445,19 +471,19 @@
           <p id="tour-summary" hidden></p>
           <div class="result-actions">
             <button id="next-stage" class="primary" hidden>
-              NEXT COURSE ↗
+              NEXT COURSE <i class="ico ico-go" aria-hidden="true"></i>
             </button>
-            <button id="retry" class="primary">ONE MORE RUN <b>↗</b></button
+            <button id="retry" class="primary">ONE MORE RUN <b><i class="ico ico-go" aria-hidden="true"></i></b></button
             ><button id="share" class="secondary">
               SAVE RUN CARD <span>↓</span></button
             ><button id="result-home" class="text-button">BACK TO START</button>
           </div>
           <div class="result-tools">
             <button id="watch-replay" class="text-button">
-              WATCH HIGHLIGHT ↗
+              WATCH HIGHLIGHT <i class="ico ico-go" aria-hidden="true"></i>
             </button>
             <button id="share-challenge" class="text-button">
-              CHALLENGE A FRIEND ↗
+              CHALLENGE A FRIEND <i class="ico ico-go" aria-hidden="true"></i>
             </button>
           </div>
           <p id="record-message"></p>
@@ -483,7 +509,7 @@
         <div class="replay-actions">
           <button id="save-clip" class="primary">SAVE 10-SECOND CLIP ↓</button
           ><button id="exit-replay" class="secondary">
-            BACK TO RESULTS ↗
+            BACK TO RESULTS <i class="ico ico-go" aria-hidden="true"></i>
           </button>
         </div>
         <p id="clip-status" role="status"></p>
@@ -499,7 +525,7 @@
         <div class="sheet-inner">
           <h2>CAN’T START<br />THE ENGINE.</h2>
           <p id="error-message">This browser couldn’t open the 3D scene.</p>
-          <button id="reload" class="primary">TRY AGAIN ↗</button>
+          <button id="reload" class="primary">TRY AGAIN <i class="ico ico-go" aria-hidden="true"></i></button>
         </div>
       </section>
     </main>
