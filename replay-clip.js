@@ -101,7 +101,7 @@ export function createClip(source, title, onDone, onError) {
         ctx.fillRect(0, 0, 960, 115);
         ctx.fillStyle = "#f6f2e7";
         ctx.font = "600 24px Barlow";
-        ctx.fillText("ROADSTER / " + title, 30, 40);
+        ctx.fillText("FLY ROADSTER / " + title, 30, 40);
         ctx.fillStyle = "#a2fbe0";
         ctx.font = "14px Plex";
         ctx.fillText("FLIGHT DIVISION  /  " + time.toFixed(1) + " S", 30, 66);

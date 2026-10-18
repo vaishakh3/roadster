@@ -13,4 +13,4 @@ const server=createServer(async(req,res)=>{
   const body=await readFile(file);res.writeHead(200,{'Content-Type':mime[extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(body);
  }catch{res.writeHead(404);res.end('Not found');}
 });
-server.listen(port,'127.0.0.1',()=>console.log(`Roadster preview: http://127.0.0.1:${port}\nBrowser checks: http://127.0.0.1:${port}/tests/browser.html`));
+server.listen(port,'127.0.0.1',()=>console.log(`Fly Roadster preview: http://127.0.0.1:${port}\nBrowser checks: http://127.0.0.1:${port}/tests/browser.html`));

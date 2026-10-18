@@ -29,7 +29,7 @@ const good = {
 test("Names are sanitised, upper-cased and bounded", () => {
   assert.equal(cleanName(good.name), "VAISHAKH B");
   assert.equal(cleanName("<script>"), "SCRIPT");
-  assert.equal(cleanName(""), "ROADSTER");
+  assert.equal(cleanName(""), "FLY ROADSTER");
   assert.equal(cleanName("a".repeat(40)).length, LIMITS.name);
 });
 test("Submissions are validated for day, id, course and plausible results", () => {

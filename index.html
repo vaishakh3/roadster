@@ -10,19 +10,21 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Roadster" />
+    <meta name="apple-mobile-web-app-title" content="Fly Roadster" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="apple-touch-icon" href="icon-192.png" />
     <meta
       name="description"
-      content="Three arenas. One Roadster. Race the Atlantic, fly the canyon, and weave through the night port."
+      content="Fly Roadster: race the Atlantic, fly the canyon, weave through the night port and take on the Texas test range."
     />
-    <meta property="og:title" content="Roadster / World Tour" />
+    <meta property="og:title" content="Fly Roadster" />
+    <meta property="og:site_name" content="Fly Roadster" />
+    <meta name="twitter:title" content="Fly Roadster" />
     <meta
       property="og:description"
-      content="Coast. Canyon. Night port. Take on the three-stage World Tour."
+      content="Fly Roadster: race the Atlantic, fly the canyon, weave through the night port and take on the Texas test range."
     />
-    <title>Roadster / World Tour</title>
+    <title>Fly Roadster</title>
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23f46b3c' d='M0 0h64v64H0z'/%3E%3Cpath stroke='%23132d36' stroke-width='7' fill='none' d='m17 46 13-28h17L34 46M25 31h17'/%3E%3C/svg%3E"
@@ -33,14 +35,14 @@
     <canvas
       id="scene"
       tabindex="-1"
-      aria-label="Roadster coastal racing game"
+      aria-label="Fly Roadster racing game"
     ></canvas>
     <div id="shade" aria-hidden="true"></div>
     <div id="impact" aria-hidden="true"></div>
     <div id="boost-fx" aria-hidden="true"></div>
-    <div id="loading" aria-label="Preparing Roadster">
+    <div id="loading" aria-label="Preparing Fly Roadster">
       <div class="loading-masthead">
-        <span>ROADSTER <i>/</i></span
+        <span>FLY ROADSTER <i>/</i></span
         ><span>FLIGHT DIVISION</span>
       </div>
       <div class="loading-body">
@@ -175,7 +177,7 @@
     </div>
     <main id="app">
       <header id="masthead">
-        <span class="brand">ROADSTER <i>/</i></span
+        <span class="brand">FLY ROADSTER <i>/</i></span
         ><span class="edition">FLIGHT DIVISION / WORLD TOUR</span
         ><button id="settings" class="text-button" aria-label="Open settings">
           SETTINGS <span><i class="ico ico-go" aria-hidden="true"></i></span>
@@ -429,9 +431,9 @@
               ><button
                 id="trim"
                 class="setting"
-                title="Roadster trim: Performance, Thrust or Rocket"
+                title="Car trim: Performance, Thrust or Rocket"
               >
-                <span>ROADSTER TRIM</span><b>PERFORMANCE</b></button
+                <span>CAR TRIM</span><b>PERFORMANCE</b></button
               ><button id="fullscreen" class="setting">
                 <span>FULLSCREEN</span><b><i class="ico ico-go" aria-hidden="true"></i></b>
               </button>
@@ -528,7 +530,7 @@
       </section>
       <section id="replay-view" hidden aria-label="Race highlight replay">
         <div class="replay-heading">
-          <span>ROADSTER / RACE FILM</span
+          <span>FLY ROADSTER / RACE FILM</span
           ><strong id="replay-title">THE LAST TEN SECONDS</strong
           ><span id="replay-clock"></span>
         </div>
@@ -541,7 +543,7 @@
         <p id="clip-status" role="status"></p>
       </section>
       <section id="rotate" hidden aria-labelledby="rotate-title">
-        <span class="brand">ROADSTER / WORLD TOUR</span>
+        <span class="brand">FLY ROADSTER</span>
         <div class="phone-outline" aria-hidden="true">↻</div>
         <h2 id="rotate-title">THE ROAD<br />NEEDS SPACE.</h2>
         <p>Turn your phone sideways.</p>

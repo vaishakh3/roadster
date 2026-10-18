@@ -18,7 +18,7 @@ export function cleanName(raw) {
     .trim()
     .toUpperCase()
     .slice(0, LIMITS.name);
-  return name || "ROADSTER";
+  return name || "FLY ROADSTER";
 }
 /** Validates a submission; returns { ok, error } or { ok, entry }. */
 export function validateEntry(body, now = Date.now()) {

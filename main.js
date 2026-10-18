@@ -1397,7 +1397,7 @@ function saveCard() {
   ctx.fillStyle = "#ff8255";
   ctx.fillRect(0, 0, 18, 630);
   ctx.font = "600 26px Barlow";
-  ctx.fillText("ROADSTER / " + course.name, 65, 65);
+  ctx.fillText("FLY ROADSTER / " + course.name, 65, 65);
   ctx.font = "600 102px Barlow";
   ctx.fillStyle = "#f6f1df";
   ctx.fillText(run.finished ? "COURSE COMPLETE." : "ONE MORE RUN.", 65, 195);
@@ -1419,7 +1419,7 @@ function saveCard() {
     const url = URL.createObjectURL(blob),
       a = document.createElement("a");
     a.href = url;
-    a.download = course.id + "-" + Math.round(run.score) + ".png";
+    a.download = "fly-roadster-" + course.id + "-" + Math.round(run.score) + ".png";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 3000);
   });
@@ -1746,7 +1746,7 @@ function recordClip() {
         clipUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = clipUrl;
-        a.download = `roadster-${course.id}.${ext}`;
+        a.download = `fly-roadster-${course.id}.${ext}`;
         a.click();
         const url = clipUrl;
         setTimeout(() => {
@@ -1854,7 +1854,7 @@ async function boot() {
     });
     loading.update(
       55,
-      "Assembling the Roadster",
+      "Assembling your car",
       "Bodywork, wheels and flight equipment.",
       1,
     );

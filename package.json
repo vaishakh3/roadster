@@ -1,7 +1,7 @@
 {
-  "name": "roadster-world-tour",
+  "name": "fly-roadster",
   "version": "8.0.0",
-  "description": "Three authored Roadster racing arenas, a World Tour, moving hazards, course records and personal ghosts",
+  "description": "Fly Roadster: four racing venues, flight stunts, a World Tour and daily challenges",
   "scripts": {
     "start": "node scripts/serve.mjs",
     "test": "node tests/run.test.mjs && node tests/dynamics.test.mjs && node tests/challenges.test.mjs && node tests/sharing.test.mjs && node tests/missions.test.mjs && node tests/pwa.test.mjs && node tests/leaderboard.test.mjs && node tests/effects.test.mjs && node tests/analytics.test.mjs",
