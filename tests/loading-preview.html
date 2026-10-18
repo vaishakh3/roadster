@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>Roadster loading screen review</title>
+  <style>
+    body {
+      margin: 20px;
+      background: #132127;
+      color: #fff;
+      font: 14px system-ui;
+    }
+    button {
+      padding: 12px;
+      margin-right: 8px;
+    }
+    iframe {
+      display: block;
+      width: 844px;
+      height: 390px;
+      border: 0;
+      margin-top: 20px;
+    }
+  </style>
+  <button data-size="1280,720">Desktop</button
+  ><button data-size="844,390">Landscape phone</button
+  ><button data-size="568,320">Small phone</button
+  ><button data-size="390,844">Portrait phone</button>
+  <button data-stage="0">Surfaces</button
+  ><button data-stage="1">Machine</button
+  ><button data-stage="2">Venue</button
+  ><button data-stage="3">Lighting</button>
+  <p>
+    Visual fixture of the actual loading component. Progress here is selected
+    manually; the game uses completed preparation work.
+  </p>
+  <iframe title="Loading screen preview"></iframe>
+  <script type="module">
+    const frame = document.querySelector("iframe");
+    const html = await (await fetch("../index.html")).text();
+    const parsed = new DOMParser().parseFromString(html, "text/html");
+    frame.srcdoc = `<!doctype html><base href="${new URL("../", location.href)}"><link rel="stylesheet" href="style.css">${parsed.getElementById("loading").outerHTML}<script type="module">import {createLoadingDisplay} from './loading.js'; window.previewLoad=createLoadingDisplay();previewLoad.begin('Breakwater');previewLoad.update(32,'Loading surfaces','56% of surface assets prepared.',0);<\/script>`;
+    for (const button of document.querySelectorAll("[data-size]"))
+      button.onclick = () => {
+        const [w, h] = button.dataset.size.split(",");
+        frame.style.width = w + "px";
+        frame.style.height = h + "px";
+      };
+    for (const button of document.querySelectorAll("[data-stage]"))
+      button.onclick = () => {
+        const n = +button.dataset.stage;
+        frame.contentWindow.previewLoad.begin("Breakwater");
+        frame.contentWindow.previewLoad.update(
+          [32, 55, 65, 85][n],
+          [
+            "Loading surfaces",
+            "Assembling the Roadster",
+            "Building the venue",
+            "Preparing lighting",
+          ][n],
+          [
+            "56% of surface assets prepared.",
+            "Bodywork, wheels and flight equipment.",
+            "Creating terrain, scenery and the racing surface.",
+            "Warming the graphics for your first frame.",
+          ][n],
+          n,
+        );
+      };
+  </script>
+</html>

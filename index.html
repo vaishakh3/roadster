@@ -32,9 +32,140 @@
     <div id="shade" aria-hidden="true"></div>
     <div id="impact" aria-hidden="true"></div>
     <div id="boost-fx" aria-hidden="true"></div>
-    <div id="loading" role="status">
-      <span class="brand">ROADSTER /</span><strong>PREPARING THE TOUR</strong
-      ><span class="loading-line"></span>
+    <div id="loading" aria-label="Preparing Roadster">
+      <div class="loading-masthead">
+        <span>ROADSTER <i>/</i></span
+        ><span>FLIGHT DIVISION</span>
+      </div>
+      <div class="loading-body">
+        <div class="loading-title">
+          <span>WORLD TOUR / NEXT DESTINATION</span>
+          <h2 id="loading-venue">BREAKWATER</h2>
+        </div>
+        <div class="loading-machine" aria-hidden="true">
+          <svg viewBox="0 0 800 260" fill="none">
+            <defs>
+              <linearGradient
+                id="loader-body"
+                x1="400"
+                y1="80"
+                x2="400"
+                y2="205"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stop-color="#394448" />
+                <stop offset="1" stop-color="#10191d" />
+              </linearGradient>
+            </defs>
+            <path
+              class="load-guide"
+              d="M26 222H774M80 40V235M720 40V235M400 38V236M52 60H748"
+            />
+            <ellipse
+              cx="401"
+              cy="221"
+              rx="328"
+              ry="12"
+              fill="#000"
+              opacity=".36"
+            />
+            <path
+              fill="url(#loader-body)"
+              d="M69 175 83 153 106 141 226 129 294 87Q315 76 345 76H444Q477 79 524 125L664 142 714 161 735 188 722 204H665Q668 154 621 154T575 205H218Q220 154 172 154T126 204H83L65 195Z"
+            />
+            <path
+              class="load-body-line"
+              d="M69 175 83 153 106 141 226 129 294 87Q315 76 345 76H444Q477 79 524 125L664 142 714 161 735 188 722 204H665Q668 154 621 154T575 205H218Q220 154 172 154T126 204H83L65 195Z"
+            />
+            <path
+              class="load-progress-outline"
+              pathLength="100"
+              d="M69 175 83 153 106 141 226 129 294 87Q315 76 345 76H444Q477 79 524 125L664 142 714 161 735 188 722 204H665Q668 154 621 154T575 205H218Q220 154 172 154T126 204H83L65 195Z"
+            />
+            <path
+              class="load-detail-line"
+              d="m252 128 53-35q12-7 37-7h48l-9 43Zm142 1 8-43h40q24 0 64 40Zm-156 14 26 49h270l18-52M387 136l-3 55M99 155l76-6M675 155l37 19M102 182h21m549 2h38M294 145h27M82 213h645"
+            />
+            <g class="loading-wheel" style="transform-origin: 172px 193px">
+              <circle
+                cx="172"
+                cy="193"
+                r="33"
+                fill="#0a1114"
+                stroke="#637176"
+                stroke-width="7"
+              />
+              <circle
+                cx="172"
+                cy="193"
+                r="23"
+                stroke="#c3c9c7"
+                stroke-width="2"
+              />
+              <path
+                d="m172 171 7 15 14 14-17-2-20 8 7-17Z"
+                stroke="#8e9c9f"
+                stroke-width="3"
+              />
+              <circle cx="172" cy="193" r="5" fill="#f08a5e" />
+            </g>
+            <g class="loading-wheel" style="transform-origin: 621px 193px">
+              <circle
+                cx="621"
+                cy="193"
+                r="33"
+                fill="#0a1114"
+                stroke="#637176"
+                stroke-width="7"
+              />
+              <circle
+                cx="621"
+                cy="193"
+                r="23"
+                stroke="#c3c9c7"
+                stroke-width="2"
+              />
+              <path
+                d="m621 171 7 15 14 14-17-2-20 8 7-17Z"
+                stroke="#8e9c9f"
+                stroke-width="3"
+              />
+              <circle cx="621" cy="193" r="5" fill="#f08a5e" />
+            </g>
+            <path class="loading-road-motion" d="M0 239H800" />
+          </svg>
+          <span>01 / ELECTRIC · FLIGHT EQUIPPED</span>
+        </div>
+        <div class="loading-readout">
+          <div role="status" aria-live="polite">
+            <strong id="loading-stage">Starting</strong>
+            <p id="loading-detail">Preparing your first view.</p>
+          </div>
+          <div
+            id="loading-meter"
+            role="progressbar"
+            aria-label="Game preparation"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <b id="loading-percent">00</b><span>%</span>
+          </div>
+        </div>
+        <ol class="loading-steps" aria-hidden="true">
+          <li data-load-step="0" data-state="active"><b>01</b>SURFACES</li>
+          <li data-load-step="1"><b>02</b>MACHINE</li>
+          <li data-load-step="2"><b>03</b>VENUE</li>
+          <li data-load-step="3"><b>04</b>LIGHTING</li>
+        </ol>
+        <p id="loading-slow" hidden>
+          Still preparing this device.
+          <button id="loading-retry">RETRY ↻</button>
+        </p>
+      </div>
+      <div class="loading-footer">
+        <span>STEER · BOOST · FLY</span><span>INDEPENDENT FAN GAME</span>
+      </div>
     </div>
     <main id="app">
       <header id="masthead">

@@ -1,65 +1,62 @@
-# Roadster v7 — scenery, visible rivals and crash damage
+# Roadster v8 — dimensional scenery, paint previews and staged loading
 
-Verified on 18 October 2026. This is an assisted arcade racer with richer materials and scenery, not a manufacturer vehicle simulation. Browser tests below used the production bundle unless marked otherwise.
+Verified on 18 October 2026. This pass changes scenery, materials and garage/loading presentation. Racing controls, route layout version 6, opponent physics, objectives and saved progression remain compatible with v7.
 
-## Results
+## Verification
 
-- **94 Node checks pass:** 43 simulation/input/geometry, 26 driving/opponent/contact, 8 challenge/replay, 8 sharing/recording and 9 career-objective checks.
-- **100 production-browser checks pass, zero failures:** 61 base regressions, 16 daily/challenge/replay checks, 12 career/ghost checks and 11 rival/HP/ghost-setting checks.
-- **Three complete keyboard-driven races pass**, collecting every gate with 3/3 HP. Saved fastest ghosts render after explicitly enabling the personal ghost setting.
-- **All 13 rendered ramps pass**, with minimum wheel/bumper clearance of 1.8–2.0 cm and working attitude-correction and landing jets.
-- **12 rendered lighting boundaries pass**, plus finite geometry, 296 terrain chunk/LOD seam comparisons, 92 conforming road-light overlays, 486 supported containers and 99 zero-intensity light relocations.
-- **Zero page or WebGL errors** during the complete-route and ramp checks.
-- Final standalone and hosted HTML: **2,818,063 bytes**, **1,517,723 bytes gzip**, including fonts and runtime assets. SHA-256: `b3e258393b6b9c1c3a225629a14f1852f5f308e6e0d5866183290e5bf0d25db7`.
+- **94 Node checks pass:** 43 gameplay/input/geometry, 26 opponent/contact/dynamics, 8 challenge/replay, 8 recording/sharing and 9 career-objective checks. The recording-error fixture now supplies the loading controller and asserts that an error dismisses loading while releasing capture tracks.
+- **21 focused showroom/loading checks pass in source and production.** They cover actual boot-stage progression, first rendered frame, accessible progress, early Enter protection, inert background controls, uncached/cancelled/cached venue changes, paint rotation, rapid changes, dragging, reduced motion and stable rendering resources.
+- **98 production-browser checks pass in total:** 21 showroom/loading, 61 base and 16 feature checks.
+- **61 production-browser regressions pass:** input independence, touch handling, portrait pause/resume, tour and record flow, course switching, responsive layouts, rendered effects and stunt feedback.
+- **16 daily/challenge/replay checks pass.** The harness initially stalled when replacing its iframe; reusing the browsing context resolved this test-lifecycle issue. The generated link also opened correctly in a separate browser tab. All assertions were retained, and the final suite passed.
+- **12 production lighting boundaries pass**, with finite world geometry, **296 terrain chunk/LOD seam comparisons**, **92 road-conforming light overlays**, **486 supported container instances** and **99 zero-intensity light relocations**.
+- New tree geometry has finite position/normal/UV data; the branch atlas UVs stay inside their intended tiles. Visual review caught and corrected a floating canyon formation before release.
+- No WebGL errors were observed in the final scenery, material or lighting checks.
 
-Evidence in the task output directory: `traffic-browser.txt`, `traffic-features.txt`, `traffic-objectives.txt`, `traffic-contact-browser.txt`, `traffic-routes.txt`, `traffic-ramps.txt`, `traffic-lighting-production.json`, `traffic-render-profile.txt`, `traffic-venue-profile.txt` and the `scenery-*` captures/reports. Final venue thumbnails were refreshed from the actual game; the final rebuild changed thumbnails and formatting only after these checks.
+The simulation suite still checks complete all-gate gold races and complementary ramp/contact cases. This release did not repeat the three complete rendered driving runs or the separate 13-ramp envelope suite; those v7 results are retained in Git history, not counted as newly run v8 checks. Downloaded video playback and physical-phone testing were also not repeated.
 
-## Complete race checks
+## Graphics changes and measured cost
 
-| Venue      | Length | Rendered time | Gates |  HP | Peak draw calls |
-| ---------- | -----: | ------------: | ----: | --: | --------------: |
-| Breakwater | 5.4 km |       71.94 s | 26/26 | 3/3 |             232 |
-| Redshift   | 5.7 km |       78.03 s | 26/26 | 3/3 |             213 |
-| Nightshift | 6.0 km |       83.43 s | 28/28 | 3/3 |             227 |
+Pines and broadleaf trees now use dimensional layered branch crowns and branching trunks. Nearby crowns use 86/60 triangles respectively, with 28/18-triangle distant versions. Forest districts share geometry and materials; alpha testing avoids sorted translucent leaves. A few lower-bench groves bring the foliage closer to the racing view while retaining open ocean vistas. Smaller rock meshes offset the additional tree geometry.
 
-These are automated boosted runs through the actual keyboard handlers, not average human completion times or physical-phone performance measurements. The predictive QA driver is excluded from the shipped game. It now plans the entire lane-change path, gives alongside traffic room and brakes when a gate approach is delayed. Automated completion establishes feasibility, not enjoyment.
+Terrain gains irregular shelves, fractured profiles, embedded canyon buttresses and sea stacks. Freight buildings have actual recessed/open bays, structural trim, loading equipment and authored administration blocks. Materials add botanical branch imagery, bark, sandstone scan normals and stronger cladding relief. No dynamic lights or new gameplay controls were added.
 
-Layout version **6** excludes incompatible older route records and ghost trajectories while retaining earned paints, medals and badges. Each venue still has three career cups: podium, victory, then victory without damage. The current objective appears in the garage, race HUD and result screen; daily and friend challenges do not advance career cups.
+The new runtime assets total **432,426 encoded bytes**, approximately **4.42 MiB of RGBA8 GPU texture memory including mipmaps**: one 768×768 branch atlas, one 256×512 bark map and one 384×384 sandstone normal map. The branch artwork is original generated imagery; its untouched source and prompt are retained in `assets/foliage`. The bark is deterministic original artwork; the normal map derives from the already credited CC0 sandstone scan. Authoring PNGs and Python dependencies are not downloaded by the game.
 
-## Rivals, HP and optional ghosts
+At **844×390, DPR 1.25**, the production nine-location rendering sample measured:
 
-Three distinct AI pace profiles start on a closer staggered grid. Rivals share the player's integrator, slipstream, energy, ramps and hazards. Their speed does not depend on player rank, and they do not teleport to catch up. Predictive avoidance and passing remain active. Representative scripted drivers found at least one rival within the forward 100 m/rear 18 m window for 98.4–99.9% of boosted runs and 42.1–85.6% of cruising runs across the venues. This is an engagement sample, not a visibility guarantee for every driver.
+| Venue      | Draw calls |       Triangles |
+| ---------- | ---------: | --------------: |
+| Breakwater |    137–215 | 224,785–293,583 |
+| Redshift   |    126–179 | 192,397–254,123 |
+| Nightshift |    137–196 | 159,517–192,425 |
 
-Solid rivals now have sculpted bodywork, glazing, mirrors, wheel arches, spoilers, detailed wheels and shaped lamps. They follow road grade and share **eight instanced material batches**, plus three small name/HP sprites. The labels fade with distance and do not cast shadows. Failed rivals show a brief crash response before leaving the field.
+The overall range is **126–215 draws / 159,517–293,583 triangles**. The previous v7 sample ranged from 127–209 draws / 158,453–334,161 triangles at the same nine locations. These are sampled geometry budgets, not worst-case guarantees or phone FPS measurements.
 
-Swept contact prevents cars passing through one another. Rear impacts match closing speed and side impacts separate bodies. A hard player-caused rear or side collision removes **one HP from each car**, produces impact feedback and starts a 1.25-second cooldown. Gentle rubbing and an AI car rear-ending or pushing a neutral player do not drain player HP. Grounded contact preserves steering/boost; ramp and assisted-flight contact preserves vertical/stunt trajectories. A genuinely elevated pass is noncolliding. The HUD states **3 / 3 HP**, updates on impact and highlights low health.
+A separate matched desktop scenery comparison at d1000/d1280/d2240 measured 206/180/190 draws and 311,015/272,599/206,849 triangles, versus v7's 202/183/189 draws and 347,385/323,231/204,279 triangles. The screenshots use the same camera poses. Lower triangle cost does not by itself guarantee lower GPU time: foliage introduces overdraw and textures.
 
-Node regressions cover damaging rear/side contacts, harmless rubs, protected AI contacts, cooldown, high-speed swept crossings, crowding at road edges, vertical clearance, fatal rival crash animation and repeatability at 12/30/60/120 Hz. All opponents finish safely across three venues and three seeds. The eleven dedicated browser checks verify opening-grid visibility, names, default ghost state, explicit opt-in/disable, both cars losing HP, cooldown, flyovers and low-health feedback.
+The lighting check compared renders 2 mm apart across twelve handoff boundaries. Worst mean RGB change was **0.1307/255**; at most **0.01% of pixels** changed by more than 32/255. This checks the targeted illumination handoffs, not every possible lighting condition.
 
-Personal ghosts start **OFF** for new/default settings. Explicit existing preferences persist. Settings can enable the cyan scanned hologram with its **GHOST / PASS THROUGH** label. A friend challenge intentionally keeps its challenger visible. Recorded ghosts remain nonphysical time references.
+## Paint showroom
 
-## Scenery, materials and lighting
+Changing an unlocked paint starts a **5.2-second, eased full revolution of the car**, with a fixed camera viewpoint. It returns to the chosen orientation and stops. Rapid changes restart from the currently visible angle without snapping. View Car makes a smooth quarter turn; dragging cancels animation immediately. Reduced-motion mode changes paint without automatically spinning and makes manual quarter turns immediate. Entering a race cancels the preview; the racing pose and controls remain independent. Paint unlock requirements are unchanged.
 
-The coast now has stronger headlands, a broader sea and denser forest stands. Canyon buttresses, terraces, erosion channels and supported talus replace simpler silhouettes. Freight buildings include pitched roofs, loading docks, structural bays, rooflights and vents, with a more developed skyline. Directional/ambient balance gives more shape to the terrain and buildings without adding dynamic lights.
+The production tests exercise actual car transforms and verify a full revolution, bounded per-frame movement, stationary position, unchanged race distance, manual takeover, no text selection and no additional geometry/texture allocations after repeated paint changes.
 
-Road shading adds finer aggregate, normal detail, repairs, rubber and wet roughness variation. Rock/soil materials use mineral variation, warped bedding and slope-aware blending. Warehouse surfaces gain corrugation, seams and rain streaks; architectural glazing is opaque and bounded. A single original **115,000-byte, 256-pixel packed WebP** supplies this extra material detail, approximately 349,524 GPU bytes with mipmaps. It adds no geometry or draw calls. Its deterministic generator and license are included.
+## Loading behavior
 
-Pooled lights still reach zero intensity before relocating. Road glow geometry follows the actual road surface. Twelve production lighting boundaries were compared 2 mm apart: worst mean RGB difference was **0.1269/255**, with at most **0.01%** of pixels changing by more than 32/255. These are targeted continuity checks, not proof that every lighting condition is artifact-free. Terrain checks also verified finite geometry and neighboring chunk/LOD seams; visual review caught and corrected floating talus.
+The loader uses a Roadster outline, animated wheels/road markings, named preparation stages and an accessible percentage. Progress advances from completed asset and preparation work; it is weighted stage progress, not a timer or downloaded-byte percentage. Loading reaches 100% only after shader preparation and an actual rendered frame. A slow stage offers retry after 12 seconds, and errors expose recovery controls. Reduced-motion preferences disable decorative loader animation.
 
-The existing player model remains a procedural Roadster interpretation with integrated underside lift and attitude outlets. Ramps share their surface function with collision physics, sample wheelbase-sized support, reject entry through tall sides and launch flips only after clearing the lip. The controls are unchanged.
+The background UI is inert during preparation. Keyboard Enter cannot start a race underneath the boot overlay. Foreground venue changes own a request ticket: a cancelled or stale preparation cannot replace the latest selection or hide its loader. Background world preparation pauses during racing and foreground loads. Cold construction still includes synchronous work and can briefly pause animation; the new UI does not eliminate that cost.
 
-## Rendering budget and load behavior
+A local production benchmark reached initial readiness in **2,607 ms**. First Redshift/Nightshift selections took **909.5 / 560.3 ms**. Six cached switches took **6.1–62.5 ms**, with the final round **6.1 / 6.5 / 8.2 ms**. Cached-switch resources stayed at 163 geometries and 20 textures. These observations depend on hardware, browser scheduling and shader caches; they are not guaranteed load times.
 
-At **844×390 and DPR 1.25**, final production samples at three locations per venue ranged from **127–209 draw calls** and **158,453–334,161 triangles**. Desktop-GPU browser frame intervals were 8.28–8.33 ms. These intervals are browser cadence, not a physical-phone GPU benchmark. Full-course peak draw counts are listed separately above.
+## Evidence and limits
 
-A separate local benchmark reached the selected venue in **786 ms**. First Redshift/Nightshift selection took **1,747.3/477.3 ms**; six cached switches took **4.9–12.6 ms**, with stable cached-switch resources of 161 geometries and 18 textures. Cold shader compilation and device speed can still cause a visible wait. Selected-venue-first loading, guarded starts and a loading state remain necessary. Background venue preparation runs in the garage/results screen, not during racing.
+The final standalone build is **3,417,976 bytes** (**1,962,383 bytes gzip**), with SHA-256 `9399f98306e0acb8ec903f119d58fcc675cc5654339dfe0cc5160c52555439b4`. The last rebuild refreshes the venue thumbnail images; its embedded game script is byte-identical to the production build used for the browser checks.
 
-District batching, near/far terrain, bounded instance spans and shared materials limit rendering work. Mobile AUTO uses 1024-pixel shadows and adapts DPR between 0.8 and the device-limited ceiling of 1.25; desktop AUTO caps at 1.75. HIGH/LOW remain available, and rendering stops while hidden. No runtime asset requests are required.
+Evidence in the task output directory includes `showroom-tests.txt`, `showroom-source-checks.txt`, `showroom-production-checks.txt`, `showroom-browser.txt`, `showroom-features.txt`, `showroom-render-profile.txt`, `showroom-venue-profile.txt`, `v8-world-geometry.json`, `v8-world-budget.json`, `v8-lighting-production.json`, matched `v8-*-before/after.png` captures and loader/paint screenshots.
 
-## Other regressions and limits
+The loader was visually reviewed at 1280×720, 844×390, 568×320 and 390×844. Existing landscape racing and portrait-pause checks remain in the base suite. The visual loader fixture manually selects stages; the actual-game tests separately verify real completion-driven progress. QA uses isolated records.
 
-Verified layouts include 1280×720 desktop; 844×390, 667×375 and 568×320 landscape; and 390×844 and 320×568 portrait. Portrait pauses and requires deliberate resume. Simultaneous Shift/arrows/Space, independent synthetic touch pointers and suppression of text selection/context menus/scrolling pass. QA records are isolated from personal progress.
-
-Daily event/seed handling, challenge import, career progression, explicit replay without changing records, manual-flight/sky-roll continuity, course switching, tour progression and paints pass. Recorder unit checks cover cancellation, failure, size limits and cleanup; **this release did not repeat downloaded-video playback**. MediaRecorder and canvas capture support vary by browser. Records remain browser-local; there is no live multiplayer, authenticated competition or server leaderboard.
-
-**Physical iPhone Safari and Android Chrome remain unverified.** Sustained multitouch, browser chrome/safe areas, thermal behavior, memory limits, battery use and real mobile frame pacing need hardware testing. The visual treatment remains an original arcade interpretation; it is not photorealistic or manufacturer CAD.
+**Physical iPhone Safari and Android Chrome remain unverified.** Desktop-GPU rendering at phone viewport sizes does not establish sustained mobile frame pacing, multitouch comfort, thermal behavior, browser chrome/safe areas or memory limits. The profile's 8.27–8.45 ms browser-frame intervals are scheduling observations with frozen simulation, not a physical-device gameplay FPS claim. AUTO resolution, distance-based geometry, batching, bounded shadows and hidden-tab suspension remain enabled. This remains an assisted arcade interpretation rather than a photorealistic manufacturer simulation.

@@ -8,9 +8,22 @@ by scripts/generate-surface-detail.py. It is not derived from third-party media.
 R encodes broad variation, G medium mottling, and B fine porous detail. The
 generator and texture are part of this game's original source assets.
 
+Original foliage addition — 18 October 2026
+=========================================
+foliage_branches.webp is an original AI-generated botanical branch atlas made
+with the built-in image generation tool. No third-party reference image was
+used. The unchanged original and generation prompt are in assets/foliage/.
+bark_color.webp is an original deterministic texture made by the preparation
+script. scripts/prepare-foliage-assets.py produces both runtime files.
+
+sandstone_normal.webp is a 384px vector-normalized derivative of the existing
+CC0 sandstone_cracks_nor_gl_1k.jpg scan (Rob Tuytel / Poly Haven, same source and
+license as sandstone_color.webp below). Only size/encoding were changed.
+
 License and voluntary credit
 ============================
-These five media files are format/resolution derivatives of Poly Haven assets
+The five original runtime media files listed below, plus sandstone_normal.webp,
+are format/resolution derivatives of Poly Haven assets
 distributed under CC0 1.0 Universal (public-domain dedication). Commercial use,
 modification and redistribution are permitted. Attribution is appreciated but
 is not required. No third-party service was used to process these files.
@@ -87,7 +100,7 @@ Sampling and integration
   They are intended for the racing camera and the existing roughness values;
   retain original source files for any future extreme close-up presentation.
 
-Media payload / SHA-256
+Original five-media payload / SHA-256
 ======================
 Total: 969,396 bytes (946.68 KiB), versus 4,288,030 bytes for the five source
 runtime assets: a 77.39% payload reduction before HTML/base64/gzip overhead.

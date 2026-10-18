@@ -7,6 +7,9 @@ const urls = {
   roadNormal: "assets/runtime/asphalt_normal.webp",
   roadRoughness: "assets/runtime/asphalt_roughness.webp",
   rock: "assets/runtime/sandstone_color.webp",
+  rockNormal: "assets/runtime/sandstone_normal.webp",
+  foliage: "assets/runtime/foliage_branches.webp",
+  bark: "assets/runtime/bark_color.webp",
   detail: "assets/runtime/surface_detail.webp",
   environment: "assets/runtime/venice_sunset_512.hdr",
 };
@@ -32,10 +35,13 @@ export async function loadVisualAssets(renderer, onProgress) {
             8,
             renderer.capabilities.getMaxAnisotropy(),
           );
-          if (key === "road" || key === "rock")
+          if (["road", "rock", "foliage", "bark"].includes(key))
             texture.colorSpace = THREE.SRGBColorSpace;
           if (key === "road" || key === "roadNormal" || key === "roadRoughness")
             texture.repeat.set(0.34, 0.34);
+          if (key === "foliage")
+            texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+          if (key === "bark") texture.repeat.set(2, 4);
           texture.userData.shared = true;
           surfaces[key] = texture;
         }
@@ -173,7 +179,12 @@ export function rockMaterial(canyon, terrain = false) {
   });
   if (!surfaces.rock) return material;
   material.customProgramCacheKey = () =>
-    "mineral-terrain-v6-" + canyon + "-" + terrain;
+    "mineral-terrain-v8-" +
+    canyon +
+    "-" +
+    terrain +
+    "-" +
+    !!surfaces.rockNormal;
   material.onBeforeCompile = (shader) => {
     worldProjection(shader, "vStone");
     shader.uniforms.rockScan = { value: surfaces.rock };
@@ -214,8 +225,65 @@ export function rockMaterial(canyon, terrain = false) {
     `,
       );
     relief(shader, "rockRelief", canyon ? ".24" : ".19");
+    if (surfaces.rockNormal) {
+      // One dominant-axis normal lookup adds the scan's fine surface relief.
+      // Large forms retain smoothly blended triplanar color and bump above.
+      shader.uniforms.rockNormalScan = { value: surfaces.rockNormal };
+      shader.fragmentShader =
+        "uniform sampler2D rockNormalScan;\n" + shader.fragmentShader;
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <normal_fragment_maps>",
+        `#include <normal_fragment_maps>
+        vec3 stoneAbs=abs(stoneN);
+        vec2 stoneUV;vec3 stoneT,stoneB;
+        if(stoneAbs.y>max(stoneAbs.x,stoneAbs.z)){
+          stoneUV=vStone.xz;stoneT=vec3(1.,0.,0.);stoneB=vec3(0.,0.,1.);
+        }else if(stoneAbs.x>stoneAbs.z){
+          stoneUV=vStone.zy;stoneT=vec3(0.,0.,1.);stoneB=vec3(0.,1.,0.);
+        }else{
+          stoneUV=vStone.xy;stoneT=vec3(1.,0.,0.);stoneB=vec3(0.,1.,0.);
+        }
+        vec2 stoneMicro=texture2D(rockNormalScan,stoneUV*.19).xy*2.-1.;
+        vec3 stonePerturb=stoneT*stoneMicro.x+stoneB*stoneMicro.y;
+        stonePerturb-=stoneN*dot(stoneN,stonePerturb);
+        normal=normalize(normal+mat3(viewMatrix)*stonePerturb*.54);`,
+      );
+    }
   };
   return material;
+}
+
+// Original branch photography-style atlas shared by all nearby tree species.
+// Alpha testing keeps depth/shadows deterministic, without sorted transparency.
+export function foliageMaterial() {
+  const material = new THREE.MeshStandardMaterial({
+    map: surfaces.foliage || pineMaterial().map,
+    vertexColors: true,
+    alphaTest: 0.36,
+    side: THREE.DoubleSide,
+    roughness: 0.92,
+    color: 0xf4f4ec,
+    envMapIntensity: 0.3,
+  });
+  material.customProgramCacheKey = () => "layered-botanical-foliage-v8";
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <emissivemap_fragment>",
+      "#include <emissivemap_fragment>\n totalEmissiveRadiance+=diffuseColor.rgb*.035;",
+    );
+  };
+  return material;
+}
+
+export function barkMaterial() {
+  return new THREE.MeshStandardMaterial({
+    map: surfaces.bark || null,
+    bumpMap: surfaces.bark || null,
+    bumpScale: 0.055,
+    color: 0xc8c3b4,
+    roughness: 0.96,
+    envMapIntensity: 0.22,
+  });
 }
 
 // Original cutout vegetation. Branch tiers and sparse needles keep a natural
@@ -286,6 +354,51 @@ export function pineMaterial() {
       }
     }
     clump(128 + (rand() - 0.5) * 7, y - 7, 6 + tier * 0.3, 14, colors[2]);
+  }
+  if (surfaces.foliage?.image) {
+    // The distant crown uses the same real branch shapes as near geometry,
+    // composed once into a cheap whole-tree cutout, with an exposed older trunk.
+    x.clearRect(0, 0, 256, 512);
+    x.strokeStyle = "#6d6658";
+    x.lineWidth = 7;
+    x.beginPath();
+    x.moveTo(124, 510);
+    x.bezierCurveTo(132, 370, 119, 246, 132, 79);
+    x.stroke();
+    const source = surfaces.foliage.image,
+      cell = source.width / 2;
+    for (let level = 0; level < 14; level++) {
+      const y = 365 - level * 21,
+        reach = 28 + Math.sin((level / 14) * Math.PI) * 63;
+      for (const side of [-1, 1]) {
+        const cx = 128 + side * reach * (0.32 + rand() * 0.47),
+          cy = y + (rand() - 0.5) * 20;
+        x.strokeStyle = "#746a50";
+        x.lineWidth = 2;
+        x.beginPath();
+        x.moveTo(128, y + 14);
+        x.lineTo(cx, cy);
+        x.stroke();
+        x.save();
+        x.translate(cx, cy);
+        x.rotate(side * (0.2 + rand() * 0.35));
+        const tile = level % 3 === 0 ? 1 : 0,
+          w = 65 + reach * 0.45,
+          h = 76 + rand() * 19;
+        x.drawImage(
+          source,
+          tile * cell,
+          0,
+          cell,
+          cell,
+          -w * 0.5,
+          -h * 0.65,
+          w,
+          h,
+        );
+        x.restore();
+      }
+    }
   }
   const map = new THREE.CanvasTexture(c);
   map.colorSpace = THREE.SRGBColorSpace;
@@ -382,7 +495,7 @@ export function warehouseMaterial(
       float stain=smoothstep(.55,.83,runoff.r)*(.24+weather.g*.4);
       diffuseColor.rgb*=.84+weather.r*.24+rib*.055-joint*.21-stain*.18;
       diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(1.09,.88,.72),smoothstep(.73,.9,weather.b)*.32);
-      float metalRelief=rib*.0025-joint*.0015;
+      float metalRelief=rib*.010-joint*.002;
     `,
       )
       .replace(

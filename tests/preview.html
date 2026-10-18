@@ -46,6 +46,7 @@
     ><button data-view="flyover">Fly over rivals</button
     ><button data-view="grid">Starting grid</button
     ><button data-view="home">Start screen</button
+    ><button data-view="paint">Paint turn preview</button
     ><button data-view="ghost">Ghost reference</button
     ><button data-view="drive">Drive</button
     ><button data-view="pack">Racing pack</button
@@ -62,6 +63,7 @@
     ><button data-view="tunnel">Low clearance</button
     ><button data-view="last">Final sector</button
     ><button data-view="arch">Landmark</button>
+    <button data-view="world">Scenery detail</button>
     <button data-view="ramp">Sky ramp</button
     ><button data-view="flip">Mid flip</button>
     <button data-view="crash">Crash</button
@@ -142,6 +144,18 @@
             g.step(0);
             return;
           }
+          if (b.dataset.view === "paint") {
+            g.records[g.course.id] = {
+              layout: LAYOUT_VERSION,
+              medal: 1,
+              time: 100,
+              score: 1000,
+            };
+            g.home();
+            frame.contentDocument.getElementById("paint").click();
+            for (let i = 0; i < 65; i++) g.step(1 / 30);
+            return;
+          }
           g.start();
           const v = b.dataset.view;
           if (v === "ghost") {
@@ -160,6 +174,18 @@
             g.setState({ d: 410, x: -2, time: 1, speed: 60 });
           }
           if (v === "grid") g.setState({});
+          if (v === "world")
+            g.setState({
+              d:
+                g.course.id === "breakwater"
+                  ? 1000
+                  : g.course.id === "redshift"
+                    ? 1280
+                    : 2240,
+              x: 0,
+              time: 25,
+              speed: 60,
+            });
           if (v === "impact" || v === "flyover") {
             g.setState({
               d: 100,

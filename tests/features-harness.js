@@ -29,23 +29,19 @@ document.getElementById("features").onclick = async () => {
   frame.style.cssText = "width:844px;height:390px;border:0";
   frame.src = gameRoot + "?qa=1";
   stage.append(frame);
-  // A fresh document also releases the preceding WebGL context before the next
-  // imported-link case. Bound load waits so a stalled browser cannot hang QA.
+  // Navigate the existing browsing context to a fresh document for each link.
+  // Bound load waits so a stalled browser cannot hang QA.
   const openChallenge = async (url) => {
-    const next = document.createElement("iframe");
-    next.style.cssText = frame.style.cssText;
     await new Promise((resolve, reject) => {
       const timer = setTimeout(
         () => reject(Error("Challenge document load timed out")),
         15000,
       );
-      next.onload = () => {
+      frame.onload = () => {
         clearTimeout(timer);
         resolve();
       };
-      next.src = url;
-      frame.replaceWith(next);
-      frame = next;
+      frame.src = url;
     });
   };
   const ready = async () => {

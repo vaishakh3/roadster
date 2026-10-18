@@ -250,6 +250,12 @@ try {
       film: { recording: true },
       clipSupported,
       $: get,
+      loading: {
+        cancel() {
+          get("loading").hidden = true;
+          result.loadingCancelled = true;
+        },
+      },
       setPhase(value) {
         result.phase = value;
       },
@@ -263,6 +269,8 @@ try {
     assert.equal(MockRecorder.latest.state, "inactive");
     assert(stopped > before);
     assert.equal(result.phase, "error");
+    assert.equal(result.loadingCancelled, true);
+    assert.equal(get("loading").hidden, true);
     assert.equal(get("error").hidden, false);
     assert.equal(get("save-clip").disabled, false);
     assert.deepEqual(callbacks, []);

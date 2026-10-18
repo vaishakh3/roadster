@@ -22,6 +22,7 @@ import {
   awardMission,
 } from "./missions.js";
 import { loadVisualAssets } from "./surfaces.js";
+import { createLoadingDisplay } from "./loading.js";
 import {
   COURSES,
   getCourse,
@@ -45,6 +46,7 @@ import {
 } from "./run.js";
 const $ = (id) => document.getElementById(id);
 const qa = new URLSearchParams(location.search).has("qa");
+const loading = createLoadingDisplay({ recordHistory: qa });
 const storage = {
   get(key, fallback) {
     if (qa) return fallback;
@@ -102,6 +104,25 @@ let phase = "home",
 let renderer, scene, camera, car, coast, controls, audio, effects, rivalField;
 const venues = new Map();
 let showroomAngle = 0;
+let showroomTurn = null;
+function turnShowroom(amount, duration) {
+  if (phase !== "home" || orientationBlocked) return;
+  if (reduced) {
+    showroomTurn = null;
+    if (amount < Math.PI * 2) showroomAngle += amount;
+    return;
+  }
+  showroomTurn = { from: showroomAngle, amount, elapsed: 0, duration };
+}
+function advanceShowroom(dt) {
+  if (!showroomTurn || phase !== "home") return;
+  const turn = showroomTurn;
+  turn.elapsed = Math.min(turn.duration, turn.elapsed + dt);
+  const t = turn.elapsed / turn.duration,
+    ease = t * t * t * (10 + t * (-15 + t * 6));
+  showroomAngle = turn.from + turn.amount * ease;
+  if (t >= 1) showroomTurn = null;
+}
 let lastTime = performance.now(),
   clock = 0,
   countdown = 0,
@@ -124,6 +145,7 @@ const cameraTarget = new THREE.Vector3(),
   cameraGoal = new THREE.Vector3();
 const num = (n) => Math.round(n).toLocaleString("en-US");
 function setPhase(value) {
+  if (value !== "home") showroomTurn = null;
   phase = value;
   document.body.dataset.phase = value;
   $("home").hidden = value !== "home";
@@ -135,7 +157,7 @@ function setPhase(value) {
 }
 function showError(message) {
   cancelClip();
-  $("loading").hidden = true;
+  loading.cancel();
   $("error").hidden = false;
   $("error-message").textContent = message;
   setPhase("error");
@@ -153,6 +175,7 @@ function toast(text, type = "gate", points = 0) {
 function start() {
   if (
     !initialized ||
+    loading.state.active ||
     orientationBlocked ||
     document.body.dataset.preparing === "true" ||
     phase === "error"
@@ -228,10 +251,14 @@ function resume() {
   audio.init();
   audio.setEnabled(soundOn);
 }
-function home() {
-  venueRequest++;
-  document.body.dataset.preparing = "false";
-  $("loading").hidden = true;
+function home(keepLoading = false) {
+  if (keepLoading !== true) {
+    venueRequest++;
+    document.body.dataset.preparing = "false";
+    loading.cancel();
+  }
+  showroomTurn = null;
+  showroomAngle = 0;
   cancelClip();
   film = null;
   tour = null;
@@ -248,14 +275,17 @@ function home() {
   camera.updateProjectionMatrix();
   refreshBest();
 }
-function selectCourse(id) {
+function selectCourse(id, keepLoading = false) {
   if (phase !== "home" && phase !== "results") return false;
   if (!venues.has(id)) return loadVenue(id);
-  venueRequest++;
-  document.body.dataset.preparing = "false";
-  $("loading").hidden = true;
+  if (!keepLoading) {
+    venueRequest++;
+    document.body.dataset.preparing = "false";
+    loading.cancel();
+  }
   course = getCourse(id);
   showroomAngle = 0;
+  showroomTurn = null;
   if (coast) coast.root.visible = false;
   coast = venues.get(course.id);
   coast.activate();
@@ -798,6 +828,7 @@ const rampNormal = new THREE.Vector3(),
 function updateVisuals(dt, snap = false, visual = run) {
   const hero =
     phase === "home" || (phase === "paused" && previousPhase === "home");
+  advanceShowroom(dt);
   car.userData.setDetail(hero && !qualityLow);
   const x = roadX(visual.d, course) + visual.x,
     y = coast.roadY(visual.d) + Math.max(-8, visual.y);
@@ -831,6 +862,7 @@ function updateVisuals(dt, snap = false, visual = run) {
     bank,
     "YXZ",
   );
+  if (hero) car.rotation.y += showroomAngle;
   if (visual.attachedRamp >= 0) {
     const grade =
       (coast.roadY(visual.d + 0.2) - coast.roadY(visual.d - 0.2)) / 0.4 +
@@ -971,11 +1003,9 @@ function updateVisuals(dt, snap = false, visual = run) {
       innerHeight,
     );
     camera.position.set(
-      x +
-        Math.sin(Math.PI / 4 + showroomAngle) * 8.5 +
-        Math.sin(clock * 0.11) * 0.2,
+      x + Math.sin(Math.PI / 4) * 8.5 + Math.sin(clock * 0.11) * 0.2,
       y + 2.3,
-      -visual.d - Math.cos(Math.PI / 4 + showroomAngle) * 8.5,
+      -visual.d - Math.cos(Math.PI / 4) * 8.5,
     );
     camera.lookAt(x, y + 0.38, -visual.d + 0.2);
   } else if (phase === "replay") {
@@ -1047,7 +1077,7 @@ function resize() {
   }
   orientationBlocked = blocked;
   $("rotate").hidden = !blocked;
-  $("app").inert = false;
+  $("app").inert = loading.state.active;
   for (const id of [
     "home",
     "hud",
@@ -1173,24 +1203,43 @@ function ensureVenue(id) {
 async function loadVenue(id) {
   const ticket = ++venueRequest;
   document.body.dataset.preparing = "true";
-  $("loading").hidden = false;
-  $("loading").querySelector("strong").textContent =
-    "OPENING / " + getCourse(id).name;
+  showroomTurn = null;
+  loading.begin(getCourse(id).name, "venue");
+  loading.update(
+    60,
+    "Building the venue",
+    "Creating terrain, scenery and the racing surface.",
+    2,
+  );
   await nextPaint();
   if (ticket !== venueRequest) return false;
   try {
     ensureVenue(id);
-    if (!selectCourse(id)) return false;
+    loading.update(
+      82,
+      "Preparing lighting",
+      "Warming the graphics for your first frame.",
+      3,
+    );
+    await nextPaint();
+    if (ticket !== venueRequest) return false;
+    if (!selectCourse(id, true)) return false;
     updateVisuals(0, true);
+    await renderer.compileAsync(scene, camera);
+    if (ticket !== venueRequest) return false;
     renderer.render(scene, camera);
+    loading.complete();
     return true;
   } catch (e) {
     console.error(e);
-    showError("This venue could not load. Reload to try again.");
+    if (ticket === venueRequest)
+      showError("This venue could not load. Reload to try again.");
     return false;
   } finally {
-    document.body.dataset.preparing = "false";
-    $("loading").hidden = true;
+    if (ticket === venueRequest) {
+      document.body.dataset.preparing = "false";
+      if (loading.state.active) loading.cancel();
+    }
   }
 }
 const failedPreparations = new Set();
@@ -1202,6 +1251,7 @@ function queueVenuePreparation() {
   setTimeout(async () => {
     if (
       !["home", "results"].includes(phase) ||
+      document.body.dataset.preparing === "true" ||
       orientationBlocked ||
       document.hidden
     ) {
@@ -1209,7 +1259,10 @@ function queueVenuePreparation() {
       return;
     }
     await nextPaint();
-    if (!["home", "results"].includes(phase)) {
+    if (
+      !["home", "results"].includes(phase) ||
+      document.body.dataset.preparing === "true"
+    ) {
       queueVenuePreparation();
       return;
     }
@@ -1515,7 +1568,16 @@ async function copyChallenge() {
 
 async function boot() {
   try {
+    loading.begin(course.name);
+    await nextPaint();
     await document.fonts.ready;
+    loading.update(
+      3,
+      "Starting graphics",
+      "Checking this device and preparing the renderer.",
+      0,
+    );
+    await nextPaint();
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(
       63,
@@ -1535,9 +1597,20 @@ async function boot() {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     await loadVisualAssets(renderer, (value) => {
-      $("loading").querySelector("strong").textContent =
-        "LOADING SURFACES / " + Math.round(value * 100) + "%";
+      loading.update(
+        5 + value * 48,
+        "Loading surfaces",
+        `${Math.round(value * 100)}% of surface assets prepared.`,
+        0,
+      );
     });
+    loading.update(
+      55,
+      "Assembling the Roadster",
+      "Bodywork, wheels and flight equipment.",
+      1,
+    );
+    await nextPaint();
     car = createCar();
     effects = createRaceEffects(scene);
     rivalField = createRivalField(scene);
@@ -1604,6 +1677,7 @@ async function boot() {
       paintIndex = (paintIndex + 1) % (completedCount(records) + 1);
       storage.set("roadster-paint", paintIndex);
       refreshBest();
+      turnShowroom(Math.PI * 2, 5.2);
     };
     $("ghost").onclick = () => {
       ghostOn = !ghostOn;
@@ -1651,14 +1725,19 @@ async function boot() {
       }
     });
     $("orbit-car").onclick = () => {
-      showroomAngle += Math.PI / 2;
+      turnShowroom(Math.PI / 2, 1.1);
       updateVisuals(0, true);
     };
     let orbitPointer = null;
     $("scene").addEventListener("pointerdown", (e) => {
       if (phase !== "home") return;
+      showroomTurn = null;
       orbitPointer = { id: e.pointerId, x: e.clientX };
-      $("scene").setPointerCapture?.(e.pointerId);
+      try {
+        $("scene").setPointerCapture?.(e.pointerId);
+      } catch {
+        /* Synthetic QA pointers have no native capture. */
+      }
     });
     $("scene").addEventListener("pointermove", (e) => {
       if (phase !== "home" || orbitPointer?.id !== e.pointerId) return;
@@ -1675,6 +1754,7 @@ async function boot() {
     };
     $("motion").onclick = () => {
       reduced = !reduced;
+      if (reduced) showroomTurn = null;
       storage.set("breakwater-reduced", reduced);
       $("motion").querySelector("b").textContent = reduced ? "REDUCED" : "FULL";
     };
@@ -1726,23 +1806,48 @@ async function boot() {
       );
     });
     const selectedId = course.id;
-    $("loading").querySelector("strong").textContent =
-      "PREPARING / " + course.name;
+    loading.update(
+      65,
+      "Building the venue",
+      "Creating terrain, scenery and the racing surface.",
+      2,
+    );
     await nextPaint();
     ensureVenue(selectedId);
     initialized = true;
-    selectCourse(selectedId);
-    home();
+    selectCourse(selectedId, true);
+    home(true);
     applyQuality();
     resize();
     updateVisuals(0, true);
+    loading.update(
+      85,
+      "Preparing lighting",
+      "Warming the graphics for your first frame.",
+      3,
+    );
+    await nextPaint();
+    await renderer.compileAsync(scene, camera);
+    loading.update(96, "Opening the garage", "Rendering your first view.", 3);
+    await nextPaint();
     renderer.render(scene, camera);
-    $("loading").hidden = true;
+    loading.complete();
     initializedAt = performance.now();
     initialVenueCount = venues.size;
     queueVenuePreparation();
     if (qa)
       window.__breakwater = {
+        get showroom() {
+          return {
+            angle: showroomAngle,
+            autoRotating: !!showroomTurn,
+            paintIndex,
+            paintName: PAINTS[paintIndex].name,
+          };
+        },
+        get loadingState() {
+          return loading.state;
+        },
         start,
         startDaily,
         startFilm,
@@ -1906,4 +2011,5 @@ async function boot() {
   }
 }
 $("reload").onclick = () => location.reload();
+$("loading-retry").onclick = () => location.reload();
 boot();

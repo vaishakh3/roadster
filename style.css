@@ -326,28 +326,284 @@ h1 b {
 #loading {
   position: fixed;
   inset: 0;
-  z-index: 50;
-  background: var(--ink);
+  z-index: 65;
+  --load-progress: 0;
+  background: radial-gradient(
+    ellipse at 50% 43%,
+    #263136 0,
+    #10191e 57%,
+    #080f14 100%
+  );
+  color: #f1f2e9;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: max(24px, env(safe-area-inset-top))
+    max(32px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom))
+    max(32px, env(safe-area-inset-left));
+}
+.loading-masthead,
+.loading-footer {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 25px;
+  justify-content: space-between;
+  gap: 20px;
 }
-#loading strong {
-  font-size: 26px;
-  letter-spacing: 0.06em;
+.loading-masthead > span:first-child {
+  font:
+    600 25px Barlow,
+    sans-serif;
+  letter-spacing: 0.13em;
 }
-.loading-line {
-  height: 2px;
-  width: 200px;
-  background: var(--orange);
-  transform-origin: left;
-  animation: load 1s infinite alternate;
+.loading-masthead i {
+  color: #f08a5e;
+  font-style: normal;
 }
-@keyframes load {
+.loading-masthead > span:last-child,
+.loading-footer,
+.loading-title > span,
+.loading-machine > span,
+.loading-steps,
+#loading-detail,
+#loading-slow {
+  font:
+    11px/1.5 Plex,
+    monospace;
+  letter-spacing: 0.08em;
+}
+.loading-masthead > span:last-child,
+.loading-footer {
+  color: #93a2a8;
+}
+.loading-body {
+  width: min(760px, 100%);
+  margin: 20px auto;
+}
+.loading-title > span {
+  color: #bdc9c8;
+}
+#loading-venue {
+  font:
+    600 clamp(42px, 7.4vw, 80px) / 0.95 Barlow,
+    sans-serif;
+  letter-spacing: -0.025em;
+  margin: 10px 0 0;
+}
+.loading-machine {
+  position: relative;
+  margin: 12px -20px 20px;
+}
+.loading-machine svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.loading-machine > span {
+  position: absolute;
+  right: 6%;
+  bottom: -2px;
+  color: #90a3a9;
+  font-size: 9px;
+}
+.load-guide {
+  stroke: #a7bec4;
+  stroke-width: 0.6;
+  opacity: 0.13;
+  stroke-dasharray: 2 6;
+}
+.load-body-line {
+  stroke: #8e9e9f;
+  stroke-width: 1.8;
+}
+.load-progress-outline {
+  stroke: #ff9e6b;
+  stroke-width: 2.8;
+  stroke-dasharray: 100;
+  stroke-dashoffset: calc(100 - var(--load-progress) * 100);
+  transition: stroke-dashoffset 0.25s ease;
+}
+.load-detail-line {
+  stroke: #82949c;
+  stroke-width: 1.2;
+}
+.loading-wheel {
+  animation: wheel-preparation 3s linear infinite;
+}
+.loading-road-motion {
+  stroke: #55666e;
+  stroke-width: 1;
+  stroke-dasharray: 38 35;
+  animation: runway-preparation 1.3s linear infinite;
+}
+@keyframes wheel-preparation {
   to {
-    transform: scaleX(0.25);
+    transform: rotate(360deg);
+  }
+}
+@keyframes runway-preparation {
+  to {
+    stroke-dashoffset: -146;
+  }
+}
+.loading-readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-top: 1px solid #b5c9cf30;
+  padding-top: 18px;
+}
+#loading-stage {
+  display: block;
+  font:
+    600 24px/1.1 Barlow,
+    sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+#loading-detail {
+  margin: 8px 0 0;
+  color: #a6b6bd;
+  letter-spacing: 0.01em;
+}
+#loading-meter {
+  display: flex;
+  align-items: baseline;
+  color: #ff9e6b;
+  font-family: Barlow, sans-serif;
+}
+#loading-percent {
+  font-size: 64px;
+  font-weight: 600;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+#loading-meter > span {
+  font-size: 23px;
+  margin-left: 5px;
+}
+.loading-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  list-style: none;
+  margin: 25px 0 0;
+  padding: 0;
+  gap: 10px;
+  color: #6e8189;
+}
+.loading-steps li {
+  border-top: 2px solid #34434a;
+  padding-top: 9px;
+}
+.loading-steps b {
+  display: inline-block;
+  margin-right: 10px;
+  font-weight: 400;
+}
+.loading-steps [data-state="active"] {
+  border-color: #ff9e6b;
+  color: #ffb587;
+}
+.loading-steps [data-state="done"] {
+  border-color: #c5d8d3;
+  color: #c5d8d3;
+}
+#loading-slow {
+  color: #c3cfce;
+  margin-bottom: 0;
+}
+#loading-retry {
+  background: transparent;
+  color: #ffb587;
+  min-height: 44px;
+  padding: 8px 14px;
+  text-decoration: underline;
+}
+@media (max-height: 600px) and (orientation: landscape) {
+  #loading {
+    padding: 15px 28px;
+  }
+  .loading-masthead > span:first-child {
+    font-size: 20px;
+  }
+  .loading-body {
+    width: min(660px, 100%);
+    margin: 8px auto;
+    position: relative;
+  }
+  #loading-venue {
+    font-size: 40px;
+  }
+  .loading-title > span {
+    font-size: 9px;
+  }
+  .loading-machine {
+    width: 56%;
+    margin: -15px 0 -12px auto;
+  }
+  .loading-machine > span {
+    display: none;
+  }
+  .loading-readout {
+    padding-top: 10px;
+  }
+  #loading-stage {
+    font-size: 20px;
+  }
+  #loading-percent {
+    font-size: 44px;
+  }
+  #loading-detail {
+    font-size: 10px;
+    margin-top: 4px;
+  }
+  .loading-steps {
+    margin-top: 13px;
+    font-size: 10px;
+  }
+  .loading-footer {
+    font-size: 9px;
+  }
+}
+@media (max-width: 480px) and (orientation: portrait) {
+  #loading {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+  .loading-masthead > span:last-child {
+    font-size: 9px;
+  }
+  .loading-machine {
+    margin: 38px -14px 30px;
+  }
+  .loading-machine > span {
+    font-size: 8px;
+  }
+  #loading-stage {
+    font-size: 22px;
+  }
+  #loading-percent {
+    font-size: 54px;
+  }
+  .loading-steps {
+    font-size: 8px;
+    gap: 8px;
+  }
+  .loading-steps b {
+    display: block;
+    margin-bottom: 4px;
+  }
+  .loading-footer {
+    font-size: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-wheel,
+  .loading-road-motion {
+    animation: none;
+  }
+  .load-progress-outline {
+    transition: none;
   }
 }
 /* The driving UI has one hierarchy: hazard → route → instruments. */

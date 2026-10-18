@@ -3,15 +3,18 @@ import {
   boulderGeometry,
   createTerrainChunk,
   terrainHeight,
+  buttressGeometry,
 } from "./terrain.js";
 import { rampSurface } from "./stunts.js";
 import { addSetpieces } from "./setpieces.js";
 import { addLandmarks } from "./landmarks.js";
+import { treeCrownGeometry, treeTrunkGeometry } from "./tree-geometry.js";
 import {
   surfaces,
   roadMaterial,
   rockMaterial,
-  pineMaterial,
+  foliageMaterial,
+  barkMaterial,
   cityMaterial,
   scrubMaterial,
   concreteMaterial,
@@ -66,6 +69,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   branchAsphalt.color.setHex(night ? 0x748a9d : 0x7f8d89);
   const terrainLods = [],
     rockLods = [],
+    forestLods = [],
     instanceWindows = [];
   let lowQuality = false;
   const dynamics = new Set(),
@@ -688,8 +692,8 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     }
   }
   if (!night) {
-    const geo = boulderGeometry(28, 20),
-      lowGeo = boulderGeometry(14, 10);
+    const geo = boulderGeometry(22, 15),
+      lowGeo = boulderGeometry(10, 7);
     const rocks = [];
     for (let i = 0; i < 430; i++) {
       const cluster = Math.floor(i / 6),
@@ -720,6 +724,34 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     }
     const stoneMat = rockMaterial(canyon);
     stoneMat.color.setHex(canyon ? 0xb38d6c : 0x7d8877);
+    const crags = [];
+    if (canyon) {
+      for (let i = 0; i < Math.ceil(length / 185); i++) {
+        const d = i * 185 + 80,
+          side = i % 2 ? 1 : -1,
+          n = Math.abs(Math.sin(i * 2.73));
+        crags.push({
+          d,
+          x: side * (58 + n * 10),
+          y: -10,
+          rotation: i * 0.91,
+          scale: [18 + n * 6, 42 + n * 20, 20 + n * 8],
+          color: 0xffffff,
+        });
+      }
+    } else {
+      for (const [j, d] of [845, 1980, 3310, 4510].entries())
+        for (let k = 0; k < 3; k++)
+          crags.push({
+            d: d + k * 24,
+            x: 64 + k * 23,
+            y: -roadY(d + k * 24) - 7,
+            rotation: j * 1.1 + k * 0.6,
+            scale: [12 - k * 2, 37 - k * 8, 16 - k * 2],
+            color: 0x9ca79b,
+          });
+    }
+    instances(buttressGeometry(), stoneMat, crags);
     for (let d = -300; d < length + 600; d += 300) {
       const items = rocks.filter((p) => p.d >= d && p.d < d + 300);
       if (items.length) {
@@ -745,10 +777,9 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
         scale: [h * 1.7, h, h * 2.3],
       });
     }
-    for (let d = -300; d < length + 300; d += 300) {
-      const items = gravel.filter((p) => p.d >= d && p.d < d + 300);
-      if (items.length) instances(lowGeo, stoneMat, items);
-    }
+    // Small gravel does not need a district draw per cluster. The shared row
+    // is windowed by instance count, freeing draws for dimensional vegetation.
+    instances(lowGeo, stoneMat, gravel);
     if (canyon) {
       const mesa = boulderGeometry(32, 28, true),
         mesaLow = boulderGeometry(16, 14, true);
@@ -761,7 +792,14 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
           {
             d,
             x: side * offset,
-            y: terrainHeight(d, offset, side, true, roadY) - roadY(d) - h * 0.2,
+            y:
+              Math.min(
+                terrainHeight(d, offset, side, true, roadY),
+                terrainHeight(d - 38, offset - 30, side, true, roadY),
+                terrainHeight(d + 38, offset - 30, side, true, roadY),
+              ) -
+              roadY(d) -
+              h * 0.3,
             rotation: i * 1.7,
             scale: [23 + (i % 3) * 10, h, 29 + (i % 3) * 9],
           },
@@ -770,43 +808,115 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
       }
     }
     if (coast) {
-      const crowns = [],
-        trunks = [];
-      // Forest stands have openings and mixed ages instead of a single evenly
-      // spaced tree fence. Two crossed cutouts per tree keep the GPU cost small.
-      for (let cluster = 0; cluster < Math.ceil(length / 90); cluster++) {
-        const side = cluster % 7 === 0 ? 1 : -1;
-        for (let j = 0; j < 23; j++) {
-          const i = cluster * 23 + j,
-            n = Math.abs(Math.sin(i * 47.73));
-          const d = cluster * 90 + Math.sin(i * 3.17) * 44;
-          const x = side * ((side === 1 ? 450 : 61) + n * 105),
-            h = 9 + Math.abs(Math.sin(i * 9.71)) * 13;
-          const ground = terrainHeight(d, Math.abs(x), side, false, roadY);
-          if (ground < 1.1) continue;
-          trunks.push({
-            d,
-            x,
-            y: ground - roadY(d) + h * 0.32,
-            scale: [0.22 + n * 0.18, h * 0.64, 0.22 + n * 0.18],
-          });
-          for (const rotation of [i * 2.39, i * 2.39 + Math.PI * 0.5])
-            crowns.push({
+      const stands = [[], []],
+        trunks = [],
+        leaves = foliageMaterial(),
+        bark = barkMaterial();
+      const crownNear = [treeCrownGeometry(), treeCrownGeometry(true)],
+        crownFar = [
+          treeCrownGeometry(false, true),
+          treeCrownGeometry(true, true),
+        ],
+        trunkNear = treeTrunkGeometry(true),
+        trunkFar = new THREE.CylinderGeometry(0.009, 0.023, 0.76, 5, 1);
+      trunkFar.translate(0, 0.36, 0);
+      // Sheltered broadleaf groves occupy lower benches; taller pines form
+      // irregular ridgelines behind them. Clearings keep ocean vistas open.
+      for (let cluster = 0; cluster < Math.ceil(length / 155); cluster++) {
+        const side = cluster % 9 === 0 ? 1 : -1,
+          center = cluster * 155 + Math.sin(cluster * 4.7) * 36,
+          count = 28 + (cluster % 4) * 5;
+        for (let j = 0; j < count; j++) {
+          const i = cluster * 43 + j,
+            n = Math.abs(Math.sin(i * 47.73)),
+            angle = i * 2.399963,
+            d = center + Math.sin(angle) * (24 + n * 45),
+            offset =
+              (side === 1 ? 455 : 82) +
+              (j % 3) * 26 +
+              Math.cos(angle) * (12 + n * 27),
+            ground = terrainHeight(d, offset, side, false, roadY),
+            slope =
+              Math.abs(
+                terrainHeight(d, offset + 1, side, false, roadY) -
+                  terrainHeight(d, offset - 1, side, false, roadY),
+              ) / 2;
+          if (ground < 1.1 || slope > 1.4) continue;
+          const broadleaf = j % 4 === 0 || (offset < 94 && j % 3 === 0),
+            h = (broadleaf ? 10 : 14) + n * (broadleaf ? 7 : 14),
+            tree = {
               d,
-              x,
-              y: ground - roadY(d) + h * 0.5,
-              rotation,
-              scale: [h * (0.57 + n * 0.16), h, 1],
-              color: [0x9aa98a, 0xc8c9a4, 0x879b78, 0xa5b48c][i % 4],
-            });
+              x: side * offset,
+              y: ground - roadY(d) - 0.08,
+              rotation: i * 1.73,
+              scale: [
+                h * (broadleaf ? 1.12 : 0.94),
+                h,
+                h * (broadleaf ? 1.12 : 0.94),
+              ],
+              color: [0xc9d2af, 0xb1c096, 0xd0c9a2, 0xaabb9b][i % 4],
+            };
+          stands[+broadleaf].push(tree);
+          trunks.push({ ...tree, color: 0xffffff });
         }
       }
-      instances(new THREE.PlaneGeometry(1, 1), pineMaterial(), crowns);
-      instances(
-        new THREE.CylinderGeometry(0.55, 1, 1, 5),
-        mat(0x4c4539),
-        trunks,
-      );
+      // A few sheltered lower benches bring branch depth into the driving
+      // view. Reject steep/high cliff sites instead of planting hanging trees.
+      for (const start of [940, 3470, 4440])
+        for (let j = 0; j < 24; j++) {
+          const d = start + j * 17,
+            offset = 67 + Math.abs(Math.sin(j * 2.71)) * 11,
+            ground = terrainHeight(d, offset, -1, false, roadY),
+            slope =
+              Math.abs(
+                terrainHeight(d, offset + 1, -1, false, roadY) -
+                  terrainHeight(d, offset - 1, -1, false, roadY),
+              ) / 2;
+          if (slope > 0.95 || ground > roadY(d) + 15 || ground < roadY(d) - 5)
+            continue;
+          const broadleaf = j % 3 !== 0,
+            h = (broadleaf ? 15 : 21) + Math.sin(j * 1.91) * 3,
+            tree = {
+              d,
+              x: -offset,
+              y: ground - roadY(d) - 0.08,
+              rotation: j * 2.399,
+              scale: [h, h, h],
+              color: j % 2 ? 0xc9d2af : 0xb1c096,
+            };
+          stands[+broadleaf].push(tree);
+          trunks.push({ ...tree, color: 0xffffff });
+        }
+      // Three draw batches per 480 m district; 86/60 crown triangles near,
+      // 28/18 far. No per-frame mesh creation or leaf transparency sorting.
+      for (let d = -480; d < length + 480; d += 480) {
+        for (let species = 0; species < 2; species++) {
+          const items = stands[species].filter(
+            (p) => p.d >= d && p.d < d + 480,
+          );
+          if (!items.length) continue;
+          const crown = instances(crownNear[species], leaves, items);
+          crown.userData.role = "instanced-tree-crowns";
+          forestLods.push({
+            mesh: crown,
+            near: crownNear[species],
+            far: crownFar[species],
+            center: d + 240,
+            tree: true,
+          });
+        }
+        const items = trunks.filter((p) => p.d >= d && p.d < d + 480);
+        if (items.length) {
+          const trunk = instances(trunkNear, bark, items);
+          forestLods.push({
+            mesh: trunk,
+            near: trunkNear,
+            far: trunkFar,
+            center: d + 240,
+            tree: true,
+          });
+        }
+      }
     }
     // Low scrub clusters sit on the sampled terrain; varied spacing leaves clear
     // vistas around jumps and prevents the repeated roadside-tree fence effect.
@@ -1103,7 +1213,23 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     g.position.y += ground;
     const footing = coast ? 24 : 2.4;
     box(w + 3, footing, depth + 3, concrete, 0, 0.15 - footing / 2, 0, g);
-    box(w, h, depth, shedWall, 0, h / 2, 0, g);
+    // A real shell leaves dark loading bays recessed into the building. The
+    // previous single solid box made every opening read as a painted rectangle.
+    const opening = night ? 6.4 : 5.2;
+    box(0.4, h, depth, shedWall, (side * w) / 2, h / 2, 0, g);
+    for (const z of [-depth / 2, depth / 2])
+      box(w, h, 0.4, shedWall, 0, h / 2, z, g);
+    box(
+      0.4,
+      h - opening,
+      depth,
+      shedWall,
+      face,
+      opening + (h - opening) / 2,
+      0,
+      g,
+    );
+    box(w, 0.2, depth, concrete, 0, 0.05, 0, g);
     const slope = Math.atan2(rise, w / 2),
       panel = Math.hypot(w / 2, rise) + 1;
     for (const s of [-1, 1]) {
@@ -1148,17 +1274,55 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     for (let k = 0; k < bays; k++) {
       const z = (k - (bays - 1) / 2) * 11,
         doorH = night ? 5.6 : 4.4;
-      box(0.15, doorH, 7, dark, face - side * 0.09, doorH / 2 + 0.8, z, g);
-      box(
-        0.19,
-        doorH - 0.6,
-        6.2,
-        shedRoof,
-        face - side * 0.2,
-        doorH / 2 + 0.8,
-        z,
-        g,
-      );
+      const open = (k + i) % 3 === 0;
+      if (!open) {
+        box(0.15, doorH, 7, dark, face - side * 0.09, doorH / 2 + 0.8, z, g);
+        box(
+          0.19,
+          doorH - 0.6,
+          6.2,
+          shedRoof,
+          face - side * 0.2,
+          doorH / 2 + 0.8,
+          z,
+          g,
+        );
+      } else {
+        box(0.3, doorH, 7, dark, face + side * 4, doorH / 2 + 0.8, z, g);
+        for (let cargo = 0; cargo < 3; cargo++) {
+          box(
+            1.3,
+            0.18,
+            1.5,
+            metal,
+            face + side * (1.2 + cargo * 0.6),
+            0.95,
+            z - 2 + cargo * 1.7,
+            g,
+          );
+          box(
+            1.1,
+            1.1 + cargo * 0.4,
+            1.2,
+            concrete,
+            face + side * (1.2 + cargo * 0.6),
+            1.6 + cargo * 0.2,
+            z - 2 + cargo * 1.7,
+            g,
+          );
+        }
+        box(
+          0.2,
+          0.1,
+          4,
+          night ? amber : edge,
+          face + side * 1.2,
+          doorH + 0.4,
+          z,
+          g,
+        );
+      }
+      box(0.4, opening, 3.7, shedWall, face, opening / 2, z + 5.3, g);
       box(3, 0.95, 8.2, concrete, face - side * 1.3, 0.35, z, g);
       for (const e of [-1, 1]) {
         box(
@@ -1239,7 +1403,75 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
         1.4,
         "#e2cbaa",
       );
+    if (night && i % 2 === 0) {
+      // Parked forklifts, pallet stacks and a protected loading apron give
+      // the terminal a working-yard scale; everything stays outside the road.
+      const fx = face - side * 7.8,
+        fz = -depth / 2 + 7;
+      box(1.7, 0.7, 2.7, orange, fx, 1, fz, g);
+      box(1.6, 0.6, 0.65, metal, fx, 1.1, fz + 1.35, g);
+      box(1.9, 0.17, 1.9, metal, fx, 2.7, fz + 0.1, g);
+      for (const s of [-1, 1]) {
+        for (const z of [-0.8, 0.8])
+          box(0.1, 1.5, 0.1, metal, fx + s * 0.72, 1.9, fz + z, g);
+        box(0.14, 2.5, 0.16, metal, fx + s * 0.6, 1.65, fz - 1.5, g);
+        box(0.13, 0.12, 1.8, metal, fx + s * 0.6, 0.5, fz - 2.2, g);
+        for (const z of [-0.85, 0.85]) {
+          const wheel = mesh(
+            new THREE.CylinderGeometry(0.4, 0.4, 0.3, 10),
+            dark,
+            g,
+          );
+          wheel.rotation.z = Math.PI / 2;
+          wheel.position.set(fx + s * 0.91, 0.6, fz + z);
+        }
+      }
+      for (let stack = 0; stack < 3; stack++) {
+        const px = face - side * 5.2,
+          pz = depth / 2 - 13 - stack * 2.7;
+        for (let level = 0; level <= stack; level++)
+          box(1.8, 0.3, 1.8, metal, px, 0.3 + level * 0.33, pz, g);
+      }
+    }
   }
+  if (night)
+    for (const [i, d] of [910, 2550, 4330].entries()) {
+      const side = i % 2 ? -1 : 1,
+        g = groupAt(d, side * 56);
+      // Terminal administration blocks provide a distinct mid-rise silhouette:
+      // deep floor plates, continuous glazing and a stepped roof plant enclosure.
+      box(32, 2, 62, concrete, 0, 0.2, 0, g);
+      for (let floor = 0; floor < 4; floor++) {
+        const w = 30 - floor * 2,
+          y = 1.3 + floor * 4.2;
+        box(w, 3.8, 57, shedWall, 0, y + 1.9, 0, g);
+        box(w + 0.9, 0.4, 58, concrete, 0, y + 4, 0, g);
+        box(0.18, 2.6, 51, shedGlass, -side * (w / 2 + 0.12), y + 2.3, 0, g);
+        box(w - 3, 2.6, 0.18, shedGlass, 0, y + 2.3, 28.65, g);
+        for (let z = -25; z <= 25; z += 8.3)
+          box(0.28, 3.6, 0.3, metal, -side * (w / 2 + 0.27), y + 2, z, g);
+        if (floor === 0) {
+          box(4, 0.25, 12, metal, -side * (w / 2 + 1.7), y + 4, -13, g);
+          box(0.2, 3.2, 7, dark, -side * (w / 2 + 0.2), y + 1.6, -13, g);
+        }
+      }
+      box(14, 3.3, 24, shedRoof, 3, 19, 4, g);
+      for (const z of [-9, 1, 11]) {
+        box(4, 2.2, 5, metal, -5, 18.5, z, g);
+        for (let slat = 0; slat < 4; slat++)
+          box(4.1, 0.08, 0.16, dark, -5, 18.1 + slat * 0.4, z + 2.55, g);
+      }
+      sign(
+        ["PORT AUTHORITY", "OPERATIONS / 24H", "CUSTOMS / FREIGHT"][i],
+        0,
+        16.6,
+        29.1,
+        g,
+        24,
+        1.6,
+        "#e4d8b9",
+      );
+    }
   const lamps = [];
   const poolCanvas = document.createElement("canvas");
   poolCanvas.width = poolCanvas.height = 64;
@@ -1691,7 +1923,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     }
     mesh(g, m).castShadow = true;
   }
-  const landscapeLods = [...terrainLods, ...rockLods];
+  const landscapeLods = [...terrainLods, ...rockLods, ...forestLods];
   const districts = [];
   root.updateMatrixWorld(true);
   for (const o of root.children) {
@@ -1755,7 +1987,9 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
         }
       }
       for (const tile of landscapeLods) {
-        const near = Math.abs(tile.center - s.d) < (lowQuality ? 280 : 520);
+        const near =
+          Math.abs(tile.center - s.d) <
+          (tile.tree ? (lowQuality ? 240 : 360) : lowQuality ? 280 : 520);
         tile.mesh.geometry = near ? tile.near : tile.far;
       }
       for (const b of districts)

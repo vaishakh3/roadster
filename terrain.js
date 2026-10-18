@@ -35,7 +35,10 @@ export function terrainHeight(d, offset, side, canyon, roadY) {
     const setback = 31 + buttress * 9;
     const t = Math.max(0, offset - setback);
     const cliff = smooth(Math.min(1, t / (19 + 6 * buttress)));
-    const ridge = 57 + fbm(d * 0.004, side * 13) * 32;
+    const ridge =
+      45 +
+      fbm(d * 0.003, side * 13) * 27 +
+      Math.pow(0.5 + 0.5 * noise(d * 0.01, side * 21), 2) * 38;
     const channel = Math.pow(1 - Math.abs(noise(d * 0.019, offset * 0.006)), 9);
     const gullies = channel * 24 * smooth(Math.min(1, t / 9));
     const raw = cliff * Math.max(18, ridge - gullies);
@@ -50,17 +53,22 @@ export function terrainHeight(d, offset, side, canyon, roadY) {
       talus +
       mix(raw, stepped, 0.55) +
       cliff * noise(d * 0.066, offset * 0.044) * 1.4 +
-      Math.max(0, offset - 110) * 0.025
+      Math.max(0, offset - 110) * 0.025 +
+      smooth(Math.min(1, Math.max(0, offset - 95) / 150)) *
+        (26 + fbm(d * 0.003 + 8, offset * 0.004) * 34)
     );
   }
   // The right bank opens onto the Atlantic. Left-bank promontories sit close
   // enough to establish scale, then rise into forested ridges behind the road.
-  const shore = side === 1 ? 360 : 40;
+  const shore =
+    side === 1 ? 360 + noise(d * 0.003, 8) * 60 : 47 + noise(d * 0.007, 4) * 7;
   const t = Math.max(0, offset - shore);
   const headland = 0.62 + 0.38 * smooth((noise(d * 0.004, side * 5) + 1) * 0.5);
-  const cliff = smooth(Math.min(1, t / (side === 1 ? 90 : 38)));
+  const cliff = smooth(
+    Math.min(1, t / (side === 1 ? 90 : 26 + noise(d * 0.013, 9) * 8)),
+  );
   const ridge = Math.sin(Math.min(1, t / 650) * Math.PI * 0.82);
-  const height = 42 + fbm(d * 0.0035, side * 5) * 48;
+  const height = 48 + fbm(d * 0.0035, side * 5) * 54;
   const fissure = Math.pow(1 - Math.abs(noise(d * 0.025, offset * 0.012)), 7);
   const detail = fbm(d * 0.018, offset * 0.018) * 12;
   return (
@@ -69,6 +77,59 @@ export function terrainHeight(d, offset, side, canyon, roadY) {
     ridge * (height + detail) * (side === 1 ? 0.72 : 1.35) -
     cliff * fissure * (side === 1 ? 4 : 9)
   );
+}
+
+// Stratified fracture planes, not scaled spheres: 340 triangles form a crag
+// with ledges, an asymmetric crown and angular sides. Reused by instancing.
+export function buttressGeometry() {
+  const positions = [],
+    colors = [],
+    uvs = [];
+  const levels = [0, 0.09, 0.24, 0.35, 0.51, 0.66, 0.81, 0.91, 1],
+    sides = 20;
+  function point(i, j) {
+    const a = (i / sides) * Math.PI * 2,
+      y = levels[j],
+      radius =
+        (1 - y * 0.3) *
+          (1 + 0.12 * Math.sin(i * 2.71) + 0.07 * Math.sin(j * 1.9 + i * 0.8)) +
+        (j === 3 || j === 6 ? 0.055 : 0);
+    return [
+      Math.cos(a) * radius + 0.08 * Math.sin(y * 3),
+      y + (j === levels.length - 1 ? 0.06 * Math.sin(i * 1.3) : 0),
+      Math.sin(a) * radius,
+    ];
+  }
+  function triangle(a, b, c) {
+    for (const p of [a, b, c]) {
+      positions.push(...p);
+      uvs.push(p[0] * 0.5 + 0.5, p[1]);
+      const shade = 0.76 + 0.18 * p[1] + 0.08 * Math.sin(p[1] * 39);
+      colors.push(shade, shade * 0.98, shade * 0.95);
+    }
+  }
+  for (let j = 0; j < levels.length - 1; j++)
+    for (let i = 0; i < sides; i++) {
+      const a = point(i, j),
+        b = point((i + 1) % sides, j),
+        c = point(i, j + 1),
+        e = point((i + 1) % sides, j + 1);
+      triangle(a, c, b);
+      triangle(b, c, e);
+    }
+  for (let i = 0; i < sides; i++)
+    triangle(
+      point(i, levels.length - 1),
+      [0.02, 1, 0],
+      point((i + 1) % sides, levels.length - 1),
+    );
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  g.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  g.computeVertexNormals();
+  g.computeBoundingSphere();
+  return g;
 }
 // Curved, stratified boulders use shared indexed vertices: normals stay smooth.
 export function boulderGeometry(segments = 28, rings = 20, mesa = false) {
