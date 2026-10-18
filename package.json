@@ -4,7 +4,7 @@
   "description": "Three authored Roadster racing arenas, a World Tour, moving hazards, course records and personal ghosts",
   "scripts": {
     "start": "node scripts/serve.mjs",
-    "test": "node tests/run.test.mjs && node tests/dynamics.test.mjs && node tests/challenges.test.mjs && node tests/sharing.test.mjs && node tests/missions.test.mjs && node tests/pwa.test.mjs && node tests/leaderboard.test.mjs && node tests/effects.test.mjs",
+    "test": "node tests/run.test.mjs && node tests/dynamics.test.mjs && node tests/challenges.test.mjs && node tests/sharing.test.mjs && node tests/missions.test.mjs && node tests/pwa.test.mjs && node tests/leaderboard.test.mjs && node tests/effects.test.mjs && node tests/offline-pages.test.mjs && node tests/coastal-geometry.test.mjs",
     "build": "node scripts/build.mjs",
     "test:browser": "node tests/browser-qa.cjs"
   },

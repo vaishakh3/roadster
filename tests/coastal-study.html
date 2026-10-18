@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <title>Coastal study · public flow review</title>
+  <style>
+    body {
+      margin: 16px;
+      background: #14282d;
+      color: #f2efe0;
+      font: 13px monospace;
+    }
+    nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    button {
+      padding: 10px;
+      cursor: pointer;
+    }
+    iframe {
+      width: 844px;
+      height: 390px;
+      border: 0;
+      display: block;
+    }
+    pre {
+      white-space: pre-wrap;
+    }
+  </style>
+  <nav>
+    <button id="run">Run public study checks</button>
+    <button data-size="1280,720">Desktop</button>
+    <button data-size="844,390">Phone</button>
+    <button data-size="390,844">Portrait</button>
+  </nav>
+  <p id="status" role="status">Ready.</p>
+  <iframe title="Public coastal study" src="../coastal-study.html"></iframe>
+  <pre id="report">
+Public study test fixture. No personal race data is modified.</pre
+  >
+  <script type="module">
+    const frame = document.querySelector("iframe"),
+      report = document.getElementById("report"),
+      status = document.getElementById("status");
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const paint = () => new Promise(requestAnimationFrame);
+    document.querySelectorAll("[data-size]").forEach(
+      (b) =>
+        (b.onclick = () => {
+          const [w, h] = b.dataset.size.split(",");
+          frame.style.width = w + "px";
+          frame.style.height = h + "px";
+        }),
+    );
+    const params = new URLSearchParams(location.search);
+    if (params.has("production")) frame.src = "../dist/coastal-study.html";
+    document.getElementById("run").onclick = async () => {
+      const checks = [],
+        errors = [];
+      const assert = (name, value) => checks.push({ name, passed: !!value });
+      status.textContent = "Running public study checks…";
+      try {
+        let inner, g;
+        for (let i = 0; i < 600; i++) {
+          inner = frame.contentDocument?.getElementById("game");
+          g = inner?.contentWindow.__breakwater;
+          if (g && !frame.contentDocument.getElementById("drive").disabled)
+            break;
+          await wait(50);
+        }
+        if (!g) throw Error("Public study initialization timed out");
+        const w = frame.contentWindow,
+          d = w.document,
+          gameWindow = inner.contentWindow,
+          gameDoc = inner.contentDocument;
+        for (const target of [w, gameWindow]) {
+          target.addEventListener("error", (e) => errors.push(e.message));
+          target.addEventListener("unhandledrejection", (e) =>
+            errors.push(String(e.reason)),
+          );
+        }
+        const records = () =>
+          Object.fromEntries(
+            Object.keys(localStorage)
+              .filter((k) => k.startsWith("breakwater-"))
+              .map((k) => [k, localStorage.getItem(k)]),
+          );
+        const before = records();
+        assert(
+          "Study is ready on Breakwater",
+          g.course.id === "breakwater" && !d.getElementById("drive").disabled,
+        );
+        assert(
+          "Study game uses isolated QA storage",
+          new URL(inner.src).searchParams.get("qa") === "1",
+        );
+        for (const [view, distance, y, phase] of [
+          ["approach", 815, 0, "playing"],
+          ["headland", 1080, 0, "playing"],
+          ["air", 1080, 12, "playing"],
+          ["car", 1105, 0, "home"],
+        ]) {
+          d.querySelector(`[data-view="${view}"]`).click();
+          await paint();
+          assert(
+            `${view} selects the intended camera and pose`,
+            g.state.d === distance &&
+              g.state.y === y &&
+              g.phase === phase &&
+              d
+                .querySelector(`[data-view="${view}"]`)
+                .getAttribute("aria-pressed") === "true",
+          );
+        }
+        for (const detail of ["HIGH", "LOW", "AUTO"]) {
+          d.getElementById("quality").click();
+          await paint();
+          assert(
+            `${detail} detail reaches the renderer`,
+            gameDoc.querySelector("#quality b").textContent === detail &&
+              d.getElementById("quality").textContent.includes(detail),
+          );
+        }
+        d.querySelector('[data-view="headland"]').click();
+        d.getElementById("drive").click();
+        await wait(150);
+        assert(
+          "Drive begins and advances live physics",
+          g.phase === "playing" &&
+            g.state.d > 770 &&
+            d.getElementById("drive").textContent === "END DRIVE",
+        );
+        d.getElementById("drive").click();
+        await paint();
+        assert(
+          "End drive restores the selected frozen view",
+          g.state.d === 1080 &&
+            d.getElementById("drive").textContent === "DRIVE THIS SECTION →",
+        );
+        d.getElementById("drive").click();
+        g.setState({ d: 1259.9, x: 0, y: 0, speed: 55, airborne: false });
+        await wait(180);
+        assert(
+          "Section finish returns a visible replay action",
+          d.getElementById("drive").textContent === "DRIVE AGAIN →" &&
+            d.getElementById("status").textContent.includes("Section complete"),
+        );
+        d.querySelector('[data-view="headland"]').click();
+        frame.style.width = "390px";
+        frame.style.height = "844px";
+        await wait(180);
+        const rotate = gameDoc.getElementById("rotate");
+        const studyRotate = d.getElementById("rotate-study");
+        const gameRotationVisible =
+          !rotate.hidden &&
+          rotate.getClientRects().length > 0 &&
+          gameWindow.getComputedStyle(gameDoc.getElementById("app")).display !==
+            "none";
+        const studyRotationVisible =
+          studyRotate &&
+          studyRotate.getClientRects().length > 0 &&
+          w.getComputedStyle(studyRotate).display !== "none";
+        assert(
+          "Portrait presents the tilt-phone message",
+          g.blocked && (gameRotationVisible || studyRotationVisible),
+        );
+        const controls = [
+          ...d.querySelectorAll("header button,header a,footer button"),
+        ];
+        assert(
+          "Portrait study controls fit the viewport",
+          controls.every((el) => {
+            const r = el.getBoundingClientRect();
+            return (
+              r.left >= 0 && r.right <= 390 && r.top >= 0 && r.bottom <= 844
+            );
+          }),
+        );
+        frame.style.width = "844px";
+        frame.style.height = "390px";
+        await wait(180);
+        d.querySelector('[data-view="headland"]').click();
+        assert(
+          "Returning to landscape restores the scene",
+          !g.blocked && g.drawCalls > 0,
+        );
+        assert(
+          "Personal stored progress remains unchanged",
+          JSON.stringify(before) === JSON.stringify(records()),
+        );
+        assert("No runtime errors during the flow", !errors.length);
+        output({
+          checks,
+          passed: checks.filter((c) => c.passed).length,
+          failed: checks.filter((c) => !c.passed).length,
+          errors,
+        });
+      } catch (error) {
+        output({ checks, error: String(error), errors });
+      }
+      function output(result) {
+        report.textContent = JSON.stringify(result, null, 2);
+        status.textContent =
+          result.error || result.failed
+            ? "FAIL public study flow"
+            : "PASS public study flow";
+      }
+    };
+  </script>
+</html>

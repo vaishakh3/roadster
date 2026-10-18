@@ -61,6 +61,8 @@ const bundledLicenses =
   "\n\n" +
   (await readFile("assets/runtime/LICENSE.txt", "utf8")) +
   "\n\n" +
+  (await readFile("assets/coastal-scan/LICENSE.txt", "utf8")) +
+  "\n\n" +
   (await readFile("assets/LICENSE.txt", "utf8")) +
   "\n\n" +
   (await readFile("vendor/THREE-LICENSE.txt", "utf8"));
@@ -79,10 +81,18 @@ await writeFile("Roadster-Flight-Lab.html", standalone);
 await rm("dist", { recursive: true, force: true });
 await mkdir("dist", { recursive: true });
 await writeFile("dist/index.html", standalone);
-const version = createHash("sha256").update(standalone).digest("hex").slice(0, 12);
+const study = await readFile("coastal-study.html", "utf8");
+const worker = await readFile("sw.js", "utf8");
+await writeFile("dist/coastal-study.html", study);
+const version = createHash("sha256")
+  .update(standalone)
+  .update(study)
+  .update(worker)
+  .digest("hex")
+  .slice(0, 12);
 await writeFile(
   "dist/sw.js",
-  (await readFile("sw.js", "utf8")).replace("__BUILD_VERSION__", version),
+  worker.replace("__BUILD_VERSION__", version),
 );
 await copyFile("manifest.webmanifest", "dist/manifest.webmanifest");
 await writeFile("dist/icon-192.png", iconPng(192));
@@ -91,6 +101,10 @@ await copyFile("vendor/THREE-LICENSE.txt", "dist/THREE-LICENSE.txt");
 await copyFile("assets/LICENSE.txt", "dist/ASSET-LICENSE.txt");
 await copyFile("assets/runtime/LICENSE.txt", "dist/RUNTIME-ASSETS-LICENSE.txt");
 await copyFile("assets/realism/LICENSE.txt", "dist/REALISM-ASSETS-LICENSE.txt");
+await copyFile(
+  "assets/coastal-scan/LICENSE.txt",
+  "dist/COASTAL-SCAN-LICENSE.txt",
+);
 for (const file of ["Barlow-OFL.txt", "IBMPlexMono-OFL.txt"])
   await copyFile("assets/fonts/" + file, "dist/" + file);
 // Rasterises the favicon artwork (orange tile, dark "R" road strokes) into a
@@ -114,9 +128,15 @@ function iconPng(size) {
           dy = by - ay,
           t = Math.max(
             0,
-            Math.min(1, ((x + 0.5 - ax) * dx + (y + 0.5 - ay) * dy) / (dx * dx + dy * dy)),
+            Math.min(
+              1,
+              ((x + 0.5 - ax) * dx + (y + 0.5 - ay) * dy) / (dx * dx + dy * dy),
+            ),
           );
-        distance = Math.min(distance, Math.hypot(x + 0.5 - ax - dx * t, y + 0.5 - ay - dy * t));
+        distance = Math.min(
+          distance,
+          Math.hypot(x + 0.5 - ax - dx * t, y + 0.5 - ay - dy * t),
+        );
       }
       const ink = Math.max(0, Math.min(1, width / 2 + 0.5 - distance));
       const o = y * (size * 4 + 1) + 1 + x * 4;

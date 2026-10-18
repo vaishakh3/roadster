@@ -181,14 +181,20 @@ document.getElementById("run").onclick = async () => {
     ok(g.state.score === score);
   });
   g.home();
-  check("Venue arrows cycle all three courses and update the selection", () => {
-    g.selectCourse("breakwater");
-    d.getElementById("venue-prev").click();
-    ok(g.course.id === "nightshift");
-    d.getElementById("venue-next").click();
-    ok(g.course.id === "breakwater");
-    ok(d.getElementById("venue-index").textContent === "01 / 03");
-  });
+  check(
+    "Venue arrows wrap all available courses and update the selection",
+    () => {
+      g.selectCourse("breakwater");
+      d.getElementById("venue-prev").click();
+      ok(g.course.id === COURSES.at(-1).id);
+      d.getElementById("venue-next").click();
+      ok(g.course.id === "breakwater");
+      ok(
+        d.getElementById("venue-index").textContent ===
+          `01 / ${String(COURSES.length).padStart(2, "0")}`,
+      );
+    },
+  );
   check("Showroom rotation preserves course and driving state", () => {
     d.getElementById("orbit-car").click();
     g.step(0);
@@ -348,8 +354,8 @@ document.getElementById("run").onclick = async () => {
       await g.selectCourse(c.id);
       g.step(0);
     }
-  check("Three prepared venues reuse their geometry and textures", () => {
-    ok(g.preparedVenues === 3);
+  check("All prepared venues reuse their geometry and textures", () => {
+    ok(g.preparedVenues === COURSES.length);
     ok(g.memory.geometries <= memory.geometries + 2, JSON.stringify(g.memory));
     ok(g.memory.textures <= memory.textures + 1);
   });

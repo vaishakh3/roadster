@@ -4,7 +4,12 @@
 // new deploy shows up on the next reload; everything else is cache-first.
 const VERSION = "__BUILD_VERSION__";
 const CACHE = "roadster-" + VERSION;
-const SHELL = ["./", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
+const SHELL = [
+  "./",
+  "./manifest.webmanifest",
+  "./icon-192.png",
+  "./icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -32,17 +37,39 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-  if (request.method !== "GET" || new URL(request.url).origin !== location.origin)
+  if (
+    request.method !== "GET" ||
+    new URL(request.url).origin !== location.origin
+  )
     return;
   if (request.mode === "navigate") {
+    const url = new URL(request.url);
+    const base = new URL(self.registration.scope);
+    const shell =
+      url.pathname === base.pathname ||
+      url.pathname === base.pathname + "index.html";
+    // Keep the game shell separate from the visual study and other pages.
+    // Query parameters select runtime modes, not separate document shells.
+    const key = shell ? base.href : url.origin + url.pathname;
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put("./", copy));
+          if (response.ok) {
+            const copy = response.clone();
+            event.waitUntil(
+              caches.open(CACHE).then((cache) => cache.put(key, copy)),
+            );
+          }
           return response;
         })
-        .catch(() => caches.match("./")),
+        .catch(
+          async () =>
+            (await caches.match(key)) ||
+            new Response("This page is not available offline yet.", {
+              status: 503,
+              headers: { "Content-Type": "text/plain" },
+            }),
+        ),
     );
     return;
   }

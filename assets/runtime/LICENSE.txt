@@ -115,3 +115,66 @@ runtime assets: a 77.39% payload reduction before HTML/base64/gzip overhead.
 b4bbbf880052e2faddb4a9bdd570c152619ef29281b297982b84a269940421cf
 368966 bytes — venice_sunset_512.hdr — 512 x 256
 67b4d87e63d2920cfe1f24d7806f270429509ae58560331bdc12cc67a0a3ec4f
+
+Coastal showcase material — 18 October 2026
+=========================================
+Seaside Rock — Dimitrios Savva / Poly Haven, CC0 1.0 Universal.
+https://polyhaven.com/a/seaside_rock
+https://polyhaven.com/license
+Source URLs/checksums are recorded in assets/realism/LICENSE.txt. Preparation
+script: scripts/prepare-coastal-assets.py. The existing Python Pillow/NumPy
+authoring environment is used; no new game runtime dependency is required.
+
+coastal_rock_color.webp — 768 x 768, 205432 bytes
+Source: seaside_rock_diff_1k.jpg. RGB/LANCZOS resize, WebP quality90, method6.
+SHA256 a8d35390ea845dcf2bf2ca437680b428f7c4a91a024e21758014c40eaecd8eac
+
+coastal_rock_normal.webp — 512 x 512, 470556 bytes
+Source: seaside_rock_nor_gl_1k.jpg. Linear vector 2x2 average, renormalization,
+rounding and lossless WebP method6. This is OpenGL +Y data; no gamma conversion.
+SHA256 f3083f11a79526fdb9dfbf49bcacc786b8bf88f547d096a2795a08de64081a40
+
+coastal_rock_arm.webp — 384 x 384, 13144 bytes
+Source: seaside_rock_arm_1k.jpg. RGB/LANCZOS resize, WebP quality91, method6.
+Linear packed data: R ambient occlusion, G roughness, B metalness (rock is
+dielectric, so the material deliberately keeps metalness=0).
+SHA256 bd8e6c8fba31baf4d76cc9b4f93ca649ea31442e9404fafc3138988c30f5542c
+
+Payload: 689132 bytes before HTML/base64/gzip overhead (the originals total
+2753561 bytes). Exact RGBA8 full-mip allocation estimate: 5330244 bytes
+(5.08 MiB). These WebPs are transfer compressed, not GPU compressed. Decoder
+backing images add approximately 3997696 bytes of RGBA8 storage before any
+browser retention/copy overhead. Three textures are loaded once and reused.
+
+Only size/format/vector-resampling changed in the derivative image files.
+No image paint-over or invented texture content was applied. Slate coloration,
+subtle moss on upward-facing surfaces and macro variation are material shader
+decisions. The original 2 m scan scale is preserved by world triplanar sampling.
+
+The dedicated cliff material uses 3 base-color, 3 normal, 3 packed ARM and
+2 shared detail samples per visible fragment; it adds no draws or geometry.
+The renderer applies physical direct/environment lighting and receiveShadow;
+the scanned AO and optional coastalAO vertex attribute affect indirect light.
+The normal strength is deliberately low (.12) to avoid sparkling microrelief.
+All three projections use the same 29-degree rotation and continuous spatial
+warp across their color/normal/ARM maps to break conspicuous repeated rows.
+It introduces no extra lights, shadow maps, render targets or postprocessing.
+
+The optional coastal road profile reuses the existing asphalt maps. Its profile
+is zero outside the authored region and fades smoothly over 80 m at each end.
+The in-region scan scale is 2 m per tile. Irregular moisture changes albedo and
+roughness (minimum .56), with understated wheel-track wear. It has no animated
+light bands or rectangular reflection decal meshes. The opted-in road shader
+adds 2 shared detail samples, 1 color and 1 normal sample inside the region.
+
+Coastal study sky / CC0 — 18 October 2026
+========================================
+coastal_dusk_1k.hdr is an unchanged copy of Qwantani Dusk 1 (Pure Sky),
+1024 x 512, 952192 bytes; Greg Zaal (photography), Jarod Guest (processing).
+https://polyhaven.com/a/qwantani_dusk_1_puresky
+Official CC0 license: https://polyhaven.com/license
+Source: assets/realism/qwantani_dusk_1_puresky_1k.hdr
+MD5 verified against the official files API: cb1f0fbae91740c0379ec1a5d646df74
+The game filters one shared PMREM during boot and uses the original image for
+coastal sky and water reflection. Shader exposure is calibrated at render time;
+source pixels and radiance data are unchanged. No extra render pass per frame.

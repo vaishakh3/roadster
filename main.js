@@ -1,6 +1,9 @@
 import * as THREE from "./vendor/three.module.js";
 import { createRaceEffects } from "./effects.js";
 import { rampSurface } from "./stunts.js";
+import { loadCoastalAtmosphere } from "./coastal-atmosphere.js";
+import { loadCoastalScan } from "./coastal-scan.js";
+import { measureRenderGpu } from "./qa-gpu.js";
 import { FrameBudget } from "./quality.js";
 import {
   ensurePlayerId,
@@ -210,7 +213,8 @@ const COACH = [
   {
     after: 0.6,
     timeout: 7,
-    text: () => (coarse() ? "HOLD BOOST TO GO FASTER" : "HOLD SHIFT OR ↑ TO BOOST"),
+    text: () =>
+      coarse() ? "HOLD BOOST TO GO FASTER" : "HOLD SHIFT OR ↑ TO BOOST",
     done: () => run.boosting,
   },
   {
@@ -290,15 +294,15 @@ async function showLeaderboard(submission) {
       : "POST YOUR RUN TO JOIN THE BOARD.";
   $("lb-form").hidden = !!name;
   $("leaderboard").hidden = false;
-  if (!data.rows.length && !name) $("lb-total").textContent = "BE THE FIRST TODAY";
+  if (!data.rows.length && !name)
+    $("lb-total").textContent = "BE THE FIRST TODAY";
 }
 async function refreshDailyRank() {
   if (!leaderboardAvailable() || phase !== "home") return;
   const daily = dailyEvent();
   const data = await fetchBoard(daily.day, playerId);
   if (data?.mine && phase === "home")
-    $("daily-name").innerHTML =
-      daily.name + ` · #${data.mine.rank} ` + GO_ICON;
+    $("daily-name").innerHTML = daily.name + ` · #${data.mine.rank} ` + GO_ICON;
 }
 function toast(text, type = "gate", points = 0) {
   $("event").textContent = text + (points ? " +" + num(points) : "");
@@ -366,7 +370,9 @@ const installed = () =>
   matchMedia("(display-mode: fullscreen)").matches ||
   navigator.standalone === true;
 function refreshInstallHint() {
-  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const ios =
+    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   $("install-hint").hidden =
     installed() ||
     !coarse() ||
@@ -742,7 +748,11 @@ function endRun() {
       : "Steer around orange barriers, or fly over them. You have three hits.";
   tally($("result-time"), run.time, formatTime);
   tally($("result-score"), run.score, (v) => num(Math.round(v)));
-  tally($("result-gates"), run.gates, (v) => `${Math.round(v)} / ${course.gates.length}`);
+  tally(
+    $("result-gates"),
+    run.gates,
+    (v) => `${Math.round(v)} / ${course.gates.length}`,
+  );
   const rankEl = $("result-rank");
   rankEl.textContent = complete ? rank : "—";
   rankEl.className = complete ? `reveal ${String(rank).toLowerCase()}` : "";
@@ -1844,14 +1854,25 @@ async function boot() {
     renderer.toneMappingExposure = 1.05;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    await loadVisualAssets(renderer, (value) => {
+    const assetProgress = [0, 0, 0];
+    const updateAssets = (index, value) => {
+      assetProgress[index] = value;
+      const total =
+        assetProgress[0] * 0.7 +
+        assetProgress[1] * 0.15 +
+        assetProgress[2] * 0.15;
       loading.update(
-        5 + value * 48,
-        "Loading surfaces",
-        `${Math.round(value * 100)}% of surface assets prepared.`,
+        5 + total * 48,
+        "Preparing the coastline",
+        `${Math.round(total * 100)}% of surfaces, lighting and scenery prepared.`,
         0,
       );
-    });
+    };
+    await Promise.all([
+      loadVisualAssets(renderer, (value) => updateAssets(0, value)),
+      loadCoastalAtmosphere(renderer).finally(() => updateAssets(1, 1)),
+      loadCoastalScan(renderer, (value) => updateAssets(2, value)),
+    ]);
     loading.update(
       55,
       "Assembling the Roadster",
@@ -2112,6 +2133,43 @@ async function boot() {
     queueVenuePreparation();
     if (qa)
       window.__breakwater = {
+        measureGpu: (count) => measureRenderGpu(renderer, scene, camera, count),
+        get coastalDiagnostics() {
+          const show = coast.showcase;
+          if (!show) return null;
+          let finiteErrors = 0,
+            indexErrors = 0,
+            meshes = 0;
+          const geometries = new Set();
+          for (const group of [
+            show.root,
+            coast.coastalRoadside?.root,
+            coast.coastalScan?.root,
+          ])
+            group?.traverse((o) => {
+              if (!o.geometry) return;
+              meshes++;
+              geometries.add(o.geometry);
+            });
+          for (const geo of geometries) {
+            for (const attr of Object.values(geo.attributes))
+              for (const n of attr.array)
+                if (!Number.isFinite(n)) finiteErrors++;
+            if (geo.index)
+              for (const i of geo.index.array)
+                if (i >= geo.attributes.position.count) indexErrors++;
+          }
+          return {
+            ...show.stats,
+            bounds: show.bounds,
+            finiteErrors,
+            indexErrors,
+            meshes,
+            geometries: geometries.size,
+            roadside: coast.coastalRoadside?.stats,
+            scan: coast.coastalScan?.stats,
+          };
+        },
         get showroom() {
           return {
             angle: showroomAngle,
@@ -2307,10 +2365,16 @@ boot();
 let lastTouchEnd = 0;
 const editable = (t) => t?.closest?.("input, textarea, [contenteditable]");
 for (const type of ["gesturestart", "gesturechange", "gestureend"])
-  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
-document.addEventListener("dblclick", (e) => {
-  if (!editable(e.target)) e.preventDefault();
-}, { passive: false });
+  document.addEventListener(type, (e) => e.preventDefault(), {
+    passive: false,
+  });
+document.addEventListener(
+  "dblclick",
+  (e) => {
+    if (!editable(e.target)) e.preventDefault();
+  },
+  { passive: false },
+);
 document.addEventListener(
   "touchend",
   (e) => {

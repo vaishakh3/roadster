@@ -1,0 +1,20 @@
+Coastal Cliff 01 — Poly Haven (CC0 1.0 Universal)
+https://polyhaven.com/a/coastal_cliff_01
+https://polyhaven.com/license
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Photography and processing: Rob Tuytel
+Cleanup: Rico Cilliers
+
+The game uses a simplified derivative of the actual photographed cliff mesh,
+with its original UV layout and matching diffuse, OpenGL normal and ARM maps.
+Model supplied by Poly Haven: 461,824 triangles in the downloaded glTF.
+Offline Blender collapse decimation: 9,999 triangles near, 1,500 far.
+Runtime geometry positions/UVs use 16-bit quantization; normals use signed 8-bit.
+Diffuse map: 1024x1024 WebP. Normal and ARM maps: 512x512 WebP.
+
+Original source files remain in the author's temporary source cache, outside
+this repository. Official URLs, MD5 and SHA256 hashes are recorded in
+source-report.json; original API responses are source-files.json/source-info.json.
+Reproduction steps appear in README.md. No AI-generated geometry or textures
+are used for this scan.

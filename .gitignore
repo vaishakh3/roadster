@@ -11,6 +11,7 @@ coverage/
 tests/*-report.json
 tests/*-report.txt
 tests/*-log.txt
+tests/coastal-baseline.html
 review-r*/
 
 !assets/venues/*.png

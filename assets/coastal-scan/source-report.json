@@ -1,0 +1,64 @@
+{
+  "asset": "https://polyhaven.com/a/coastal_cliff_01",
+  "license": "CC0-1.0",
+  "source": {
+    "coastal_cliff_01.gltf": {
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/coastal_cliff_01/coastal_cliff_01_1k.gltf",
+      "bytes": 2825,
+      "md5": "da3cb728c6ce195ecc0261d976251c40",
+      "sha256": "2e6bb1f77965b314208b309ac89b94b8148c6a08ee6c9808cd71455e5475602d"
+    },
+    "textures/coastal_cliff_01_diff_1k.jpg": {
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/coastal_cliff_01/coastal_cliff_01_diff_1k.jpg",
+      "bytes": 699457,
+      "md5": "a43df03bd9b94f0594551a42b7a24f1b",
+      "sha256": "6c9626fdb5550ba260b195638c8c89053faedc22005f4ca94d3be5df72ae525a"
+    },
+    "coastal_cliff_01.bin": {
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/coastal_cliff_01/coastal_cliff_01.bin",
+      "bytes": 13179840,
+      "md5": "d9f1e368b18c018e158d06ab9d924646",
+      "sha256": "6833dfaf75e0d039e64bc09ad642c4be3361739f20048af32ad50fd8e6471a65"
+    },
+    "textures/coastal_cliff_01_arm_1k.jpg": {
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/coastal_cliff_01/coastal_cliff_01_arm_1k.jpg",
+      "bytes": 640985,
+      "md5": "ebd8e7dd1877230886bde89da565828e",
+      "sha256": "7f287d0b44a3162b5e360fe45ccc8b6009c189d21bd33c1094060eef613c6fa6"
+    },
+    "textures/coastal_cliff_01_nor_gl_1k.jpg": {
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/coastal_cliff_01/coastal_cliff_01_nor_gl_1k.jpg",
+      "bytes": 853524,
+      "md5": "9257a41db772c4680a8b3cb87d0eaf04",
+      "sha256": "afbe8c2f9ff62dd616f776c074b996d2d275eef982a40aee1f28f4f3b3a3cf0e"
+    }
+  },
+  "runtime": {
+    "coastal_scan_color.webp": {
+      "bytes": 254166,
+      "sha256": "4c96ad168b7296ea9b41d481fd569088c10a901af90f6ca0deee61806004c123",
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    "coastal_scan_normal.webp": {
+      "bytes": 356676,
+      "sha256": "2cb5683188f4bc32c3f370e9f4bb5d48d10aac342dc5c43a5bc2e368b6c3f6bc",
+      "size": [
+        512,
+        512
+      ]
+    },
+    "coastal_scan_arm.webp": {
+      "bytes": 65640,
+      "sha256": "c3df5c2bc1f333932175946620d1ba743321e01f6463c47d2867a6eb95411cd7",
+      "size": [
+        512,
+        512
+      ]
+    }
+  },
+  "texture_bytes": 676482,
+  "gpu_rgba8_mip_bytes": 8388604
+}

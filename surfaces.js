@@ -8,6 +8,9 @@ const urls = {
   roadRoughness: "assets/runtime/asphalt_roughness.webp",
   rock: "assets/runtime/sandstone_color.webp",
   rockNormal: "assets/runtime/sandstone_normal.webp",
+  coastalRock: "assets/runtime/coastal_rock_color.webp",
+  coastalNormal: "assets/runtime/coastal_rock_normal.webp",
+  coastalArm: "assets/runtime/coastal_rock_arm.webp",
   foliage: "assets/runtime/foliage_branches.webp",
   bark: "assets/runtime/bark_color.webp",
   detail: "assets/runtime/surface_detail.webp",
@@ -35,7 +38,7 @@ export async function loadVisualAssets(renderer, onProgress) {
             8,
             renderer.capabilities.getMaxAnisotropy(),
           );
-          if (["road", "rock", "foliage", "bark"].includes(key))
+          if (["road", "rock", "coastalRock", "foliage", "bark"].includes(key))
             texture.colorSpace = THREE.SRGBColorSpace;
           if (key === "road" || key === "roadNormal" || key === "roadRoughness")
             texture.repeat.set(0.34, 0.34);
@@ -110,8 +113,9 @@ function relief(shader, height, strength) {
     normal=normalize(abs(detailDet)*normal-sign(detailDet)*(dFdx(${height})*detailR1+dFdy(${height})*detailR2)*${strength});`,
   );
 }
-export function roadMaterial(wet, type = "road") {
+export function roadMaterial(wet, type = "road", options = {}) {
   const road = type === "road";
+  const coastal = options.coastal === true && road;
   const material = new THREE.MeshStandardMaterial({
     color: wet ? 0x9ca6ad : 0xb8bab7,
     roughness: wet ? 0.46 : 0.91,
@@ -123,7 +127,11 @@ export function roadMaterial(wet, type = "road") {
     envMapIntensity: wet ? 1.15 : 0.38,
   });
   material.customProgramCacheKey = () =>
-    "worn-aggregate-asphalt-v6-" + wet + "-" + type;
+    "worn-aggregate-asphalt-v6-" +
+    wet +
+    "-" +
+    type +
+    (coastal ? "-coast-v1" : "");
   material.onBeforeCompile = (shader) => {
     shader.uniforms.surfaceDetail = { value: detailTexture() };
     shader.vertexShader =
@@ -164,6 +172,174 @@ export function roadMaterial(wet, type = "road") {
         roughnessFactor=clamp(roughnessFactor+grain.b*.07${road ? "-rubber*.055" : ""},${wet ? ".18,.69" : ".69,.98"});
       `,
         );
+    if (coastal && surfaces.road) coastalRoadShader(shader, options);
+  };
+  return material;
+}
+
+// The hero section uses the actual 2 m asphalt scan scale. Moisture follows
+// the track, not camera position, and fades over 80 m at both section ends.
+// The existing material remains unchanged outside the opted-in section.
+function coastalRoadShader(shader, options) {
+  const start = Number.isFinite(options.start) ? options.start : 760;
+  const end = Number.isFinite(options.end) ? options.end : 1260;
+  const fade = Number.isFinite(options.fade) ? Math.max(1, options.fade) : 80;
+  shader.uniforms.coastalRoadZone = {
+    value: new THREE.Vector3(start, end, fade),
+  };
+  shader.fragmentShader =
+    "uniform vec3 coastalRoadZone;\n" + shader.fragmentShader;
+  // These variables are defined before the original roughness block and stay
+  // in main's scope for the later normal and roughness substitutions.
+  shader.fragmentShader = shader.fragmentShader.replace(
+    "#include <roughnessmap_fragment>",
+    `float coastDistance=-vRoadUv.y*2.;
+     float coastMask=smoothstep(coastalRoadZone.x,coastalRoadZone.x+coastalRoadZone.z,coastDistance)
+       *(1.-smoothstep(coastalRoadZone.y-coastalRoadZone.z,coastalRoadZone.y,coastDistance));
+     float coastMoisture=0.;
+     float coastRoughness=.8;
+     if(coastMask>.0001){
+       vec3 coastWear=texture2D(surfaceDetail,metres*vec2(.035,.0067)+vec2(.13,.49)).rgb;
+       vec3 coastFlow=texture2D(surfaceDetail,metres*vec2(.12,.018)+vec2(.47,.21)).rgb;
+       float coastWheel=1.-smoothstep(.24,.67,abs(laneOffset-.88));
+       float coastEdge=smoothstep(6.3,9.5,abs(metres.x));
+       coastMoisture=smoothstep(.41,.76,coastWear.r*.62+coastFlow.g*.38+coastEdge*.12-coastWheel*.065);
+       vec3 coastScan=texture2D(map,vRoadUv).rgb;
+       vec3 coastColor=coastScan*diffuse*(2.12+coastWear.g*.23);
+       coastColor*=mix(1.,.82,coastMoisture);
+       coastColor*=1.-coastWheel*.085;
+       coastColor=mix(coastColor,coastColor*vec3(1.16,1.10,.94),coastEdge*.18);
+       diffuseColor.rgb=mix(diffuseColor.rgb,coastColor,coastMask);
+       coastRoughness=mix(.90,.56,coastMoisture)+coastFlow.b*.025;
+     }
+     #include <roughnessmap_fragment>`,
+  );
+  shader.fragmentShader = shader.fragmentShader.replace(
+    "#include <metalnessmap_fragment>",
+    `roughnessFactor=mix(roughnessFactor,coastRoughness,coastMask);
+     #include <metalnessmap_fragment>`,
+  );
+  shader.fragmentShader = shader.fragmentShader.replace(
+    "#include <normal_fragment_maps>",
+    `#include <normal_fragment_maps>
+     #ifdef USE_NORMALMAP_TANGENTSPACE
+     if(coastMask>.0001){
+       vec3 coastRoadNormal=texture2D(normalMap,vRoadUv).xyz*2.-1.;
+       coastRoadNormal.xy*=mix(.24,.18,coastMoisture);
+       normal=normalize(mix(normal,normalize(tbn*coastRoadNormal),coastMask));
+     }
+     #endif`,
+  );
+}
+
+// One shared set of compact scan maps gives the coastal hero geometry real
+// mineral structure. Its normals and ARM channels are linear data; only the
+// color map is sRGB. Triplanar projection avoids UV stretching on ledges.
+// `coastalAO` optionally carries baked vertex cavity occlusion (0..1).
+export function coastalRockMaterial({
+  terrain = false,
+  vertexColors = true,
+  bakedAO = true,
+  scale = 0.5,
+} = {}) {
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    vertexColors,
+    roughness: 0.91,
+    metalness: 0,
+    side: THREE.DoubleSide,
+    envMapIntensity: 0.34,
+  });
+  material.defaultAttributeValues = { color: [1, 1, 1], coastalAO: [1] };
+  if (!surfaces.coastalRock || !surfaces.coastalNormal || !surfaces.coastalArm)
+    return rockMaterial(false, terrain);
+  material.customProgramCacheKey = () =>
+    `coastal-scanned-stone-v2-${terrain}-${bakedAO}`;
+  material.onBeforeCompile = (shader) => {
+    worldProjection(shader, "vCoastalStone");
+    shader.uniforms.coastalColorScan = { value: surfaces.coastalRock };
+    shader.uniforms.coastalNormalScan = { value: surfaces.coastalNormal };
+    shader.uniforms.coastalArmScan = { value: surfaces.coastalArm };
+    shader.uniforms.coastalStoneScale = { value: Math.max(0.01, scale) };
+    if (bakedAO) {
+      shader.vertexShader =
+        "attribute float coastalAO;varying float vCoastalAO;\n" +
+        shader.vertexShader.replace(
+          "#include <begin_vertex>",
+          "#include <begin_vertex>\nvCoastalAO=coastalAO;",
+        );
+      shader.fragmentShader =
+        "varying float vCoastalAO;\n" + shader.fragmentShader;
+    }
+    shader.fragmentShader =
+      `uniform sampler2D coastalColorScan,coastalNormalScan,coastalArmScan;
+      uniform float coastalStoneScale;\n` + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <shadowmap_pars_fragment>", stableShadowChunk)
+      .replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+        vec3 coastN=normalize(vCoastalStoneNormal);
+        vec3 coastBlend=pow(abs(coastN),vec3(4.));
+        coastBlend/=max(.001,coastBlend.x+coastBlend.y+coastBlend.z);
+        vec3 coastMacro=texture2D(surfaceDetail,vCoastalStone.xz*.013+vCoastalStone.y*.003).rgb;
+        vec3 coastWarp=texture2D(surfaceDetail,vCoastalStone.xz*.073+vCoastalStone.y*.031).rgb-.5;
+        vec3 coastP=vCoastalStone*coastalStoneScale;
+        // Smoothly displaced, oblique projections break up repeated rows on
+        // a long cliff. The same coordinates drive color, ARM and normal.
+        mat2 coastRotation=mat2(.874,-.486,.486,.874);
+        vec2 coastUVX=coastRotation*(coastP.zy+coastWarp.xy*1.7);
+        vec2 coastUVY=coastRotation*(coastP.xz+coastWarp.yz*1.7);
+        vec2 coastUVZ=coastRotation*(coastP.xy+coastWarp.zx*1.7);
+        vec3 coastScan=texture2D(coastalColorScan,coastUVX).rgb*coastBlend.x
+          +texture2D(coastalColorScan,coastUVY).rgb*coastBlend.y
+          +texture2D(coastalColorScan,coastUVZ).rgb*coastBlend.z;
+        vec3 coastArm=texture2D(coastalArmScan,coastUVX).rgb*coastBlend.x
+          +texture2D(coastalArmScan,coastUVY).rgb*coastBlend.y
+          +texture2D(coastalArmScan,coastUVZ).rgb*coastBlend.z;
+        float coastLuma=dot(coastScan,vec3(.2126,.7152,.0722));
+        vec3 coastMineral=mix(coastScan,vec3(coastLuma)*vec3(.93,1.015,1.07),.68)*1.70;
+        coastMineral*=.80+coastMacro.r*.37;
+        float coastMoss=smoothstep(.59,.93,coastN.y)*smoothstep(.34,.70,coastMacro.g);
+        coastMineral=mix(coastMineral,coastMineral*vec3(.69,.85,.53),coastMoss*.65);
+        diffuseColor.rgb*=coastMineral;
+        float coastOcclusion=mix(1.,coastArm.r,.68)${bakedAO ? "*mix(1.,clamp(vCoastalAO,0.,1.),.85)" : ""};
+      `,
+      )
+      .replace(
+        "#include <roughnessmap_fragment>",
+        `#include <roughnessmap_fragment>
+        roughnessFactor=clamp(.55+coastArm.g*.36+coastMoss*.08,.62,.98);
+      `,
+      )
+      .replace(
+        "#include <normal_fragment_maps>",
+        `#include <normal_fragment_maps>
+        vec3 coastNX=texture2D(coastalNormalScan,coastUVX).xyz*2.-1.;
+        vec3 coastNY=texture2D(coastalNormalScan,coastUVY).xyz*2.-1.;
+        vec3 coastNZ=texture2D(coastalNormalScan,coastUVZ).xyz*2.-1.;
+        mat2 coastInverseRotation=mat2(.874,.486,-.486,.874);
+        coastNX.xy=coastInverseRotation*coastNX.xy;
+        coastNY.xy=coastInverseRotation*coastNY.xy;
+        coastNZ.xy=coastInverseRotation*coastNZ.xy;
+        // Project the fine tangential components onto the geometric surface.
+        // Blending all axes avoids a normal seam when the dominant face changes.
+        vec3 coastBump=vec3(0.,coastNX.y,coastNX.x)*coastBlend.x
+          +vec3(coastNY.x,0.,coastNY.y)*coastBlend.y
+          +vec3(coastNZ.x,coastNZ.y,0.)*coastBlend.z;
+        coastBump-=coastN*dot(coastBump,coastN);
+        normal=normalize(normal+mat3(viewMatrix)*coastBump*.12);
+      `,
+      )
+      .replace(
+        "#include <aomap_fragment>",
+        `#include <aomap_fragment>
+        reflectedLight.indirectDiffuse*=coastOcclusion;
+        #if defined(USE_ENVMAP) && defined(STANDARD)
+        reflectedLight.indirectSpecular*=computeSpecularOcclusion(saturate(dot(geometryNormal,geometryViewDir)),coastOcclusion,material.roughness);
+        #endif
+      `,
+      );
   };
   return material;
 }

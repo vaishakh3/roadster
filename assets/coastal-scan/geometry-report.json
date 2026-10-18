@@ -1,0 +1,29 @@
+{
+  "asset": "Coastal Cliff 01",
+  "sourceTriangles": 461824,
+  "format": "quantized-p3u16-n3i8-uv2u16-indexu16",
+  "bounds": {
+    "min": [
+      -45.055580139160156,
+      -0.6500276327133179,
+      -6.205799579620361
+    ],
+    "max": [
+      46.924373626708984,
+      9.675503730773926,
+      4.760909080505371
+    ]
+  },
+  "lods": {
+    "near": {
+      "vertices": 6596,
+      "triangles": 9999,
+      "bytes": 145742
+    },
+    "far": {
+      "vertices": 1247,
+      "triangles": 1500,
+      "bytes": 25211
+    }
+  }
+}

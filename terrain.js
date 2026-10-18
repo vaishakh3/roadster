@@ -217,6 +217,7 @@ export function createTerrainChunk({
   roadX,
   roadY,
   low = false,
+  coastalCutting = false,
 }) {
   const cols = low ? 24 : 48,
     rows = low ? 24 : 56,
@@ -229,7 +230,21 @@ export function createTerrainChunk({
   const range = canyon === "range";
   const base = new THREE.Color(range ? 0x8a8562 : canyon ? 0x79503b : 0x566057),
     top = new THREE.Color(range ? 0xd3cba4 : canyon ? 0xd0ad87 : 0x6d7b47);
-  const sample = (d, o) => terrainHeight(d, o, side, canyon, roadY);
+  // The authored cutting owns the visible surface here. Recess its coarse
+  // underlay so interpolated old terrain cannot poke through the detailed rock.
+  // Both LODs sample the same continuous field, including analytic normals.
+  const ramp = (v) => smooth(Math.max(0, Math.min(1, v)));
+  const sample = (d, o) => {
+    const recess =
+      coastalCutting && side === -1 && !canyon
+        ? 10 *
+          ramp((d - 760) / 48) *
+          ramp((1260 - d) / 58) *
+          ramp((o - 32) / 22) *
+          ramp((230 - o) / 75)
+        : 0;
+    return terrainHeight(d, o, side, canyon, roadY) - recess;
+  };
   for (let j = 0; j <= rows; j++)
     for (let i = 0; i <= cols; i++) {
       const d = mix(start, end, j / rows),
@@ -245,16 +260,16 @@ export function createTerrainChunk({
       normals.push(n.x, n.y, n.z);
       const band =
         canyon && !range
-        ? 0.42 +
-          0.16 * Math.sin(y * 0.37 + noise(d * 0.007, offset * 0.01)) +
-          noise(d * 0.08, offset * 0.07) * 0.1
-        : Math.max(
-            0.05,
-            Math.min(
-              0.95,
-              -0.2 + 0.95 * n.y + fbm(d * 0.025, offset * 0.028) * 0.24,
-            ),
-          );
+          ? 0.42 +
+            0.16 * Math.sin(y * 0.37 + noise(d * 0.007, offset * 0.01)) +
+            noise(d * 0.08, offset * 0.07) * 0.1
+          : Math.max(
+              0.05,
+              Math.min(
+                0.95,
+                -0.2 + 0.95 * n.y + fbm(d * 0.025, offset * 0.028) * 0.24,
+              ),
+            );
       const c = base
         .clone()
         .lerp(top, band)

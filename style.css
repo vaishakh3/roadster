@@ -3574,7 +3574,7 @@ body[data-phase="replay"] #shade {
     gap: 4px;
   }
   .start-actions .primary {
-    min-height: 40px;
+    min-height: 44px;
     padding: 6px 12px;
     font-size: 15px;
   }
@@ -3615,13 +3615,13 @@ body[data-phase="replay"] #shade {
     align-items: start;
   }
   .menu-actions .primary {
-    min-height: 40px;
+    min-height: 44px;
     padding: 6px 12px;
     font-size: 15px;
   }
   .menu-actions .secondary,
   .menu-actions .text-button {
-    min-height: 32px;
+    min-height: 44px;
     padding: 4px 0;
     font-size: 13px;
   }

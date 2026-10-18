@@ -3,7 +3,7 @@ Retrieved 17 October 2026 from the official Poly Haven asset download service.
 
 License
 -------
-All seven media files in this directory are original Poly Haven assets distributed
+All media files in this directory are original Poly Haven assets distributed
 under CC0 1.0 Universal (public-domain dedication). Commercial use, modification
 and redistribution are permitted. Attribution is appreciated but is not required
 by the asset license.
@@ -67,3 +67,41 @@ cf381bbcf60aac570ce895719025a2b7adae7c03369b3d545b4f52f94e57e0e9  sandstone_crac
 cb983540cae33979e79862fe27b4ec23a5d41c627230d3730e9d5ff6671859f9  sandstone_cracks_nor_gl_1k.jpg
 4995b3ce148ceef48ea3bc0b83a8799fd0bf38e00c75677ff2de857a7d4cbdbb  sandstone_cracks_rough_1k.jpg
 92fe2b29b1957828fb8925a57633540bbba5bf380d9285ed553443e834249352  venice_sunset_1k.hdr
+
+Coastal showcase addition — retrieved 18 October 2026
+===================================================
+Seaside Rock — Dimitrios Savva / Poly Haven
+https://polyhaven.com/a/seaside_rock
+Official metadata: https://api.polyhaven.com/info/seaside_rock
+Official files/checksums: https://api.polyhaven.com/files/seaside_rock
+License: CC0 1.0 Universal, https://polyhaven.com/license
+Scanned surface width: 2 metres. All original files are 1024 x 1024.
+
+seaside_rock_diff_1k.jpg — diffuse/base color, 954872 bytes
+https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/seaside_rock/seaside_rock_diff_1k.jpg
+MD5 d719765f07b7e5ec40ef7acb9b718df5
+SHA256 7e1f1ce252c30d36fe442fcc529183b87cad112d26f6f656705172128efd936e
+
+seaside_rock_nor_gl_1k.jpg — OpenGL tangent normal, 1158486 bytes
+https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/seaside_rock/seaside_rock_nor_gl_1k.jpg
+MD5 6a4f25d9acbf0376611f5e4c33a779d2
+SHA256 a08c85d5c5b57484892ecfc0569512ecfd75d4e499a15bc142779aaf61d8d6a7
+
+seaside_rock_arm_1k.jpg — AO/Roughness/Metal channels, 640203 bytes
+https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/seaside_rock/seaside_rock_arm_1k.jpg
+MD5 d3844d383ed08d29337378e6b488a4cc
+SHA256 055a6a059a8805055bb2ed33e133438eb07ab59049016435ef4c5aec21e5a176
+
+All three downloads verified against the official API MD5 values. The original
+files remain unchanged. Runtime derivatives and budgets are documented in
+assets/runtime/LICENSE.txt and reproduced by scripts/prepare-coastal-assets.py.
+
+Coastal study addition / CC0 — 18 October 2026
+--------------------------------------------
+Qwantani Dusk 1 (Pure Sky) — Greg Zaal (photography), Jarod Guest (processing)
+https://polyhaven.com/a/qwantani_dusk_1_puresky
+- qwantani_dusk_1_puresky_1k.hdr: unmodified 1024x512 Radiance HDR, 952192 bytes.
+Official source: https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/qwantani_dusk_1_puresky_1k.hdr
+MD5 verified against https://api.polyhaven.com/files/qwantani_dusk_1_puresky:
+cb1f0fbae91740c0379ec1a5d646df74
+License: CC0 1.0 Universal, https://polyhaven.com/license

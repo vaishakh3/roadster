@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <title>Coastal realism · matched review</title>
+  <style>
+    body {
+      margin: 16px;
+      background: #10242a;
+      color: #e9e8dc;
+      font: 13px monospace;
+    }
+    nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    button,
+    select {
+      padding: 10px;
+      border: 0;
+      background: #e9e8dc;
+      color: #10242a;
+    }
+    iframe {
+      display: block;
+      border: 0;
+      width: 844px;
+      height: 390px;
+    }
+    pre {
+      white-space: pre-wrap;
+    }
+  </style>
+  <nav>
+    <label
+      >Build
+      <select id="build">
+        <option value="baseline">Baseline</option>
+        <option value="source">Source</option>
+        <option value="production">Production</option>
+      </select></label
+    >
+    <button id="load">Load build</button>
+    <button data-size="844,390">Phone</button
+    ><button data-size="1280,720">Desktop</button>
+    <button id="low">Low detail</button><button id="high">High detail</button>
+    <button id="ui">Toggle HUD</button>
+  </nav>
+  <nav>
+    <button data-distance="780">780 m</button
+    ><button data-distance="900">900 m</button
+    ><button data-distance="1080">1080 m</button
+    ><button data-distance="1230">1230 m</button>
+    <button id="ground">Ground</button><button id="air">Flying 12 m</button>
+    <button id="profile">Profile matched poses</button
+    ><button id="venues">Check venue lifecycle</button>
+    <button id="live">Drive section live</button
+    ><button id="geometry">Check showcase geometry</button>
+    <button id="pool">Check pool stability</button>
+    <button id="gpu">Measure GPU cost</button>
+    <button data-distance="748">Entry seam</button>
+    <button data-distance="1272">Exit seam</button>
+    <button data-distance="850">Scan approach</button>
+  </nav>
+  <p id="status" role="status">Ready to load.</p>
+  <iframe title="Coastal review"></iframe>
+  <pre id="report">Select a build to begin.</pre>
+  <script type="module" src="./coastal-harness.js"></script>
+</html>

@@ -91,6 +91,29 @@ Rigid scenery is batched by material and district, moving objects are batched wi
 
 Mobile AUTO uses 1024-pixel shadows and adapts pixel density between 0.8 and its device-limited ceiling of 1.25 using two-second frame windows, starting from the countdown; a device averaging under 20 fps steps down twice as fast and may go to 0.7, and recovery is slow after sustained headroom. Desktop AUTO has a ceiling of 1.75; HIGH uses 2048-pixel shadows. HIGH and LOW are available manually. Rendering stops while the page is hidden. Desktop testing at phone-sized viewports does not establish actual phone frame rates, thermal behavior or memory limits. Physical iPhone and Android testing remains required. Startup and venue measurements depend on shader caches and hardware; uncached selection still has a visible loading state. Open the game with `?perf=1` for a live overlay of rendered fps, frame time, pixel ratio, draw calls, triangles, quality mode and viewport — this is how phone and laptop numbers should be collected. Recorded rendering samples and their limits are in `tests/QA.md`.
 
+## Coastal realism study
+
+The `codex/coastal-realism` branch adds a 500 m experimental section to Atlantic
+Run, from 760–1260 m. Open `/coastal-study.html` for four camera views and a
+short playable drive, or launch the full game normally. The study uses isolated
+in-memory progress; steering, boost and flight controls remain unchanged.
+
+This section combines actual CC0 coastal photogrammetry with continuous terrain,
+scanned rock materials, a photographic dusk sky, coherent ocean reflections,
+and profiled steel barriers. Two formations retain the source scan’s UVs and use
+9,999 / 1,500 triangle near/far meshes. Trees, ground cover and other scenery
+have distance and quality limits. No new real-time light or reflection pass is
+added. Other venues keep their existing appearance.
+
+This is a targeted visual experiment, not a claim that the whole game matches a
+rendered poster. The scene is still authored around an arcade course, and distant
+terrain remains procedural. Measured costs and remaining device checks are in
+`tests/COASTAL-QA.md`. Phone-sized browser captures are not physical-phone tests.
+
+The runtime scan is under 850 KB before base64 encoding. Its source URLs,
+checksums and offline preparation instructions are in `assets/coastal-scan`.
+Blender is only needed to reproduce the asset, never to play or deploy the game.
+
 ## Source map
 
 - `courses.js`: authored routes, hazards, medal targets, badges, paint rewards and record reducer.
