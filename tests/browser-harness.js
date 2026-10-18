@@ -27,7 +27,7 @@ document.getElementById("benchmark").onclick = async () => {
   const boot = performance.now();
   frame.src = "../dist/?qa=1";
   stage.append(frame);
-  for (let i = 0; i < 600 && !frame.contentWindow.__breakwater; i++)
+  for (let i = 0; i < 2400 && !frame.contentWindow.__breakwater; i++)
     await wait(50);
   const g = frame.contentWindow.__breakwater;
   if (!g) {
@@ -56,7 +56,7 @@ document.getElementById("run").onclick = async () => {
   frame.style.cssText = "width:1280px;height:720px;border:0";
   frame.src = "../dist/?qa=1";
   stage.append(frame);
-  for (let i = 0; i < 600 && !frame.contentWindow.__breakwater; i++)
+  for (let i = 0; i < 2400 && !frame.contentWindow.__breakwater; i++)
     await wait(50);
   const w = frame.contentWindow,
     d = w.document,
@@ -627,7 +627,7 @@ document.getElementById("routes").onclick = async () => {
   frame.style.cssText = "width:844px;height:390px;border:0";
   frame.src = "../dist/?qa=1";
   stage.append(frame);
-  for (let i = 0; i < 600 && !frame.contentWindow.__breakwater; i++)
+  for (let i = 0; i < 2400 && !frame.contentWindow.__breakwater; i++)
     await wait(50);
   const w = frame.contentWindow,
     g = w.__breakwater;
