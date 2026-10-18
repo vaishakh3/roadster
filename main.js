@@ -2,6 +2,15 @@ import * as THREE from "./vendor/three.module.js";
 import { createRaceEffects } from "./effects.js";
 import { rampSurface } from "./stunts.js";
 import { FrameBudget } from "./quality.js";
+import { createRivalField } from "./rivals-mesh.js";
+import {
+  dailyEvent,
+  dailyPassed,
+  encodeChallenge,
+  decodeChallenge,
+  sampleReplay,
+} from "./challenges.js";
+import { clipSupported, createClip } from "./replay-clip.js";
 import { flightActuators } from "./propulsion.js";
 import { createCar } from "./car.js";
 import { loadVisualAssets } from "./surfaces.js";
@@ -47,7 +56,24 @@ const storage = {
     }
   },
 };
-let course = getCourse(storage.get("roadster-course", "breakwater"));
+let incomingChallenge = null,
+  challengeError = "";
+try {
+  const code = new URLSearchParams(location.hash.slice(1)).get("race");
+  if (code) incomingChallenge = decodeChallenge(code);
+} catch (e) {
+  challengeError = e.message;
+}
+let course = getCourse(
+  incomingChallenge?.courseId || storage.get("roadster-course", "breakwater"),
+);
+let activeEvent = incomingChallenge?.event || null;
+let raceMode = incomingChallenge ? "challenge" : "race";
+let film = null,
+  clip = null,
+  clipUrl = null,
+  venueRequest = 0;
+const todayEvent = dailyEvent();
 let records = storage.get("roadster-records", {});
 if (!records || typeof records !== "object" || Array.isArray(records))
   records = {};
@@ -62,7 +88,7 @@ let phase = "home",
   previousPhase = "home",
   orientationBlocked = false,
   run = createRun(course);
-let renderer, scene, camera, car, coast, controls, audio, effects;
+let renderer, scene, camera, car, coast, controls, audio, effects, rivalField;
 const venues = new Map();
 let showroomAngle = 0;
 let lastTime = performance.now(),
@@ -93,9 +119,11 @@ function setPhase(value) {
   $("hud").hidden = value !== "playing";
   $("menu").hidden = value !== "paused";
   $("results").hidden = value !== "results";
+  $("replay-view").hidden = value !== "replay";
   controls?.clear();
 }
 function showError(message) {
+  cancelClip();
   $("loading").hidden = true;
   $("error").hidden = false;
   $("error-message").textContent = message;
@@ -112,16 +140,26 @@ function toast(text, type = "gate", points = 0) {
   toastTime = 1.5;
 }
 function start() {
-  if (!initialized || orientationBlocked) return;
+  if (
+    !initialized ||
+    orientationBlocked ||
+    document.body.dataset.preparing === "true" ||
+    phase === "error"
+  )
+    return;
   if (tour) {
     tour.stages = tour.stages.slice(0, tour.index);
     tour.score = tour.stages.reduce((sum, s) => sum + s.score, 0);
   }
   run = createRun(course);
+  run.eventSeed = activeEvent?.seed || 0;
+  rivalField?.reset();
+  film = null;
   effects.reset();
   coast.reset();
   replay = [];
   replayClock = 0;
+  recordFrame();
   ghostIndex = 0;
   countdown = 1.5;
   toastTime = impactTime = 0;
@@ -130,7 +168,15 @@ function start() {
   audio.init();
   audio.setEnabled(soundOn);
   audio.event("start");
-  announce("AUTO-DRIVE IS ON · YOU STEER", "READY", 1.5);
+  announce(
+    activeEvent
+      ? activeEvent.description
+      : incomingChallenge && raceMode === "challenge"
+        ? "CHASE THE CHALLENGER GHOST"
+        : "THREE RIVALS · FIND YOUR LINE",
+    "READY",
+    1.5,
+  );
   camera.clearViewOffset();
   updateVisuals(0, true);
   hud(true);
@@ -171,7 +217,14 @@ function resume() {
   audio.setEnabled(soundOn);
 }
 function home() {
+  venueRequest++;
+  document.body.dataset.preparing = "false";
+  $("loading").hidden = true;
+  cancelClip();
+  film = null;
   tour = null;
+  activeEvent = null;
+  raceMode = "race";
   effects?.reset();
   coast?.reset();
   setPhase("home");
@@ -184,7 +237,11 @@ function home() {
   refreshBest();
 }
 function selectCourse(id) {
-  if (phase !== "home" && phase !== "results") return;
+  if (phase !== "home" && phase !== "results") return false;
+  if (!venues.has(id)) return loadVenue(id);
+  venueRequest++;
+  document.body.dataset.preparing = "false";
+  $("loading").hidden = true;
   course = getCourse(id);
   showroomAngle = 0;
   if (coast) coast.root.visible = false;
@@ -200,6 +257,16 @@ function selectCourse(id) {
   document.body.dataset.course = course.theme;
   document.documentElement.style.setProperty("--orange", course.accent);
   $("home-title").textContent = course.name.toUpperCase();
+  $("challenge-banner").hidden =
+    !challengeError &&
+    !(incomingChallenge && incomingChallenge.courseId === course.id);
+  $("challenge-banner").textContent =
+    challengeError ||
+    (incomingChallenge
+      ? `FRIEND CHALLENGE / BEAT ${formatTime(incomingChallenge.time)} · GHOST READY`
+      : "");
+  $("start").querySelector("span").textContent =
+    incomingChallenge?.courseId === course.id ? "RACE THE GHOST" : "RACE HERE";
   $("venue-index").textContent = course.number + " / 03";
   $("course-location").textContent = course.number + " / " + course.location;
   $("course-description").textContent = course.subtitle;
@@ -232,6 +299,7 @@ function selectCourse(id) {
   refreshBest();
   updateVisuals(0, true);
   hud(true);
+  return true;
 }
 const mapPoint = (d) => [
   12 + (Math.min(course.length, Math.max(0, d)) / course.length) * 216,
@@ -250,6 +318,31 @@ function buildRaceMap() {
   const end = mapPoint(course.length);
   $("map-finish").setAttribute("cx", end[0]);
   $("map-finish").setAttribute("cy", end[1]);
+  $("map-rivals").replaceChildren(
+    ...Array.from({ length: 3 }, (_, i) => {
+      const n = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "circle",
+      );
+      n.setAttribute("r", 3);
+      n.setAttribute("fill", ["#f9b56d", "#b4a2ff", "#7cbfff"][i]);
+      return n;
+    }),
+  );
+  $("map-branches").replaceChildren(
+    ...(course.branches || []).map((b) => {
+      const n = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "polyline",
+        ),
+        a = mapPoint(b.start),
+        z = mapPoint(b.end),
+        m = mapPoint((b.start + b.end) / 2);
+      m[1] += b.side * 8;
+      n.setAttribute("points", [a, m, z].map((p) => p.join(",")).join(" "));
+      return n;
+    }),
+  );
   $("map-stunts").replaceChildren(
     ...course.ramps.map((r) => {
       const node = document.createElementNS(
@@ -273,6 +366,13 @@ function updateRaceMap() {
     points.map((p) => p.join(",")).join(" "),
   );
   $("map-player").setAttribute("transform", `translate(${p[0]},${p[1]})`);
+  [...$("map-rivals").children].forEach((n, i) => {
+    const r = run.rivals?.[i],
+      p = mapPoint(r?.d || 0);
+    n.setAttribute("cx", p[0]);
+    n.setAttribute("cy", p[1]);
+    if (r?.color) n.setAttribute("fill", new THREE.Color(r.color).getStyle());
+  });
   const percent = Math.min(100, Math.floor((run.d / course.length) * 100));
   $("map-percent").textContent = percent + "%";
   $("race-map").setAttribute(
@@ -281,6 +381,11 @@ function updateRaceMap() {
   );
 }
 function refreshBest() {
+  const daily = dailyEvent(),
+    dailyRecord = storage.get("roadster-daily-" + daily.day, null);
+  $("daily-name").textContent =
+    daily.name + (dailyRecord?.passed ? " ✓" : " ↗");
+  $("start-daily").title = daily.description + " Resets at 00:00 UTC.";
   const best = records[course.id];
   $("personal-best").textContent =
     best?.layout === LAYOUT_VERSION && best?.time
@@ -323,21 +428,36 @@ function refreshBest() {
   $("ghost").querySelector("b").textContent = ghostOn ? "ON" : "OFF";
 }
 function beginTour() {
+  activeEvent = null;
+  raceMode = "tour";
   tour = { index: 0, stages: [], score: 0 };
-  selectCourse(COURSES[0].id);
-  start();
+  const currentTour = tour,
+    pending = selectCourse(COURSES[0].id);
+  const ready = (ok) => {
+    if (ok && tour === currentTour && course.id === COURSES[0].id) start();
+  };
+  if (pending?.then) return pending.then(ready);
+  ready(pending);
 }
 function nextStage() {
-  if (!tour || !run.finished) return;
+  if (!tour || !run.finished || document.body.dataset.preparing === "true")
+    return;
   if (tour.index >= 2) {
     home();
     return;
   }
   tour.index++;
-  selectCourse(COURSES[tour.index].id);
-  start();
+  const currentTour = tour,
+    id = COURSES[tour.index].id,
+    pending = selectCourse(id);
+  const ready = (ok) => {
+    if (ok && tour === currentTour && course.id === id) start();
+  };
+  if (pending?.then) return pending.then(ready);
+  ready(pending);
 }
 function endRun() {
+  if (!replay.length || replay.at(-1)[0] < run.time) recordFrame();
   audio.event(run.failed ? "fail" : "finish");
   setPhase("results");
   const rank = rankRun(run),
@@ -363,11 +483,32 @@ function endRun() {
   $("result-score").textContent = num(run.score);
   $("result-gates").textContent = `${run.gates} / ${course.gates.length}`;
   $("result-rank").textContent = complete ? rank : "—";
+  $("result-position").textContent = complete
+    ? `${run.finishPosition || run.position || 4} / 4`
+    : "DNF";
+  $("watch-replay").disabled = replay.length < 3;
+  $("share-challenge").disabled = !complete;
+  $("challenge-share").hidden = true;
   const unlockedBefore = completedCount(records);
-  const result = saveResult(records, run, replay),
+  const result = saveResult(
+      records,
+      run,
+      replay.map((p) => p.slice(0, 4)),
+    ),
     record = result.record;
-  records = result.records;
-  storage.set("roadster-records", records);
+  if (!activeEvent) {
+    records = result.records;
+    storage.set("roadster-records", records);
+  }
+  if (activeEvent && complete) {
+    const key = "roadster-daily-" + activeEvent.day,
+      old = storage.get(key, null);
+    storage.set(key, {
+      time: Math.min(old?.time || Infinity, run.time),
+      score: Math.max(old?.score || 0, run.score),
+      passed: !!old?.passed || dailyPassed(activeEvent, run),
+    });
+  }
   if (tour && complete) {
     tour.stages[tour.index] = { score: run.score, time: run.time, rank };
     tour.score = tour.stages.reduce((sum, s) => sum + s.score, 0);
@@ -407,6 +548,22 @@ function endRun() {
       PAINTS[completedCount(records)].name +
       " PAINT UNLOCKED / " +
       $("record-message").textContent;
+  if (activeEvent) {
+    $("result-kicker").textContent =
+      `${activeEvent.date} UTC / ${activeEvent.name}`;
+    $("record-message").textContent = dailyPassed(activeEvent, run)
+      ? "DAILY EVENT CLEARED / COME BACK TOMORROW"
+      : activeEvent.description;
+  }
+  if (incomingChallenge && raceMode === "challenge" && complete) {
+    const challengeResult =
+      run.time < incomingChallenge.time
+        ? `CHALLENGE WON / ${(incomingChallenge.time - run.time).toFixed(2)} SECONDS AHEAD`
+        : `CHALLENGER FINISHED ${(run.time - incomingChallenge.time).toFixed(2)} SECONDS AHEAD`;
+    $("record-message").textContent = activeEvent
+      ? $("record-message").textContent + " · " + challengeResult
+      : challengeResult;
+  }
   $(tour && complete ? "next-stage" : "retry").focus({ preventScroll: true });
   audio.update(run, false);
 }
@@ -431,12 +588,7 @@ function tick(dt) {
   replayClock += dt;
   if (replayClock >= 0.1) {
     replayClock = 0;
-    replay.push([
-      +run.time.toFixed(3),
-      +run.d.toFixed(2),
-      +run.x.toFixed(2),
-      +run.y.toFixed(2),
-    ]);
+    recordFrame();
   }
 
   for (const e of run.events.splice(0)) {
@@ -450,7 +602,17 @@ function tick(dt) {
       impactTime = 0.45;
       toast(e.text, "hit");
     } else if (
-      ["gate", "gap", "near", "pad", "launch", "stunt"].includes(e.type)
+      [
+        "gate",
+        "gap",
+        "near",
+        "pad",
+        "launch",
+        "stunt",
+        "overtake",
+        "branch",
+        "draft",
+      ].includes(e.type)
     )
       toast(e.text, e.type, e.points);
   }
@@ -462,6 +624,20 @@ function hud(force = false) {
   lastHud = clock;
   $("timer").textContent = formatTime(run.time);
   $("score").textContent = num(run.score);
+  $("race-position").textContent = run.position || 4;
+  $("draft-label").textContent =
+    run.drafting > 0.1 ? "SLIPSTREAM" : run.drift > 0.25 ? "GRIP SLIDE" : "";
+  const branch =
+    run.branch ||
+    course.branches?.find((b) => b.start > run.d && b.start - run.d < 150);
+  $("branch-cue").hidden = !branch || countdown > 0 || !!run.flight;
+  $("branch-cue").textContent = branch
+    ? `${branch.side < 0 ? "↖" : "↗"} ${branch.name.toUpperCase()} / ${run.branch ? "ALTERNATE LINE" : Math.ceil(branch.start - run.d) + " M"}`
+    : "";
+  $("event-objective").hidden = !activeEvent || countdown > 0;
+  $("event-objective").textContent = activeEvent
+    ? `${activeEvent.name} / ${activeEvent.kind === "precision" ? run.gates + " / " + course.gates.length + " GATES" : activeEvent.kind === "clean" ? run.hull + " / 3 CONDITION" : formatTime(Math.max(0, course.gold - run.time)) + " TO GOLD"}`
+    : "";
   $("speed").textContent = String(
     Math.round(
       run.speed * 3.6 * (run.failed ? Math.max(0, 1 - run.crashAge / 0.7) : 1),
@@ -541,41 +717,50 @@ const rampNormal = new THREE.Vector3(),
   rampForward = new THREE.Vector3(),
   rampRight = new THREE.Vector3(),
   rampBasis = new THREE.Matrix4();
-function updateVisuals(dt, snap = false) {
+function updateVisuals(dt, snap = false, visual = run) {
   const hero =
     phase === "home" || (phase === "paused" && previousPhase === "home");
   car.userData.setDetail(hero && !qualityLow);
-  const x = roadX(run.d, course) + run.x,
-    y = coast.roadY(run.d) + Math.max(-8, run.y);
-  car.position.set(x, y, -run.d);
-  const heading = -Math.atan(roadSlope(run.d, course));
+  const x = roadX(visual.d, course) + visual.x,
+    y = coast.roadY(visual.d) + Math.max(-8, visual.y);
+  car.position.set(x, y, -visual.d);
+  const heading = -Math.atan(roadSlope(visual.d, course));
   const flip =
-    !reduced && run.flight && run.stuntKind === "flip" ? run.stuntAngle : 0;
+    !reduced && visual.flight && visual.stuntKind === "flip"
+      ? visual.stuntAngle
+      : 0;
   const stuntBank =
-    !reduced && run.flight && run.stuntKind === "roll" ? run.stuntAngle : 0;
+    !reduced && visual.flight && visual.stuntKind === "roll"
+      ? visual.stuntAngle
+      : 0;
   const bank =
-    stuntBank -
-    run.vx * (run.attachedRamp >= 0 ? 0.002 : 0.009) +
-    (run.rollTime > 0 && !reduced ? run.roll : 0);
+    stuntBank +
+    (visual.attachedRamp < 0 && !reduced ? visual.bodyRoll || 0 : 0) -
+    visual.vx * (visual.attachedRamp >= 0 ? 0.002 : 0.004) +
+    (visual.rollTime > 0 && !reduced ? visual.roll : 0);
   car.rotation.set(
-    run.airborne
+    visual.airborne
       ? flip +
-          (run.flight ? run.flightPitch : clamp(run.vy * 0.014, -0.13, 0.13))
-      : Math.atan((coast.roadY(run.d + 2) - coast.roadY(run.d - 2)) / 4) +
-          (run.boosting ? -0.018 : 0) +
-          run.rampPitch,
-    heading - run.vx * (run.attachedRamp >= 0 ? 0.003 : 0.022),
+          (visual.flight
+            ? visual.flightPitch
+            : clamp(visual.vy * 0.014, -0.13, 0.13))
+      : Math.atan((coast.roadY(visual.d + 2) - coast.roadY(visual.d - 2)) / 4) +
+          (visual.boosting ? -0.018 : 0) +
+          visual.rampPitch,
+    heading -
+      visual.vx * (visual.attachedRamp >= 0 ? 0.003 : 0.013) +
+      (visual.attachedRamp < 0 ? visual.slipAngle || 0 : 0),
     bank,
     "YXZ",
   );
-  if (run.attachedRamp >= 0) {
+  if (visual.attachedRamp >= 0) {
     const grade =
-      (coast.roadY(run.d + 0.2) - coast.roadY(run.d - 0.2)) / 0.4 +
-      Math.tan(run.rampPitch);
+      (coast.roadY(visual.d + 0.2) - coast.roadY(visual.d - 0.2)) / 0.4 +
+      Math.tan(visual.rampPitch);
     rampNormal.set(0, 1, grade).normalize();
     rampForward
       .set(
-        roadSlope(run.d, course) + run.vx / Math.max(27, run.speed),
+        roadSlope(visual.d, course) + visual.vx / Math.max(27, visual.speed),
         grade,
         -1,
       )
@@ -586,45 +771,46 @@ function updateVisuals(dt, snap = false) {
     car.quaternion.setFromRotationMatrix(rampBasis);
   }
   if (!hero) {
-    const impact = Math.max(0, 1 - run.crashAge / 1.05),
-      jolt = Math.sin(run.crashAge * 22) * impact;
+    const impact = Math.max(0, 1 - visual.crashAge / 1.05),
+      jolt = Math.sin(visual.crashAge * 22) * impact;
     if (!reduced) {
-      car.rotation.y += jolt * 0.28 * run.crashDirection;
+      car.rotation.y += jolt * 0.28 * visual.crashDirection;
       car.rotation.z += jolt * 0.12;
       car.position.y += Math.abs(jolt) * 0.18;
     }
-    if (run.failed) {
-      const t = Math.min(1, run.crashAge / 0.95);
-      if (run.crashKind === "fall") {
+    if (visual.failed) {
+      const t = Math.min(1, visual.crashAge / 0.95);
+      if (visual.crashKind === "fall") {
         car.position.y -= t * t * 14;
         car.rotation.x -= t * 0.7;
       } else {
-        car.position.x += run.crashDirection * t * 2.6;
+        car.position.x += visual.crashDirection * t * 2.6;
         car.position.z += Math.sin((t * Math.PI) / 2) * 1.8;
-        car.rotation.y += run.crashDirection * t * 1.1;
-        car.rotation.z += run.crashDirection * t * 0.22;
+        car.rotation.y += visual.crashDirection * t * 1.1;
+        car.rotation.z += visual.crashDirection * t * 0.22;
       }
     }
-    if (!reduced && run.attachedRamp < 0 && run.landingAge < 0.35)
-      car.position.y -= Math.sin((run.landingAge / 0.35) * Math.PI) * 0.055;
+    if (!reduced && visual.attachedRamp < 0 && visual.landingAge < 0.35)
+      car.position.y -= Math.sin((visual.landingAge / 0.35) * Math.PI) * 0.055;
     if (flip) car.position.y += 0.65 * (1 - Math.cos(flip));
   }
   const d = car.userData;
   d.wing.position.y = THREE.MathUtils.lerp(
     d.wing.position.y,
-    run.airborne || run.boosting ? 0.99 : 0.49,
+    visual.airborne || visual.boosting ? 0.99 : 0.49,
     snap ? 1 : 1 - Math.exp(-dt * 4),
   );
   for (const wheel of d.wheels) {
-    if (wheel.spin) wheel.spin.rotation.x -= (run.speed * dt) / 0.39;
-    if (wheel.pivot && wheel.front) wheel.pivot.rotation.y = -run.vx * 0.025;
+    if (wheel.spin) wheel.spin.rotation.x -= (visual.speed * dt) / 0.39;
+    if (wheel.pivot && wheel.front)
+      wheel.pivot.rotation.y = -(visual.steering || visual.vx * 0.025);
   }
   for (const jet of d.thrusterJets) {
-    jet.visible = !run.failed && (run.boosting || run.padTime > 0);
+    jet.visible = !visual.failed && (visual.boosting || visual.padTime > 0);
     jet.scale.z = 1.8 + Math.sin(clock * 43) * 0.25;
     jet.material.uniforms.time.value = clock;
   }
-  const actuation = flightActuators(run, car.rotation.x, car.rotation.z);
+  const actuation = flightActuators(visual, car.rotation.x, car.rotation.z);
   d.actuation = actuation;
   d.flightHardware.jets.forEach((jet, i) => {
     const power = actuation.ports[i];
@@ -636,45 +822,63 @@ function updateVisuals(dt, snap = false) {
     jet.material.uniforms.time.value = clock;
   });
   for (const fan of d.flightHardware.fans)
-    fan.rotation.y += dt * (actuation.grip ? 95 : run.airborne ? 12 : 30);
+    fan.rotation.y += dt * (actuation.grip ? 95 : visual.airborne ? 12 : 30);
   car.visible = true;
-  coast.update(run, phase === "playing" ? dt : 0, clock);
+  coast.update(
+    visual,
+    phase === "playing" || phase === "replay" ? dt : 0,
+    phase === "replay" ? visual.time : clock,
+  );
+  if (
+    ["playing", "replay"].includes(phase) ||
+    (phase === "paused" && previousPhase === "playing")
+  )
+    rivalField.update(visual, coast, phase === "paused" ? 0 : dt);
+  else rivalField.reset();
   effects.update(
     car,
-    run,
+    visual,
     phase === "paused" ? 0 : dt,
     phase === "playing",
     reduced,
   );
-  const samples =
-    records[course.id]?.layout === LAYOUT_VERSION
+  const challenger =
+    raceMode === "challenge" && incomingChallenge?.courseId === course.id;
+  const samples = challenger
+    ? incomingChallenge.samples
+    : records[course.id]?.layout === LAYOUT_VERSION
       ? records[course.id]?.ghost
       : null;
   ghost.visible = false;
   $("ghost-delta").hidden = true;
-  if (ghostOn && phase === "playing" && samples?.length > 1 && countdown <= 0) {
+  if (
+    (ghostOn || challenger) &&
+    phase === "playing" &&
+    samples?.length > 1 &&
+    countdown <= 0
+  ) {
     while (
       ghostIndex < samples.length - 2 &&
-      samples[ghostIndex + 1][0] < run.time
+      samples[ghostIndex + 1][0] < visual.time
     )
       ghostIndex++;
     const a = samples[ghostIndex],
       b = samples[ghostIndex + 1],
-      f = clamp((run.time - a[0]) / (b[0] - a[0] || 1), 0, 1);
+      f = clamp((visual.time - a[0]) / (b[0] - a[0] || 1), 0, 1);
     const d = a[1] + (b[1] - a[1]) * f,
       gx = a[2] + (b[2] - a[2]) * f,
       gy = a[3] + (b[3] - a[3]) * f;
     ghost.position.set(roadX(d, course) + gx, coast.roadY(d) + gy, -d);
     ghost.rotation.y = -Math.atan(roadSlope(d, course));
     ghost.visible =
-      Math.abs(d - run.d) < 220 &&
-      Math.abs(d - run.d) > 4 &&
-      run.time < samples[samples.length - 1][0];
+      Math.abs(d - visual.d) < 220 &&
+      Math.abs(d - visual.d) > 4 &&
+      visual.time < samples[samples.length - 1][0];
     $("ghost-delta").hidden = false;
     $("ghost-delta").textContent =
-      "PERSONAL GHOST / " +
-      (run.d >= d ? "AHEAD " : "BEHIND ") +
-      Math.abs(run.d - d).toFixed(0) +
+      (challenger ? "CHALLENGER / " : "PERSONAL GHOST / ") +
+      (visual.d >= d ? "AHEAD " : "BEHIND ") +
+      Math.abs(visual.d - d).toFixed(0) +
       " M";
   }
 
@@ -693,16 +897,30 @@ function updateVisuals(dt, snap = false) {
         Math.sin(Math.PI / 4 + showroomAngle) * 8.5 +
         Math.sin(clock * 0.11) * 0.2,
       y + 2.3,
-      -run.d - Math.cos(Math.PI / 4 + showroomAngle) * 8.5,
+      -visual.d - Math.cos(Math.PI / 4 + showroomAngle) * 8.5,
     );
-    camera.lookAt(x, y + 0.38, -run.d + 0.2);
+    camera.lookAt(x, y + 0.38, -visual.d + 0.2);
+  } else if (phase === "replay") {
+    camera.clearViewOffset();
+    const orbit = reduced
+      ? 0.45
+      : 0.6 + Math.sin((film?.elapsed || 0) * 0.23) * 0.45;
+    camera.fov = 52;
+    cameraGoal.set(
+      x + Math.sin(orbit) * 10,
+      y + 2.8,
+      -visual.d + Math.cos(orbit) * 10,
+    );
+    if (snap) camera.position.copy(cameraGoal);
+    else camera.position.lerp(cameraGoal, 1 - Math.exp(-dt * 7));
+    camera.lookAt(x, y + 0.65, -visual.d - 1);
   } else {
     camera.clearViewOffset();
     const targetFov = reduced
       ? 63
-      : run.padTime > 0
+      : visual.padTime > 0
         ? 76
-        : run.boosting
+        : visual.boosting
           ? 72
           : 63;
     camera.fov = THREE.MathUtils.lerp(
@@ -711,20 +929,20 @@ function updateVisuals(dt, snap = false) {
       snap ? 1 : 1 - Math.exp(-dt * 3),
     );
     cameraGoal.set(
-      roadX(run.d - 10, course) + run.x * 0.72,
-      y + 3.5 - Math.min(run.y, 6) * 0.15,
-      -run.d + (run.flight ? 11.5 : 8.7),
+      roadX(visual.d - 10, course) + visual.x * 0.72,
+      y + 3.5 - Math.min(visual.y, 6) * 0.15,
+      -visual.d + (visual.flight ? 11.5 : 8.7),
     );
     if (!reduced) {
-      cameraGoal.y += Math.sin(clock * 19) * 0.014 * (run.boosting ? 2 : 1);
+      cameraGoal.y += Math.sin(clock * 19) * 0.014 * (visual.boosting ? 2 : 1);
       cameraGoal.x += impactTime * Math.sin(clock * 70) * 0.2;
     }
     if (snap) camera.position.copy(cameraGoal);
     else camera.position.lerp(cameraGoal, 1 - Math.exp(-dt * 8));
     cameraTarget.set(
-      roadX(run.d + 30, course) + run.x * 0.64,
-      coast.roadY(run.d + 30) + 1.3 + run.y * 0.92,
-      -run.d - 30,
+      roadX(visual.d + 30, course) + visual.x * 0.64,
+      coast.roadY(visual.d + 30) + 1.3 + visual.y * 0.92,
+      -visual.d - 30,
     );
     camera.lookAt(cameraTarget);
   }
@@ -745,10 +963,21 @@ function applyQuality() {
 function resize() {
   const blocked = requiresLandscape(innerWidth, innerHeight, coarse());
   if (blocked && !orientationBlocked && phase === "playing") pause();
+  if (blocked && !orientationBlocked && phase === "replay") {
+    cancelClip();
+    $("clip-status").textContent = "Turn sideways to continue the replay.";
+  }
   orientationBlocked = blocked;
   $("rotate").hidden = !blocked;
   $("app").inert = false;
-  for (const id of ["home", "hud", "menu", "results", "masthead"])
+  for (const id of [
+    "home",
+    "hud",
+    "menu",
+    "results",
+    "masthead",
+    "replay-view",
+  ])
     $(id).inert = blocked;
   if (blocked) controls?.clear();
   if (renderer) {
@@ -775,8 +1004,11 @@ function frame(now) {
       $("announcement-small").textContent = "";
       $("announcement-title").textContent = "";
     }
-    updateVisuals(dt);
-    hud();
+    if (phase === "replay") advanceFilm(dt);
+    else {
+      updateVisuals(dt);
+      hud();
+    }
   }
   $("impact").style.opacity = impactTime / 0.9;
   audio.update(
@@ -788,6 +1020,7 @@ function frame(now) {
       !frozen,
   );
   renderer.render(scene, camera);
+  if (clip && phase === "replay") clip.draw(film?.elapsed || 0);
   if (quality === "auto" && !frozen && phase === "playing" && countdown <= 0) {
     const ceiling = Math.min(devicePixelRatio || 1, qualityLow ? 1.25 : 1.75);
     const ratio = frameBudget.sample(
@@ -835,6 +1068,373 @@ function saveCard() {
     setTimeout(() => URL.revokeObjectURL(url), 3000);
   });
 }
+let initializedAt = 0,
+  initialVenueCount = 0;
+const nextPaint = () =>
+  new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      cancelAnimationFrame(raf);
+      resolve();
+    };
+    const timer = setTimeout(finish, 80),
+      raf = requestAnimationFrame(finish);
+  });
+function ensureVenue(id) {
+  if (venues.has(id)) return venues.get(id);
+  const current = coast,
+    venue = createCoast(scene, renderer, getCourse(id));
+  venue.root.visible = false;
+  venues.set(id, venue);
+  if (current) current.activate();
+  return venue;
+}
+async function loadVenue(id) {
+  const ticket = ++venueRequest;
+  document.body.dataset.preparing = "true";
+  $("loading").hidden = false;
+  $("loading").querySelector("strong").textContent =
+    "OPENING / " + getCourse(id).name;
+  await nextPaint();
+  if (ticket !== venueRequest) return false;
+  try {
+    ensureVenue(id);
+    if (!selectCourse(id)) return false;
+    updateVisuals(0, true);
+    renderer.render(scene, camera);
+    return true;
+  } catch (e) {
+    console.error(e);
+    showError("This venue could not load. Reload to try again.");
+    return false;
+  } finally {
+    document.body.dataset.preparing = "false";
+    $("loading").hidden = true;
+  }
+}
+const failedPreparations = new Set();
+function queueVenuePreparation() {
+  const pending = COURSES.find(
+    (c) => !venues.has(c.id) && !failedPreparations.has(c.id),
+  );
+  if (!pending) return;
+  setTimeout(async () => {
+    if (
+      !["home", "results"].includes(phase) ||
+      orientationBlocked ||
+      document.hidden
+    ) {
+      queueVenuePreparation();
+      return;
+    }
+    await nextPaint();
+    if (!["home", "results"].includes(phase)) {
+      queueVenuePreparation();
+      return;
+    }
+    // Build each remaining world only while out of a race. Warm into a small
+    // target with its own lighting, then restore the visible scene unchanged.
+    const current = coast;
+    let world, target;
+    try {
+      world = ensureVenue(pending.id);
+      current.root.visible = false;
+      world.activate();
+      world.setQuality(qualityLow);
+      world.update({ ...createRun(pending), d: 80 }, 0, clock);
+      target = new THREE.WebGLRenderTarget(320, 180);
+      renderer.setRenderTarget(target);
+      renderer.render(scene, camera);
+    } catch (e) {
+      failedPreparations.add(pending.id);
+      console.warn("Background venue preparation deferred", pending.id);
+    } finally {
+      renderer.setRenderTarget(null);
+      target?.dispose();
+      if (world) world.root.visible = false;
+      current.activate();
+    }
+    queueVenuePreparation();
+  }, 1200);
+}
+function recordFrame() {
+  const p = [
+    +run.time.toFixed(3),
+    +run.d.toFixed(2),
+    +run.x.toFixed(2),
+    +run.y.toFixed(2),
+    run.speed,
+    run.rampPitch,
+    run.flightPitch,
+    run.stuntAngle,
+    run.stuntKind === "roll" ? 2 : run.stuntKind === "flip" ? 1 : 0,
+    run.vx,
+    run.landingAge,
+    run.liftAcceleration,
+    run.flight?.angularAcceleration || 0,
+    Number(run.boosting),
+    run.attachedRamp,
+  ];
+  p.push(
+    Number(!!run.flight),
+    Number(run.airborne),
+    Number(run.lifting),
+    run.steering || 0,
+    run.bodyRoll || 0,
+    run.slipAngle || 0,
+  );
+  for (const r of run.rivals || [])
+    p.push(
+      r.d,
+      r.x,
+      r.y,
+      r.speed,
+      r.flightPitch || 0,
+      r.rampPitch || 0,
+      r.stuntAngle || 0,
+      r.stuntKind === "roll" ? 2 : r.stuntKind === "flip" ? 1 : 0,
+      Number(r.airborne),
+      Number(r.lifting),
+      Number(!!r.flight),
+      r.bodyRoll || 0,
+      r.slipAngle || 0,
+      r.time,
+    );
+  // Append manual-flight channels after the fixed player/rival layout so
+  // shared ghost coordinates and existing rival offsets remain unchanged.
+  p.push(run.vy, run.rollTime, run.roll, run.rollAcceleration || 0);
+  if (replay.at(-1)?.[0] === p[0]) replay[replay.length - 1] = p;
+  else replay.push(p);
+  // Bounded capture: 10Hz for ten minutes, well beyond every authored race.
+  if (replay.length > 6001) replay.splice(1, 1);
+}
+async function startDaily() {
+  const event = dailyEvent();
+  activeEvent = event;
+  raceMode = "daily";
+  tour = null;
+  const ready = await selectCourse(event.courseId);
+  if (
+    ready &&
+    activeEvent === event &&
+    raceMode === "daily" &&
+    course.id === event.courseId
+  )
+    start();
+}
+function startFilm(record = false) {
+  if (replay.length < 3 || orientationBlocked) return;
+  cancelClip();
+  const end = replay.at(-1)[0],
+    start = Math.max(replay[0][0], end - 10);
+  film = { start, end, elapsed: 0, cursor: 0, recording: record };
+  setPhase("replay");
+  effects.reset();
+  $("replay-title").textContent =
+    course.name + " / " + (run.finished ? "FINISH FILM" : "LAST ATTEMPT");
+  $("save-clip").disabled = !clipSupported();
+  $("clip-status").textContent = clipSupported()
+    ? "Replay locally. Save a silent clip to share."
+    : "Replay available. This browser does not support clip recording.";
+  $("exit-replay").focus({ preventScroll: true });
+  advanceFilm(0, true);
+}
+function advanceFilm(dt, snap = false) {
+  if (!film) return;
+  film.elapsed += dt;
+  const duration = film.end - film.start;
+  if (film.elapsed > duration) {
+    if (clip) {
+      clip.stop();
+      clip = null;
+      film.recording = false;
+      $("save-clip").disabled = false;
+    }
+    film.elapsed = 0;
+    film.cursor = 0;
+    effects.reset();
+  }
+  const pose = sampleReplay(replay, film.start + film.elapsed, film.cursor);
+  film.cursor = pose.cursor;
+  const p = pose.values,
+    nearest = replay[pose.cursor],
+    next = replay[Math.min(pose.cursor + 1, replay.length - 1)],
+    f = Math.max(
+      0,
+      Math.min(1, (p[0] - nearest[0]) / (next[0] - nearest[0] || 1)),
+    );
+  if (nearest[15] && !next[15])
+    p[7] =
+      nearest[7] + (Math.sign(nearest[7] || 1) * Math.PI * 2 - nearest[7]) * f;
+  const manual = 21 + (run.rivals?.length || 0) * 14;
+  if (nearest[manual + 1] > 0 && !(next[manual + 1] > 0))
+    p[manual + 2] =
+      nearest[manual + 2] +
+      (Math.sign(nearest[manual + 2] || 1) * Math.PI * 2 -
+        nearest[manual + 2]) *
+        f;
+  const visual = {
+    ...run,
+    time: p[0],
+    d: p[1],
+    x: p[2],
+    y: p[3],
+    speed: p[4],
+    rampPitch: p[5],
+    flightPitch: p[6],
+    stuntAngle: p[7],
+    stuntKind: nearest[8] === 2 ? "roll" : "flip",
+    vx: p[9],
+    landingAge: p[10],
+    liftAcceleration: p[11],
+    boosting: nearest[13] > 0.5,
+    attachedRamp: nearest[14],
+    airborne: !!nearest[16],
+    lifting: !!nearest[17],
+    steering: p[18] || 0,
+    failed: false,
+    finished: false,
+    crashAge: 10,
+    vy: p[manual] || 0,
+    rollTime: p[manual + 1] || 0,
+    roll: p[manual + 2] || 0,
+    rollAcceleration: p[manual + 3] || 0,
+    slipAngle: p[20] || 0,
+    bodyRoll: p[19] || 0,
+    processed: new Set(),
+    flight: nearest[15] ? { angularAcceleration: p[12] } : null,
+  };
+  visual.rivals = (run.rivals || []).map((r, i) => {
+    const o = 21 + i * 14;
+    let angle = p[o + 6] || 0;
+    if (nearest[o + 10] && !next[o + 10])
+      angle =
+        nearest[o + 6] +
+        (Math.sign(nearest[o + 6] || 1) * Math.PI * 2 - nearest[o + 6]) * f;
+    return {
+      ...r,
+      d: p[o] ?? r.d,
+      x: p[o + 1] ?? r.x,
+      y: p[o + 2] ?? r.y,
+      speed: p[o + 3] ?? r.speed,
+      flightPitch: p[o + 4] || 0,
+      rampPitch: p[o + 5] || 0,
+      stuntAngle: angle,
+      stuntKind: nearest[o + 7] === 2 ? "roll" : "flip",
+      airborne: !!nearest[o + 8],
+      lifting: !!nearest[o + 9],
+      flight: nearest[o + 10] ? {} : null,
+      bodyRoll: p[o + 11] || 0,
+      slipAngle: p[o + 12] || 0,
+      time: p[o + 13] || p[0],
+      exitDistance: 0,
+      failed: false,
+      finished: false,
+    };
+  });
+  updateVisuals(dt, snap, visual);
+  $("replay-clock").textContent =
+    formatTime(visual.time) + " / " + formatTime(film.end);
+}
+function cancelClip() {
+  if (clip) {
+    clip.cancel();
+    clip = null;
+  }
+  if (film) film.recording = false;
+  $("save-clip").disabled = !clipSupported();
+}
+function stopFilm() {
+  cancelClip();
+  film = null;
+  effects.reset();
+  setPhase("results");
+  updateVisuals(0, true);
+  $("watch-replay").focus({ preventScroll: true });
+}
+function recordClip() {
+  if (clip) return;
+  startFilm(true);
+  try {
+    clip = createClip(
+      $("scene"),
+      course.name,
+      (blob, ext) => {
+        if (clipUrl) URL.revokeObjectURL(clipUrl);
+        clipUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = clipUrl;
+        a.download = `roadster-${course.id}.${ext}`;
+        a.click();
+        const url = clipUrl;
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          if (clipUrl === url) clipUrl = null;
+        }, 60000);
+        $("clip-status").textContent = "CLIP SAVED / READY TO SHARE";
+        $("save-clip").disabled = false;
+      },
+      (message) => {
+        $("clip-status").textContent = message;
+        $("save-clip").disabled = false;
+        clip = null;
+      },
+    );
+    $("clip-status").textContent = "RECORDING / KEEP THIS TAB OPEN";
+    $("save-clip").disabled = true;
+  } catch (e) {
+    $("clip-status").textContent = e.message;
+    film.recording = false;
+  }
+}
+async function openIncomingChallenge() {
+  const code = new URLSearchParams(location.hash.slice(1)).get("race");
+  try {
+    incomingChallenge = code ? decodeChallenge(code) : null;
+    challengeError = "";
+  } catch (e) {
+    incomingChallenge = null;
+    challengeError = e.message;
+  }
+  home();
+  await selectCourse(incomingChallenge?.courseId || course.id);
+}
+function shareChallenge() {
+  try {
+    const code = encodeChallenge({
+      courseId: course.id,
+      samples: replay,
+      time: run.time,
+      score: run.score,
+      day: activeEvent?.day ?? null,
+    });
+    const url = new URL(location.href);
+    url.search = "";
+    url.hash = "race=" + code;
+    $("challenge-url").value = url.href;
+    $("challenge-share").hidden = false;
+    $("share-status").textContent =
+      "Your ghost and time travel in this link. No sign-in needed.";
+    $("copy-challenge").focus();
+  } catch (e) {
+    $("record-message").textContent = e.message;
+  }
+}
+async function copyChallenge() {
+  try {
+    await navigator.clipboard.writeText($("challenge-url").value);
+    $("share-status").textContent = "LINK COPIED / SEND IT TO A FRIEND";
+  } catch {
+    const input = $("challenge-url");
+    input.focus();
+    input.select();
+    $("share-status").textContent = "Select and copy the link above.";
+  }
+}
+
 async function boot() {
   try {
     await document.fonts.ready;
@@ -862,6 +1462,7 @@ async function boot() {
     });
     car = createCar();
     effects = createRaceEffects(scene);
+    rivalField = createRivalField(scene);
     scene.add(car);
     car.userData.interior.visible = false;
     car.userData.setDetail(!qualityLow && phase === "home");
@@ -894,7 +1495,8 @@ async function boot() {
       window,
       (action) => {
         if (action === "pause") {
-          if (phase === "playing") pause();
+          if (phase === "replay") stopFilm();
+          else if (phase === "playing") pause();
           else if (phase === "paused") resume();
         } else if (
           action === "retry" &&
@@ -910,10 +1512,28 @@ async function boot() {
       .querySelectorAll("[data-control]")
       .forEach((button) => controls.bind(button, button.dataset.control));
     $("start").onclick = () => {
+      activeEvent =
+        incomingChallenge?.courseId === course.id
+          ? incomingChallenge.event
+          : null;
+      raceMode =
+        incomingChallenge?.courseId === course.id ? "challenge" : "race";
       tour = null;
       start();
     };
     $("start-tour").onclick = beginTour;
+    $("start-daily").onclick = startDaily;
+    $("daily-name").textContent = todayEvent.name + " ↗";
+    $("start-daily").title = todayEvent.description + " Resets at 00:00 UTC.";
+    $("watch-replay").onclick = () => startFilm();
+    $("exit-replay").onclick = stopFilm;
+    $("save-clip").onclick = recordClip;
+    $("share-challenge").onclick = shareChallenge;
+    $("copy-challenge").onclick = copyChallenge;
+    $("close-challenge").onclick = () => {
+      $("challenge-share").hidden = true;
+      $("share-challenge").focus();
+    };
     $("next-stage").onclick = nextStage;
     document.querySelectorAll("button[data-course]").forEach(
       (b) =>
@@ -969,8 +1589,7 @@ async function boot() {
       }
       if (e.code === "Enter" && e.target?.tagName !== "BUTTON") {
         e.preventDefault();
-        tour = null;
-        start();
+        $("start").click();
       }
     });
     $("orbit-car").onclick = () => {
@@ -1013,6 +1632,7 @@ async function boot() {
     };
     $("sound").querySelector("b").textContent = soundOn ? "ON" : "OFF";
     $("motion").querySelector("b").textContent = reduced ? "REDUCED" : "FULL";
+    window.addEventListener("hashchange", openIncomingChallenge);
     window.addEventListener("resize", resize);
     window.addEventListener("orientationchange", () => {
       controls.clear();
@@ -1026,11 +1646,20 @@ async function boot() {
       if (document.hidden) {
         controls.clear();
         pause();
+        if (clip) {
+          cancelClip();
+          $("clip-status").textContent =
+            "Recording cancelled because the page was hidden.";
+        }
       }
     });
     window.addEventListener("pagehide", () => controls.clear());
-    document.addEventListener("contextmenu", (e) => e.preventDefault());
-    document.addEventListener("selectstart", (e) => e.preventDefault());
+    document.addEventListener("contextmenu", (e) => {
+      if (e.target?.id !== "challenge-url") e.preventDefault();
+    });
+    document.addEventListener("selectstart", (e) => {
+      if (e.target?.id !== "challenge-url") e.preventDefault();
+    });
     $("scene").addEventListener("webglcontextlost", (e) => {
       e.preventDefault();
       pause();
@@ -1039,43 +1668,11 @@ async function boot() {
       );
     });
     const selectedId = course.id;
-    // A hidden/background tab can suspend RAF indefinitely. Yield to painting
-    // when possible, with a timer fallback so loading still makes progress.
-    const nextFrame = () =>
-      new Promise((resolve) => {
-        let complete = false;
-        const finish = () => {
-          if (complete) return;
-          complete = true;
-          clearTimeout(timer);
-          cancelAnimationFrame(frame);
-          resolve();
-        };
-        const timer = setTimeout(finish, 80),
-          frame = requestAnimationFrame(finish);
-      });
-    for (const c of COURSES) {
-      $("loading").querySelector("strong").textContent =
-        "PREPARING / " + c.name;
-      await nextFrame();
-      const venue = createCoast(scene, renderer, c);
-      venue.root.visible = false;
-      venues.set(c.id, venue);
-    }
+    $("loading").querySelector("strong").textContent =
+      "PREPARING / " + course.name;
+    await nextPaint();
+    ensureVenue(selectedId);
     initialized = true;
-    for (const c of COURSES) {
-      selectCourse(c.id);
-      applyQuality();
-      resize();
-      updateVisuals(0, true);
-      $("loading").querySelector("strong").textContent =
-        "PREPARING LIGHTING / " + c.name;
-      // Rendering warms the visible world's actual lighting/material variants.
-      // compile(scene) also traverses hidden venues, preparing every world under
-      // every other world's lights; its parallel completion query can stall.
-      renderer.render(scene, camera);
-      await nextFrame();
-    }
     selectCourse(selectedId);
     home();
     applyQuality();
@@ -1083,9 +1680,37 @@ async function boot() {
     updateVisuals(0, true);
     renderer.render(scene, camera);
     $("loading").hidden = true;
+    initializedAt = performance.now();
+    initialVenueCount = venues.size;
+    queueVenuePreparation();
     if (qa)
       window.__breakwater = {
         start,
+        startDaily,
+        startFilm,
+        stopFilm,
+        shareChallenge,
+        get replaySamples() {
+          return replay;
+        },
+        get raceMode() {
+          return raceMode;
+        },
+        get activeEvent() {
+          return activeEvent;
+        },
+        get firstReadyAt() {
+          return initializedAt;
+        },
+        get initialVenueCount() {
+          return initialVenueCount;
+        },
+        prepareVenues: async () => {
+          for (const c of COURSES) {
+            await nextPaint();
+            ensureVenue(c.id);
+          }
+        },
         selectCourse,
         beginTour,
         nextStage,
@@ -1166,11 +1791,15 @@ async function boot() {
           frozen = value;
         },
         step(dt) {
-          tick(dt);
           clock += dt;
-          updateVisuals(dt, true);
-          hud(true);
+          if (phase === "replay") advanceFilm(dt);
+          else {
+            tick(dt);
+            updateVisuals(dt, true);
+            hud(true);
+          }
           renderer.render(scene, camera);
+          if (clip && phase === "replay") clip.draw(film?.elapsed || 0);
         },
         setState(patch) {
           Object.assign(run, patch);

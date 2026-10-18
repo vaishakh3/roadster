@@ -121,7 +121,7 @@ export function rockMaterial(canyon) {
       vec3 scan=texture2D(rockScan,vStone.zy*.42).rgb*blend.x+texture2D(rockScan,vStone.xz*.42).rgb*blend.y+texture2D(rockScan,vStone.xy*.42).rgb*blend.z;
       float detail=dot(scan,vec3(.299,.587,.114));
       diffuseColor.rgb*=mix(.48,1.65,detail);
-      ${canyon ? "float strata=sin(vStone.y*1.8+sin(vStone.z*.04)*2.);float fineStrata=sin(vStone.y*8.+sin(vStone.x*.15));diffuseColor.rgb*=.9+.08*strata+.035*fineStrata;" : ""}`,
+      ${canyon ? "float strata=sin(vStone.y*1.8+sin(vStone.z*.04)*2.);float fineStrata=sin(vStone.y*8.+sin(vStone.x*.15));diffuseColor.rgb*=.95+.035*strata+.016*fineStrata;" : ""}`,
       );
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <normal_fragment_maps>",
@@ -217,4 +217,84 @@ export function cityMaterial() {
         );
   };
   return material;
+}
+
+// Fine weathering in world space gives concrete a scale without another image
+// download. Instances use the same world coordinates as merged district meshes.
+export function concreteMaterial(color) {
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.91,
+    metalness: 0.025,
+  });
+  material.customProgramCacheKey = () => "weathered-concrete-v1";
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader =
+      "varying vec3 vConcrete;\n" +
+      shader.vertexShader.replace(
+        "#include <worldpos_vertex>",
+        `#include <worldpos_vertex>
+      vec4 concretePosition=vec4(transformed,1.);
+      #ifdef USE_INSTANCING
+      concretePosition=instanceMatrix*concretePosition;
+      #endif
+      vConcrete=(modelMatrix*concretePosition).xyz;`,
+      );
+    shader.fragmentShader =
+      "varying vec3 vConcrete;\n" +
+      shader.fragmentShader.replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+      float speck=fract(sin(dot(floor(vConcrete*24.),vec3(12.9898,78.233,39.425)))*43758.5453);
+      float runoff=.5+.5*sin(vConcrete.x*1.7+sin(vConcrete.z*.64));
+      diffuseColor.rgb*=.86+speck*.16-runoff*.065;
+      diffuseColor.rgb*=.97+.03*sin(vConcrete.y*7.);`,
+      );
+  };
+  return material;
+}
+
+export function scrubMaterial(canyon) {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  let seed = canyon ? 613 : 921;
+  const random = () =>
+    ((seed = Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
+  const colors = canyon
+    ? ["#6f6943", "#8d8153", "#b1a16e", "#696b44"]
+    : ["#344a37", "#516847", "#71845b", "#9b9d65"];
+  for (let i = 0; i < 125; i++) {
+    const x = 64 + (random() - 0.5) * 100,
+      y = 20 + random() * 91;
+    ctx.strokeStyle = colors[i % colors.length];
+    ctx.lineWidth = 0.8 + random() * 1.4;
+    ctx.beginPath();
+    ctx.moveTo(64 + (x - 64) * 0.2, 125);
+    ctx.quadraticCurveTo(x, 90, x, y);
+    ctx.stroke();
+    if (i % 3 === 0) {
+      ctx.fillStyle = colors[(i + 1) % colors.length];
+      ctx.beginPath();
+      ctx.ellipse(
+        x,
+        y,
+        2 + random() * 3,
+        1 + random() * 2,
+        random() * 3,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
+  }
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshStandardMaterial({
+    map,
+    alphaTest: 0.48,
+    side: THREE.DoubleSide,
+    roughness: 1,
+    color: 0xd9d7c3,
+  });
 }

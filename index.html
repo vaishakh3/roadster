@@ -84,6 +84,7 @@
           <h1 id="home-title">
             BREAK<br /><span>WATER</span><b aria-hidden="true">↗</b>
           </h1>
+          <p id="challenge-banner" hidden role="status"></p>
           <p class="home-description" id="course-description">
             The road ends. Your run doesn’t.
           </p>
@@ -131,6 +132,9 @@
             ><button id="start-tour" class="secondary">
               WORLD TOUR <span>3 STAGES ↗</span>
             </button>
+            <button id="start-daily" class="secondary">
+              DAILY EVENT <span id="daily-name">↗</span>
+            </button>
           </div>
           <div class="home-foot">
             <span id="personal-best"></span><span id="tour-record"></span
@@ -159,6 +163,8 @@
               <polyline id="map-base" />
               <polyline id="map-travelled" />
               <g id="map-stunts"></g>
+              <g id="map-branches"></g>
+              <g id="map-rivals"></g>
               <circle id="map-finish" r="3.5" />
               <g id="map-player">
                 <circle r="8" />
@@ -166,6 +172,11 @@
               </g>
             </svg>
             <div class="journey-track"><i id="progress"></i><b></b><b></b></div>
+          </div>
+          <div class="position-block">
+            <span class="label">POSITION</span
+            ><strong><b id="race-position">4</b><small>/ 4</small></strong
+            ><span id="draft-label"></span>
           </div>
           <div class="score-block">
             <span class="label">SCORE <span id="multiplier"></span></span
@@ -191,6 +202,8 @@
           ><span id="target-gates">0 / 17 GATES</span>
         </div>
         <div id="ghost-delta" hidden></div>
+        <div id="branch-cue" hidden></div>
+        <div id="event-objective" hidden></div>
         <div id="event" role="status" aria-live="polite"></div>
         <div class="speed-block">
           <strong id="speed">000</strong><span>KM/H</span
@@ -277,6 +290,9 @@
             <div><span>SCORE</span><strong id="result-score"></strong></div>
             <div><span>GATES</span><strong id="result-gates"></strong></div>
             <div><span>MEDAL</span><strong id="result-rank"></strong></div>
+            <div>
+              <span>POSITION</span><strong id="result-position"></strong>
+            </div>
           </div>
           <div id="result-badges" class="badges"></div>
           <p id="tour-summary" hidden></p>
@@ -289,8 +305,41 @@
               SAVE RUN CARD <span>↓</span></button
             ><button id="result-home" class="text-button">BACK TO START</button>
           </div>
+          <div class="result-tools">
+            <button id="watch-replay" class="text-button">
+              WATCH HIGHLIGHT ↗
+            </button>
+            <button id="share-challenge" class="text-button">
+              CHALLENGE A FRIEND ↗
+            </button>
+          </div>
           <p id="record-message"></p>
+          <div id="challenge-share" hidden>
+            <label for="challenge-url">COPY YOUR CHALLENGE LINK</label
+            ><input
+              id="challenge-url"
+              type="text"
+              readonly
+              aria-label="Challenge link"
+            /><button id="copy-challenge" class="text-button">COPY LINK</button
+            ><button id="close-challenge" class="text-button">CLOSE</button
+            ><span id="share-status" role="status"></span>
+          </div>
         </div>
+      </section>
+      <section id="replay-view" hidden aria-label="Race highlight replay">
+        <div class="replay-heading">
+          <span>ROADSTER / RACE FILM</span
+          ><strong id="replay-title">THE LAST TEN SECONDS</strong
+          ><span id="replay-clock"></span>
+        </div>
+        <div class="replay-actions">
+          <button id="save-clip" class="primary">SAVE 10-SECOND CLIP ↓</button
+          ><button id="exit-replay" class="secondary">
+            BACK TO RESULTS ↗
+          </button>
+        </div>
+        <p id="clip-status" role="status"></p>
       </section>
       <section id="rotate" hidden aria-labelledby="rotate-title">
         <span class="brand">ROADSTER / WORLD TOUR</span>

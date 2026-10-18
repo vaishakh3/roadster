@@ -39,7 +39,7 @@ document.getElementById("benchmark").onclick = async () => {
   for (let round = 0; round < 3; round++)
     for (const c of COURSES) {
       const t = performance.now();
-      g.selectCourse(c.id);
+      await g.selectCourse(c.id);
       g.step(0);
       await new Promise(requestAnimationFrame);
       report.textContent += `${round + 1} ${c.name}: ${(performance.now() - t).toFixed(1)} ms; ${JSON.stringify(g.memory)}\n`;
@@ -56,7 +56,7 @@ document.getElementById("run").onclick = async () => {
   frame.style.cssText = "width:1280px;height:720px;border:0";
   frame.src = "../dist/?qa=1";
   stage.append(frame);
-  for (let i = 0; i < 200 && !frame.contentWindow.__breakwater; i++)
+  for (let i = 0; i < 600 && !frame.contentWindow.__breakwater; i++)
     await wait(50);
   const w = frame.contentWindow,
     d = w.document,
@@ -82,6 +82,7 @@ document.getElementById("run").onclick = async () => {
     for (let i = 0; i < Math.ceil(seconds * 120); i++) g.step(1 / 120);
   };
   g.freeze();
+  await g.prepareVenues();
   g.start();
   g.setState({});
   check("WebGL production scene has rendered", () =>
@@ -211,7 +212,7 @@ document.getElementById("run").onclick = async () => {
       },
     );
   }
-  g.selectCourse("breakwater");
+  await g.selectCourse("breakwater");
   g.start();
   g.setState({ d: 380, speed: 76 });
   key("keydown", "ShiftLeft");
@@ -344,7 +345,7 @@ document.getElementById("run").onclick = async () => {
   const memory = g.memory;
   for (let i = 0; i < 2; i++)
     for (const c of COURSES) {
-      g.selectCourse(c.id);
+      await g.selectCourse(c.id);
       g.step(0);
     }
   check("Three prepared venues reuse their geometry and textures", () => {
@@ -398,7 +399,7 @@ document.getElementById("run").onclick = async () => {
     }
     ok(names.size === 4);
   });
-  g.selectCourse("breakwater");
+  await g.selectCourse("breakwater");
   for (const [width, height] of [
     [1280, 720],
     [844, 390],
@@ -436,6 +437,7 @@ document.getElementById("run").onclick = async () => {
           "paint",
           "start",
           "start-tour",
+          "start-daily",
         ];
         const rects = ids.map((id) =>
           d.getElementById(id).getBoundingClientRect(),
@@ -505,7 +507,7 @@ document.getElementById("run").onclick = async () => {
         const els = [
           "#race-map",
           ".timer-block",
-          ".score-block",
+          ".position-block",
           ".speed-block",
           ".reserve-block",
           "#warning",
@@ -547,7 +549,7 @@ document.getElementById("run").onclick = async () => {
   frame.style.height = "320px";
   await wait(90);
   g.home();
-  g.beginTour();
+  await g.beginTour();
   for (let i = 0; i < 3; i++) {
     g.setState({
       d: g.course.length - 1,
@@ -556,7 +558,7 @@ document.getElementById("run").onclick = async () => {
       score: 9000,
     });
     step(0.1);
-    if (i < 2) g.nextStage();
+    if (i < 2) await g.nextStage();
   }
   check(
     "568×320: complete tour results and all actions fit without scrolling",
@@ -625,7 +627,7 @@ document.getElementById("routes").onclick = async () => {
   frame.style.cssText = "width:844px;height:390px;border:0";
   frame.src = "../dist/?qa=1";
   stage.append(frame);
-  for (let i = 0; i < 200 && !frame.contentWindow.__breakwater; i++)
+  for (let i = 0; i < 600 && !frame.contentWindow.__breakwater; i++)
     await wait(50);
   const w = frame.contentWindow,
     g = w.__breakwater;
@@ -637,7 +639,7 @@ document.getElementById("routes").onclick = async () => {
   let failed = 0;
   for (const c of COURSES) {
     g.home();
-    g.selectCourse(c.id);
+    await g.selectCourse(c.id);
     g.start();
     g.setState({});
     const held = new Set();
@@ -704,7 +706,7 @@ document.getElementById("budget").onclick = async () => {
   g.freeze();
   for (const c of COURSES) {
     g.home();
-    g.selectCourse(c.id);
+    await g.selectCourse(c.id);
     g.start();
     for (const d of [380, c.ramps[1].d - 30, c.length - 400]) {
       g.setState({ d, x: 0, y: 0, speed: 65 });
@@ -747,7 +749,7 @@ document.getElementById("envelopes").onclick = async () => {
   let failures = 0;
   for (const c of COURSES) {
     g.home();
-    g.selectCourse(c.id);
+    await g.selectCourse(c.id);
     for (const r of c.ramps) {
       g.start();
       g.setState({ d: r.d - r.length - 3, speed: 70, time: 15, x: r.x });

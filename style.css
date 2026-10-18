@@ -2510,3 +2510,435 @@ body[data-phase="playing"] #shade {
     gap: 5px;
   }
 }
+
+/* Race edition: restrained instruments, consistent controls, a clear horizon. */
+.hud-top {
+  gap: 22px;
+}
+.position-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 78px;
+  margin-left: auto;
+}
+.position-block strong {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 48px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.position-block strong b {
+  font-weight: 600;
+}
+.position-block small {
+  font: 16px Plex;
+  color: #e2e9e9b8;
+}
+#draft-label {
+  font: 11px Plex;
+  color: var(--mint);
+  margin-top: 5px;
+  min-height: 14px;
+}
+.score-block {
+  display: none;
+}
+#race-target {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  opacity: 0.82;
+}
+#race-target > span:first-child {
+  display: none;
+}
+#warning {
+  background: linear-gradient(90deg, #061823e8, #06182366);
+  border-left-width: 3px;
+  box-shadow: none;
+  padding: 9px 14px;
+  min-width: 0;
+  max-width: 310px;
+}
+#warning strong {
+  font-size: 25px;
+}
+#warning-detail {
+  font-size: 14px;
+}
+.warning-icon {
+  font-size: 30px;
+}
+#branch-cue {
+  position: absolute;
+  left: var(--pad);
+  top: 185px;
+  max-width: 310px;
+  color: #fff0c7;
+  font: 14px Plex;
+  padding: 7px 0;
+  text-shadow: 0 2px 5px #06111a;
+}
+#event-objective {
+  position: absolute;
+  left: 50%;
+  top: 108px;
+  transform: translateX(-50%);
+  color: var(--mint);
+  font: 12px Plex;
+  max-width: 40vw;
+  text-align: center;
+}
+#ghost-delta {
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+}
+#map-branches {
+  stroke: #ffc887;
+  fill: none;
+  stroke-width: 2.4;
+}
+#map-rivals circle {
+  stroke: #071923;
+  stroke-width: 1.4;
+}
+#touch-controls button {
+  border-radius: 50%;
+  width: 76px;
+  height: 76px;
+  background: #0719239c;
+  border: 1px solid #f5f3e67a;
+  box-shadow: inset 0 0 0 4px #f5f3e60a;
+}
+#touch-controls > div {
+  gap: 12px;
+}
+#touch-controls .actions button {
+  width: 82px;
+  height: 82px;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+#touch-controls button[data-control="fly"] {
+  background: #eaf3e8dc;
+}
+#touch-controls button[data-control="boost"] {
+  background: #ff8854df;
+}
+#touch-controls button.pressed {
+  transform: scale(0.96);
+  background: var(--mint);
+}
+#touch-controls svg {
+  width: 27px;
+  height: 27px;
+}
+#start-daily {
+  color: var(--mint);
+  border-top: 1px solid #ffffff24;
+}
+#start-daily span {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+#challenge-banner {
+  max-width: 380px;
+  font: 12px/1.5 Plex;
+  color: var(--mint);
+  margin: 8px 0;
+}
+#challenge-share {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: #091821f5;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 30px;
+}
+#challenge-share label,
+#share-status {
+  width: 100%;
+  text-align: center;
+  font: 14px/1.5 Plex;
+  color: var(--mint);
+}
+#challenge-url {
+  width: min(800px, 90%);
+  color: var(--paper);
+  background: #ffffff0a;
+  border: 1px solid #ffffff55;
+  padding: 16px;
+  font: 14px Plex;
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
+}
+.result-tools {
+  display: flex;
+  gap: 22px;
+  margin-top: 8px;
+}
+.result-tools button {
+  min-height: 44px;
+  font-size: 17px;
+  padding: 4px 0;
+}
+.result-stats {
+  grid-template-columns: repeat(5, 1fr);
+}
+#result-position {
+  color: var(--mint);
+}
+#replay-view {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    #020c1b70,
+    transparent 23%,
+    transparent 75%,
+    #020c1ba0
+  );
+}
+.replay-heading {
+  position: absolute;
+  top: max(28px, env(safe-area-inset-top));
+  left: var(--pad);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.replay-heading span {
+  font: 12px Plex;
+  color: var(--mint);
+}
+.replay-heading strong {
+  font: 600 34px Barlow;
+  letter-spacing: 0.04em;
+}
+.replay-actions {
+  position: absolute;
+  bottom: max(26px, env(safe-area-inset-bottom));
+  right: var(--pad);
+  display: flex;
+  gap: 24px;
+  pointer-events: auto;
+  align-items: center;
+}
+.replay-actions button {
+  font-size: 21px;
+  min-height: 48px;
+}
+#clip-status {
+  position: absolute;
+  bottom: 95px;
+  right: var(--pad);
+  font: 13px Plex;
+  color: var(--mint);
+  max-width: 70%;
+}
+body[data-phase="replay"] #masthead {
+  display: none;
+}
+body[data-preparing="true"] #loading {
+  display: flex;
+}
+body[data-phase="replay"] #shade {
+  opacity: 0;
+}
+@media (max-height: 650px) and (orientation: landscape) {
+  .hud-top {
+    gap: 15px;
+  }
+  .position-block {
+    min-width: 62px;
+  }
+  .position-block strong {
+    font-size: 34px;
+  }
+  .position-block small {
+    font-size: 12px;
+  }
+  .position-block .label,
+  #draft-label {
+    font-size: 10px;
+  }
+  #race-target {
+    top: 78px;
+    font-size: 9px;
+  }
+  #race-target b {
+    font-size: 17px;
+  }
+  #warning {
+    max-width: 250px;
+    top: 79px;
+    padding: 7px 10px;
+  }
+  #warning strong {
+    font-size: 20px;
+  }
+  #warning-detail {
+    font-size: 12px;
+  }
+  #branch-cue {
+    top: 135px;
+    font-size: 10px;
+    max-width: 235px;
+  }
+  #event-objective {
+    top: 75px;
+    font-size: 10px;
+  }
+  #ghost-delta {
+    top: 105px;
+    font-size: 10px;
+  }
+  .start-actions {
+    gap: 2px;
+    bottom: 47px;
+  }
+  .start-actions .primary {
+    min-height: 44px;
+  }
+  .start-actions .secondary {
+    min-height: 36px;
+    font-size: 17px;
+  }
+  #start-daily span {
+    font-size: 10px;
+  }
+  .result-tools {
+    gap: 20px;
+    margin-top: 0;
+  }
+  .result-tools button {
+    min-height: 36px;
+    font-size: 14px;
+  }
+  #record-message {
+    margin-top: 3px;
+  }
+  .replay-heading {
+    top: 18px;
+  }
+  .replay-heading strong {
+    font-size: 26px;
+  }
+  .replay-actions {
+    bottom: 18px;
+    gap: 18px;
+  }
+  .replay-actions button {
+    font-size: 18px;
+  }
+  .result-inner {
+    max-height: calc(100vh - 28px);
+  }
+  #challenge-banner {
+    font-size: 10px;
+    margin: 4px 0;
+    max-width: 240px;
+  }
+}
+@media (max-width: 670px) and (orientation: landscape) {
+  .hud-top {
+    gap: 10px;
+  }
+  .position-block {
+    min-width: 48px;
+  }
+  .position-block strong {
+    font-size: 30px;
+  }
+  #touch-controls button {
+    width: 64px;
+    height: 64px;
+  }
+  #touch-controls .actions button {
+    width: 68px;
+    height: 68px;
+  }
+  #touch-controls > div {
+    gap: 9px;
+  }
+  #touch-controls {
+    left: 17px;
+    right: 17px;
+    bottom: 14px;
+  }
+  .speed-block,
+  .reserve-block {
+    bottom: 94px;
+  }
+  .reserve-block {
+    width: 146px;
+  }
+  #warning {
+    max-width: 210px;
+  }
+  #warning strong {
+    font-size: 18px;
+  }
+  #warning-detail {
+    font-size: 10px;
+  }
+  #branch-cue {
+    max-width: 205px;
+  }
+  #event-objective {
+    max-width: 180px;
+    font-size: 9px;
+  }
+  #start-daily span {
+    display: none;
+  }
+  .result-tools {
+    gap: 15px;
+  }
+  .result-tools button {
+    font-size: 12px;
+  }
+  .result-stats strong {
+    font-size: 24px;
+  }
+  .result-stats > div:last-child strong {
+    font-size: 24px;
+  }
+  .result-inner h2 {
+    font-size: 32px;
+    margin-bottom: 6px;
+  }
+  #result-tip {
+    font-size: 12px;
+    margin-bottom: 7px;
+  }
+  .result-stats {
+    margin: 6px 0;
+    padding: 6px 0;
+  }
+  #result-badges {
+    display: none;
+  }
+  #record-message {
+    font-size: 8px;
+  }
+}
+@media (max-height: 650px) and (orientation: landscape) {
+  .start-actions .secondary {
+    min-height: 44px;
+  }
+  .result-tools button {
+    min-height: 44px;
+  }
+}
+#challenge-url {
+  -webkit-touch-callout: default;
+}

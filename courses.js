@@ -361,14 +361,180 @@ export const COURSES = [
     ],
   },
 ];
-// An additional authored 1.8 km final leg: recovery, slalom, sky ramp and
-// a last technical sequence. Existing stunt dimensions remain unchanged.
+// Each final district has its own rhythm: open maritime run, quarry precision,
+// then a dense cargo terminal. Geometry and physics share these exact distances.
+const finalDistricts = {
+  breakwater: {
+    sectors: ["STORM GALLERY", "OPEN ATLANTIC", "LIGHTHOUSE RUN"],
+    description:
+      "Race through the storm gallery, launch over a passing freighter and chase the last light.",
+    obstacles: [
+      drum(3910, 4.5),
+      barrier(4130, -4.6),
+      sweep(4770, 2),
+      barrier(4970, -4.6, 4.8),
+      barrier(5210, 4.7, 5.5),
+    ],
+    branches: [
+      [
+        "service-express",
+        "SERVICE EXPRESS",
+        900,
+        1260,
+        1,
+        5.8,
+        5,
+        1,
+        "A narrow maintenance line. Carry speed through the outer bend.",
+      ],
+      [
+        "sea-wall",
+        "SEA WALL LINE",
+        2360,
+        2690,
+        -1,
+        -5.7,
+        6,
+        2,
+        "Stay outside the central roadworks for a clean fast line.",
+      ],
+      [
+        "beacon-line",
+        "BEACON LINE",
+        4690,
+        5090,
+        1,
+        5.8,
+        7,
+        2,
+        "Read the moving barrier, then commit to the lighthouse straight.",
+      ],
+    ],
+  },
+  redshift: {
+    sectors: ["DUST VALLEY", "THE NARROWS", "QUARRY RIDGE"],
+    description:
+      "Thread the sandstone cut, read the rockfall and take the quarry line before the ridge launch.",
+    obstacles: [
+      rubble(4210, 4.5),
+      barrier(4430, -4.6),
+      beam(5070),
+      {
+        ...rubble(5270, -4.6),
+        amplitude: 1.6,
+        frequency: 0.36,
+        phase: 1.2,
+        rolling: true,
+      },
+      barrier(5510, 4.7, 5.5),
+    ],
+    branches: [
+      [
+        "quarry-express",
+        "QUARRY EXPRESS",
+        400,
+        720,
+        1,
+        5.8,
+        5,
+        2,
+        "The outside line is faster. Read the moving roadworks.",
+      ],
+      [
+        "ridge-cut",
+        "RIDGE CUT",
+        1260,
+        1570,
+        1,
+        5.8,
+        6,
+        1,
+        "Pass the fallen stone along the exposed canyon shoulder.",
+      ],
+      [
+        "mine-bypass",
+        "MINE BYPASS",
+        4180,
+        4470,
+        -1,
+        -5.8,
+        7,
+        2,
+        "A tight quarry approach with a late merge before the sky ramp.",
+      ],
+    ],
+  },
+  nightshift: {
+    sectors: ["CUSTOMS PURSUIT", "THE DRY DOCK", "ROOFTOP TERMINAL"],
+    description:
+      "Chase rivals through customs, slip beneath moving cranes and land on the raised freight terminal.",
+    obstacles: [
+      truck(4510, 4.5, 4),
+      barrier(4730, -4.6),
+      beam(5370),
+      cargo(5570),
+      drum(5810, 4.7),
+    ],
+    branches: [
+      [
+        "customs-bypass",
+        "CUSTOMS BYPASS",
+        420,
+        850,
+        -1,
+        -5.8,
+        5,
+        2,
+        "Take the clear customs lane, then time the moving barrier.",
+      ],
+      [
+        "crane-line",
+        "CRANE LINE",
+        1520,
+        1930,
+        1,
+        5.8,
+        6,
+        2,
+        "A faster line beneath the crane. Leave room for its load.",
+      ],
+      [
+        "terminal-express",
+        "TERMINAL EXPRESS",
+        5310,
+        5680,
+        -1,
+        -5.8,
+        7,
+        2,
+        "Stay low, time the swinging cargo and attack the final straight.",
+      ],
+    ],
+  },
+};
 for (const c of COURSES) {
-  const end = c.length;
+  const end = c.length,
+    district = finalDistricts[c.id];
   c.length += 1800;
   c.gold += 32;
   c.silver += 39;
   c.goldGates += 5;
+  c.sectors = district.sectors;
+  c.description = district.description;
+  c.branches = district.branches.map(
+    ([id, name, start, end, side, entryX, speedBonus, risk, description]) => ({
+      id,
+      name,
+      start,
+      end,
+      side,
+      entryX,
+      speedBonus,
+      risk,
+      description,
+      width: 4.4,
+    }),
+  );
   c.gaps.push({ start: end + 810, end: end + 925 });
   c.ramps.push({
     d: end + 790,
@@ -392,16 +558,15 @@ for (const c of COURSES) {
       [end + 1720, 0],
     ]),
   );
-  c.obstacles.push(
-    c.theme === "canyon" ? rubble(end + 310, 4.5) : drum(end + 310, 4.5),
-    barrier(end + 530, -4.6),
-    c.theme === "coast" ? sweep(end + 1170, 2) : beam(end + 1170),
-    c.theme === "port" ? cargo(end + 1370) : rubble(end + 1370, -4.6),
-    barrier(end + 1610, 4.7, 5.5),
-  );
+  c.obstacles.push(...district.obstacles);
   if (c.theme !== "coast")
     c.tunnels.push({ start: end + 1120, end: end + 1220 });
 }
+// A proper storm gallery gives Breakwater an enclosed-to-open reveal. The roof
+// has the same generous clearance as existing mine tunnels and ends before ramps.
+COURSES[0].tunnels.push({ start: 190, end: 370, storm: true });
+// This rolling debris stays on the left shoulder, leaving a readable escape lane.
+COURSES[1].obstacles.find((o) => o.d === 1370).rolling = true;
 for (const c of COURSES)
   for (const o of c.obstacles)
     if (o.speed) {
@@ -429,7 +594,7 @@ export function badgesFor(s) {
     s.finished && s.gates === s.course.gates.length,
   ];
 }
-export const LAYOUT_VERSION = 3;
+export const LAYOUT_VERSION = 4;
 export function saveResult(records, s, ghost = []) {
   if (!s.finished) return { records, record: false };
   const old = records[s.course.id] || {},

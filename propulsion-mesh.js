@@ -1,8 +1,8 @@
 import * as THREE from "./vendor/three.module.js";
 import { FLIGHT_PORTS } from "./propulsion.js";
 
-export function addFlightHardware(car, materials) {
-  const { carbon, alloy, darkAlloy, black } = materials;
+export function addFlightHardware(car, materials, options = {}) {
+  const { carbon, alloy, darkAlloy, black, paint = carbon } = materials;
   const jets = [],
     fans = [];
   const axis = new THREE.Vector3(0, 1, 0);
@@ -15,9 +15,13 @@ export function addFlightHardware(car, materials) {
     car.add(o);
     return o;
   };
-  const nozzleGeo = new THREE.CylinderGeometry(0.068, 0.086, 0.12, 20, 1, true);
-  const ringGeo = new THREE.TorusGeometry(0.069, 0.009, 6, 20);
-  const coreGeo = new THREE.CircleGeometry(0.06, 20);
+  // Outlet lips are only millimetres proud of the surface. Oval recesses and a
+  // machined throat read as integrated hardware, not cylinders bolted to a car.
+  const nozzleGeo = new THREE.CylinderGeometry(0.046, 0.041, 0.018, 24, 1, true);
+  const ringGeo = new THREE.TorusGeometry(0.049, 0.0032, 5, 24);
+  const coreGeo = new THREE.CircleGeometry(0.046, 24);
+  const surroundGeo = new THREE.RingGeometry(0.052, 0.069, 28);
+  const surroundTrim = new THREE.RingGeometry(0.067, 0.071, 28);
   const vaporGeo = new THREE.ConeGeometry(0.25, 1.7, 12, 6, true);
   // Cone tip at nozzle, exhaust expands outwards along +Y.
   vaporGeo.rotateZ(Math.PI);
@@ -38,20 +42,25 @@ export function addFlightHardware(car, materials) {
   FLIGHT_PORTS.forEach((port, i) => {
     const direction = new THREE.Vector3(...port.exhaust),
       q = new THREE.Quaternion().setFromUnitVectors(axis, direction);
-    const pos = new THREE.Vector3(...port.position);
-    add(nozzleGeo, darkAlloy, pos.toArray(), q);
+    const pos = new THREE.Vector3(...(options.surfacePosition?.(port) || port.position));
+    const barrel = add(nozzleGeo, darkAlloy, pos.clone().addScaledVector(direction, -.007).toArray(), q);
+    barrel.scale.z = port.kind === "side" ? 1.25 : 1.55;
     const face = new THREE.Quaternion().setFromUnitVectors(
       new THREE.Vector3(0, 0, 1),
       direction,
     );
-    const tip = pos.clone().addScaledVector(direction, 0.061);
-    add(ringGeo, alloy, tip.toArray(), face);
-    add(
-      coreGeo,
-      black,
-      pos.clone().addScaledVector(direction, 0.045).toArray(),
-      face,
-    );
+    const tip = pos.clone().addScaledVector(direction, 0.004);
+    const ring = add(ringGeo, darkAlloy, tip.toArray(), face);
+    const core = add(coreGeo, black, pos.toArray(), face);
+    const surround = add(surroundGeo, carbon, pos.clone().addScaledVector(direction,.001).toArray(), face);
+    const trim = add(surroundTrim, paint, pos.clone().addScaledVector(direction,.002).toArray(), face);
+    for(const part of [ring,core,surround,trim])part.scale.y = port.kind === "side" ? 1.25 : 1.55;
+    // Two shallow internal ribs show the inset without a bright chrome mouth.
+    for(const sign of [-1,1]) {
+      const ribGeo=new THREE.BoxGeometry(.055,.003,.004);
+      ribGeo.translate(0,sign*.025,.002);
+      add(ribGeo,darkAlloy,pos.toArray(),face);
+    }
     const material = new THREE.ShaderMaterial(shader);
     material.uniforms = THREE.UniformsUtils.clone(shader.uniforms);
     material.uniforms.phase.value = i * 2.3;

@@ -5,7 +5,14 @@ export function driveInput(s) {
     g = c.gates.find((g) => g.d > s.d);
   const gap = c.gaps.find((g) => s.d > g.start - 90 && s.d < g.end + 8);
   const hazards = c.obstacles
-    .map((o) => ({ ...o, ...hazardPose(o, s.time) }))
+    .map((o) => {
+      const now = hazardPose(o, s.time);
+      const arrival = Math.max(
+        0,
+        Math.min(2, (now.d - s.d) / Math.max(27, s.speed)),
+      );
+      return { ...o, ...hazardPose(o, s.time + arrival) };
+    })
     .filter((o) => o.d > s.d - 9 && o.d < s.d + 100)
     .sort((a, b) => a.d - b.d);
   let x = g?.x || 0,
@@ -15,8 +22,20 @@ export function driveInput(s) {
   );
   const o = hazards[0];
   if (o && !gap && o.kind !== "gantry") {
-    if (o.kind === "sweeper") fly = !low;
+    if (o.kind === "sweeper" || o.kind === "cargo") fly = !low;
     else x = o.x >= 0 ? -6 : 6;
+  }
+  // Plan a clear corridor through closely spaced traffic and barriers instead
+  // of committing to an outer lane until the first obstacle is behind us.
+  if (!gap && !fly && hazards.filter((h) => !h.bottom).length > 1) {
+    const lanes = [-6, -3, 0, 3, 6].filter((lane) =>
+      hazards.every((h) => h.bottom || Math.abs(lane - h.x) > h.w / 2 + 1.3),
+    );
+    if (lanes.length)
+      x = lanes.sort(
+        (a, b) => Math.abs(a - (g?.x || 0)) - Math.abs(b - (g?.x || 0)),
+      )[0];
+    else if (!low) fly = true;
   }
   if (low) fly = false;
   const ramp = c.ramps.find(

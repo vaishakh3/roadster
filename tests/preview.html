@@ -44,6 +44,7 @@
   <nav>
     <button data-view="home">Start screen</button
     ><button data-view="drive">Drive</button
+    ><button data-view="pack">Racing pack</button
     ><button data-view="gap">Bridge approach</button
     ><button data-view="flight">In flight</button
     ><button data-view="results">Results</button
@@ -114,11 +115,11 @@
       frame.contentWindow.location.reload();
     document.querySelectorAll("[data-arena]").forEach(
       (b) =>
-        (b.onclick = () => {
+        (b.onclick = async () => {
           const g = frame.contentWindow.__breakwater;
           if (!g) return;
           g.home();
-          g.selectCourse(b.dataset.arena);
+          await g.selectCourse(b.dataset.arena);
           g.freeze();
           g.step(0);
         }),
@@ -136,6 +137,27 @@
           }
           g.start();
           const v = b.dataset.view;
+          if (v === "pack") {
+            const w = frame.contentWindow;
+            g.setState({});
+            for (let i = 0; i < 300; i++) {
+              const input = driveInput(g.state);
+              for (const [code, on] of [
+                ["ArrowLeft", input.steer < -0.04],
+                ["ArrowRight", input.steer > 0.04],
+                ["Space", input.fly],
+              ])
+                w.dispatchEvent(
+                  new w.KeyboardEvent(on ? "keydown" : "keyup", {
+                    code,
+                    bubbles: true,
+                    cancelable: true,
+                  }),
+                );
+              g.step(1 / 60);
+            }
+            g.clear();
+          }
           if (v === "drive")
             g.setState({
               d: 380,

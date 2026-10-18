@@ -134,6 +134,43 @@ export function addSetpieces({
       }
     }
   }
+  // Drainage, expansion covers and directional chevrons ground the roadway in
+  // recognizable road engineering. Each group joins the existing rigid batches.
+  for (let d = 85; d < course.length; d += 80) {
+    if (course.gaps.some((g) => d > g.start - 15 && d < g.end + 15)) continue;
+    const g = groupAt(d);
+    for (const side of [-1, 1]) {
+      box(0.7, 0.018, 1.9, m.dark, side * 9.65, 0.132, 0, g);
+      for (let z = -0.75; z < 0.9; z += 0.25)
+        box(0.62, 0.022, 0.055, m.metal, side * 9.65, 0.145, z, g);
+    }
+  }
+  for (let d = 150; d < course.length; d += 210) {
+    if (course.gaps.some((g) => d > g.start - 100 && d < g.end + 100)) continue;
+    const [a, b, c, e] = course.curve;
+    const curvature =
+      (-a * Math.sin(d / b)) / (b * b) - (c * Math.sin(d / e)) / (e * e);
+    if (Math.abs(curvature) < 0.00035) continue;
+    const side = curvature > 0 ? -1 : 1;
+    for (let k = 0; k < 3; k++) {
+      const g = groupAt(d + k * 17, side * 11.6);
+      box(0.12, 2.4, 0.12, m.metal, 0, 1.2, 0, g);
+      box(1.25, 1.1, 0.12, m.dark, 0, 2.3, 0, g);
+      for (const vertical of [-1, 1]) {
+        const stripe = box(
+          0.14,
+          0.7,
+          0.04,
+          m.amber,
+          -side * 0.12,
+          2.3 + vertical * 0.21,
+          0.09,
+          g,
+        );
+        stripe.rotation.z = side * vertical * 0.7;
+      }
+    }
+  }
   // Recessed roadside reflectors make corner direction legible at speed.
   for (let d = 120; d < course.length; d += 95) {
     if (course.gaps.some((g) => d > g.start && d < g.end)) continue;

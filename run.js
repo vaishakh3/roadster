@@ -3,6 +3,12 @@
  * The assisted route heading keeps the controls simple; this is not a vehicle simulator. */
 import { COURSES, getCourse, hazardPose } from "./courses.js";
 import { rampContact, launchFlight, flightPose } from "./stunts.js";
+import {
+  createRivals,
+  rivalInput,
+  updateDraft,
+  updateRacePosition,
+} from "./rivals.js";
 export const LENGTH = COURSES[0].length;
 export const ROAD_HALF = 10;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -24,9 +30,28 @@ export function roadY(d, course = COURSES[0]) {
   const [a, b, c, e] = course.elevation;
   return 22 + Math.sin(d / b) * a + Math.sin(d / e) * c;
 }
-export function createRun(course = COURSES[0]) {
-  return {
-    course: typeof course === "string" ? getCourse(course) : course,
+export function createRun(course = COURSES[0], options = {}) {
+  const resolved = typeof course === "string" ? getCourse(course) : course;
+  const state = {
+    course: resolved,
+    isRival: !!options.rival,
+    rivals: [],
+    position: options.rival ? 1 : 4,
+    finishPosition: 0,
+    finishTime: 0,
+    eventSeed: 0,
+    drafting: 0,
+    draftTarget: null,
+    draftActive: false,
+    drift: 0,
+    slipAngle: 0,
+    bodyRoll: 0,
+    steering: 0,
+    lateralAcceleration: 0,
+    branch: null,
+    branchProgress: 0,
+    branchTime: 0,
+    branchesTaken: 0,
     d: 0,
     x: 0,
     vx: 0,
@@ -74,7 +99,11 @@ export function createRun(course = COURSES[0]) {
     crashDirection: 1,
     crashKind: "impact",
     landingAge: 10,
+    exitDistance: 0,
+    passCooldown: 0,
   };
+  if (!options.rival) state.rivals = createRivals(resolved, createRun);
+  return state;
 }
 function event(s, type, text, points = 0) {
   s.events.push({ type, text, points });
@@ -84,6 +113,11 @@ function finish(s, failed, reason) {
   s.failed = failed;
   s.finished = !failed;
   s.reason = reason;
+  if (!failed) {
+    s.finishTime =
+      s.time - Math.max(0, s.d - s.course.length) / Math.max(1, s.speed);
+    if (!s.isRival) updateRacePosition(s);
+  }
   if (failed) {
     s.crashAge = 0;
     s.crashKind = reason === "THE BRIDGE WAS OUT" ? "fall" : "impact";
@@ -107,6 +141,7 @@ function tick(s, raw, dt) {
   s.time += dt;
   s.crashAge += dt;
   s.landingAge += dt;
+  s.passCooldown = Math.max(0, s.passCooldown - dt);
   s.padTime = Math.max(0, s.padTime - dt);
   const {
     gaps: GAPS,
@@ -120,9 +155,48 @@ function tick(s, raw, dt) {
   const brake = !!raw.brake;
   s.boosting = !!raw.boost && s.energy > 0.5 && !brake;
   s.lifting = !!raw.fly && s.energy > 0.5;
-  // Air and road retain the same lateral authority. Boost never consumes steering.
-  const targetVx = steer * (s.y > 0.5 ? 12.5 : 11.5);
+  // Speed-sensitive steering preserves the same independent input while
+  // adding a little high-speed weight. Neutral input actively holds the lane.
+  const onRoad = s.y < 0.3 && s.attachedRamp < 0 && !s.flight;
+  const [ca, cb, cc, ce] = s.course.curve;
+  const curve =
+    ((-Math.sin(s.d / cb) * ca) / (cb * cb) -
+      (Math.sin(s.d / ce) * cc) / (ce * ce)) /
+    Math.pow(1 + roadSlope(s.d, s.course) ** 2, 1.5);
+  const fast = clamp((s.speed - 55) / 30, 0, 1);
+  const cornerLoad = clamp(curve * s.speed * s.speed, -7, 7);
+  const targetVx =
+    steer * (s.y > 0.5 ? 12.5 : 11.5 - fast * 0.65) -
+    (onRoad ? cornerLoad * Math.abs(steer) * fast * 0.055 : 0);
+  const oldVx = s.vx;
   s.vx += (targetVx - s.vx) * (1 - Math.exp(-dt * 9));
+  s.lateralAcceleration = (s.vx - oldVx) / dt + (onRoad ? cornerLoad : 0);
+  const driftTarget =
+    onRoad && Math.abs(steer) > 0.15
+      ? clamp(
+          (Math.abs(cornerLoad) + Math.abs(s.vx) * 0.4 - 3.5) / 9,
+          0,
+          0.65,
+        ) * fast
+      : 0;
+  s.drift += (driftTarget - s.drift) * (1 - Math.exp(-dt * 5));
+  s.slipAngle +=
+    (Math.atan2(s.vx, Math.max(27, s.speed)) * (0.22 + s.drift * 0.45) -
+      s.slipAngle) *
+    (1 - Math.exp(-dt * 8));
+  s.bodyRoll +=
+    ((onRoad ? clamp(-s.lateralAcceleration * 0.0018, -0.055, 0.055) : 0) -
+      s.bodyRoll) *
+    (1 - Math.exp(-dt * 9));
+  s.steering +=
+    (Math.atan2(steer * 11.5, Math.max(30, s.speed)) * 0.68 - s.steering) *
+    (1 - Math.exp(-dt * 12));
+  if (!s.isRival) updateDraft(s, dt);
+  if (s.drafting > 0.6 && !s.draftActive) {
+    s.draftActive = true;
+    event(s, "draft", "SLIPSTREAM · RESERVE CHARGING");
+  }
+  if (s.drafting < 0.15) s.draftActive = false;
   const prevX = s.x,
     prevY = s.y,
     prevRamp = s.attachedRamp;
@@ -132,6 +206,23 @@ function tick(s, raw, dt) {
     s.vx *= -0.18;
     s.speed = Math.max(28, s.speed - dt * 15);
   }
+  const branch = s.course.branches?.find((b) => s.d >= b.start && s.d < b.end);
+  const onBranch = branch && onRoad && Math.abs(s.x - branch.entryX) < 2.2;
+  if (s.branch?.id !== (onBranch ? branch.id : undefined)) s.branchTime = 0;
+  s.branch = onBranch ? branch : null;
+  s.branchProgress = branch
+    ? clamp((s.d - branch.start) / (branch.end - branch.start), 0, 1)
+    : 0;
+  if (onBranch) {
+    s.branchTime += dt;
+    const key = "branch:" + branch.id;
+    if (s.branchTime > 1.8 && !s.processed.has(key)) {
+      s.processed.add(key);
+      s.branchesTaken++;
+      s.score += 350;
+      event(s, "branch", branch.name.toUpperCase() + " · FAST LINE", 350);
+    }
+  }
   const targetSpeed = brake
     ? 27
     : s.padTime > 0
@@ -140,8 +231,11 @@ function tick(s, raw, dt) {
         ? 76
         : 48 + s.sector * 2;
   s.speed +=
-    (targetSpeed - s.speed) *
+    (targetSpeed +
+      (brake ? 0 : s.drafting * 3.5 + (onBranch ? branch.speedBonus : 0)) -
+      s.speed) *
     (1 - Math.exp(-dt * (brake ? 3 : s.boosting ? 1.1 : 0.75)));
+  if (onRoad && !brake) s.speed -= s.drift * 0.8 * dt;
   const prevD = s.d;
   s.d += s.speed * dt;
   s.topSpeed = Math.max(s.topSpeed, s.speed);
@@ -251,6 +345,20 @@ function tick(s, raw, dt) {
     s.vy = 0;
     s.stuntAngle = 0;
   }
+  // The tunnel roof undersurface is 11m above the shared road datum. Normal
+  // assisted lift stays below it; catch any upward transient without clipping.
+  if (
+    !s.flight &&
+    !attached &&
+    prevY < 9.55 &&
+    s.y > 9.55 &&
+    s.course.tunnels?.some((t) => s.d >= t.start - 6 && s.d <= t.end + 6)
+  ) {
+    s.y = 9.55;
+    s.vy = Math.min(0, s.vy);
+    s.liftAcceleration = 0;
+    event(s, "approach", "TUNNEL CEILING · KEEP LOW");
+  }
   s.airborne = s.attachedRamp < 0 && (s.y > 0.25 || gap);
   if (s.airborne) s.airtime += dt;
   // Flight stays available at the final bridge even after an imperfect run.
@@ -273,7 +381,7 @@ function tick(s, raw, dt) {
   }
   const drain = (s.boosting ? 20 : 0) + (s.lifting ? 12 : 0);
   s.energy = clamp(
-    s.energy + (drain ? -drain : s.y < 0.3 ? 17 : 4) * dt,
+    s.energy + ((drain ? -drain : s.y < 0.3 ? 17 : 4) + s.drafting * 5) * dt,
     0,
     100,
   );
@@ -412,6 +520,29 @@ function tick(s, raw, dt) {
   if (sector !== s.sector) {
     s.sector = sector;
     event(s, "sector", SECTORS[sector]);
+  }
+  if (!s.isRival) {
+    for (const rival of s.rivals) {
+      if (rival.finished) {
+        rival.exitDistance = Math.min(
+          100,
+          rival.exitDistance + rival.speed * dt,
+        );
+        continue;
+      }
+      if (rival.failed) continue;
+      tick(rival, rivalInput(rival, s), dt);
+    }
+    const previousPosition = s.position;
+    updateRacePosition(s);
+    if (s.position < previousPosition && s.time > 2 && !s.passCooldown) {
+      const key = "pass:" + s.position,
+        points = s.processed.has(key) ? 0 : 100;
+      s.processed.add(key);
+      s.score += points;
+      s.passCooldown = 3;
+      event(s, "overtake", "P" + s.position + " · OVERTAKE", points);
+    }
   }
   if (s.d >= LENGTH) finish(s, false, "CROSSING COMPLETE");
 }
