@@ -420,6 +420,30 @@ test("A device far below the frame budget still gets a lower resolution", () => 
   for (let i = 0; i < 600; i++) ratio = gentle.sample(1 / 30, ratio, 1.25);
   assert.equal(ratio, 0.8);
 });
+test("Phones hold CSS resolution and shed the shadow pass instead of blurring", () => {
+  const budget = new FrameBudget();
+  let ratio = 1.25;
+  // 1.25 → 1.15 → 1.05 → 1.0 over three 2 s windows, then one window at the floor.
+  for (let i = 0; i < 240; i++) ratio = budget.sample(1 / 30, ratio, 1.25, 1);
+  assert.equal(ratio, 1);
+  assert.equal(budget.shadows, true, "one slow window at the floor is tolerated");
+  for (let i = 0; i < 60; i++) ratio = budget.sample(1 / 30, ratio, 1.25, 1);
+  assert.equal(ratio, 1);
+  assert.equal(budget.shadows, false);
+  // Recovery is +0.05 per four fast windows (~40 s back to the ceiling);
+  // shadows return only after eight more fast windows at the ceiling.
+  let frames = 0;
+  while (ratio < 1.25 && frames++ < 4000) {
+    ratio = budget.sample(1 / 60, ratio, 1.25, 1);
+    assert.equal(budget.shadows, false, "shadows wait for the ceiling");
+  }
+  assert.equal(ratio, 1.25);
+  assert.ok(frames > 2000 && frames < 3000, `gradual recovery, took ${frames}`);
+  for (let i = 0; i < 1100; i++) ratio = budget.sample(1 / 60, ratio, 1.25, 1);
+  assert.equal(budget.shadows, true);
+  budget.reset();
+  assert.equal(budget.shadows, true);
+});
 test("Ground hazards trigger a visible directional impact and damage only once", () => {
   for (const kind of ["cargo", "rubble", "drums"]) {
     const c = COURSES.find((c) => c.obstacles.some((o) => o.kind === kind));

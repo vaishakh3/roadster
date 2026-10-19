@@ -30,7 +30,8 @@ import {
 import { COURSES, hazardPose } from "./courses.js";
 
 /** Each prepared venue owns one reusable world; selection only changes visibility. */
-export function createCoast(scene, renderer, course = COURSES[0]) {
+export function createCoast(scene, renderer, course = COURSES[0], options = {}) {
+  const lite = !!options.lite;
   const root = new THREE.Group();
   scene.add(root);
   // "range" (McGregor) reuses the desert pipeline with a flat prairie, no
@@ -77,7 +78,8 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     rockLods = [],
     forestLods = [],
     instanceWindows = [];
-  let lowQuality = false;
+  let lowQuality = false,
+    shadowsOn = true;
   const dynamics = new Set(),
     object = new THREE.Object3D();
   function mesh(g, m, parent = root) {
@@ -594,7 +596,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
   let rockSurface;
   // Continuous eroded terrain: close cliffs, horizontal strata and distant ridgelines.
   if (!night) {
-    rockSurface = rockMaterial(canyon, true);
+    rockSurface = rockMaterial(canyon, true, lite);
     for (const side of [-1, 1])
       for (let start = -480; start < length + 1200; start += 240) {
         const params = { start, end: start + 240, side, canyon, roadX, roadY };
@@ -607,7 +609,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     if (canyon) {
       const cactus = mat(0x465b3a);
       const plants = [];
-      const ground = rockMaterial(false);
+      const ground = rockMaterial(false, false, lite);
       ground.vertexColors = false;
       ground.color.setHex(0x9e805d);
       ground.roughness = 1;
@@ -732,7 +734,7 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
         scale: [3 + n * 7, h, 4 + n * 12],
       });
     }
-    const stoneMat = rockMaterial(canyon);
+    const stoneMat = rockMaterial(canyon, false, lite);
     stoneMat.color.setHex(range ? 0xa39b86 : canyon ? 0xb38d6c : 0x7d8877);
     const crags = [];
     if (canyon === true) {
@@ -2052,10 +2054,18 @@ export function createCoast(scene, renderer, course = COURSES[0]) {
     ROAD_Y: 22,
     roadY,
     emit,
+    setShadows(on) {
+      shadowsOn = on;
+      renderer.shadowMap.enabled = on;
+      sun.castShadow = on;
+    },
+    get shadows() {
+      return shadowsOn;
+    },
     setQuality(low) {
       lowQuality = low;
-      renderer.shadowMap.enabled = true;
-      sun.castShadow = true;
+      renderer.shadowMap.enabled = shadowsOn;
+      sun.castShadow = shadowsOn;
       const size = low ? 1024 : 2048;
       if (sun.shadow.mapSize.x !== size) {
         sun.shadow.map?.dispose();

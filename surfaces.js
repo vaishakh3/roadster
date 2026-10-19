@@ -170,7 +170,10 @@ export function roadMaterial(wet, type = "road") {
 
 // Three projected samples retain the scan's mineral surface on all cliff faces;
 // two small data-map reads add metre-scale land cover and eroded strata.
-export function rockMaterial(canyon, terrain = false) {
+// `lite` (phone tier) keeps the triplanar colour but drops the erosion read
+// and the normal-scan lookup: two fewer dependent texture fetches per fragment
+// on the surface that fills most of a phone screen.
+export function rockMaterial(canyon, terrain = false, lite = false) {
   const material = new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.96,
@@ -179,10 +182,12 @@ export function rockMaterial(canyon, terrain = false) {
   });
   if (!surfaces.rock) return material;
   material.customProgramCacheKey = () =>
-    "mineral-terrain-v8-" +
+    "mineral-terrain-v9-" +
     canyon +
     "-" +
     terrain +
+    "-" +
+    lite +
     "-" +
     !!surfaces.rockNormal;
   material.onBeforeCompile = (shader) => {
@@ -197,7 +202,11 @@ export function rockMaterial(canyon, terrain = false) {
       vec3 blend=pow(abs(stoneN),vec3(4.));blend/=max(.001,blend.x+blend.y+blend.z);
       vec3 scan=texture2D(rockScan,vStone.zy*.19).rgb*blend.x+texture2D(rockScan,vStone.xz*.19).rgb*blend.y+texture2D(rockScan,vStone.xy*.19).rgb*blend.z;
       vec3 broad=texture2D(surfaceDetail,vStone.xz*.0016+vStone.y*.0008).rgb;
-      vec3 erosion=texture2D(surfaceDetail,vec2(vStone.x+vStone.z*.61,vStone.y)*vec2(.014,.022)).rgb;
+      ${
+        lite
+          ? "vec3 erosion=broad.gbr;"
+          : "vec3 erosion=texture2D(surfaceDetail,vec2(vStone.x+vStone.z*.61,vStone.y)*vec2(.014,.022)).rgb;"
+      }
       float detail=dot(scan,vec3(.299,.587,.114));
       float mineral=clamp((detail-.46)*1.8+.94,.48,1.42);
       diffuseColor.rgb*=mineral*(.73+broad.r*.45+erosion.g*.16);
@@ -225,7 +234,7 @@ export function rockMaterial(canyon, terrain = false) {
     `,
       );
     relief(shader, "rockRelief", canyon ? ".24" : ".19");
-    if (surfaces.rockNormal) {
+    if (surfaces.rockNormal && !lite) {
       // One dominant-axis normal lookup adds the scan's fine surface relief.
       // Large forms retain smoothly blended triplanar color and bump above.
       shader.uniforms.rockNormalScan = { value: surfaces.rockNormal };
