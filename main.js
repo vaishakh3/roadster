@@ -1334,7 +1334,7 @@ function updateVisuals(dt, snap = false, visual = run) {
       (cockpit ? 66 : 70) + (visual.boosting && !reduced ? 7 : 0),
       snap ? 1 : 1 - Math.exp(-dt * 3),
     );
-    cameraLocal.set(cockpit ? -0.36 : 0, cockpit ? 0.98 : 0.74, cockpit ? 0.08 : -1.55);
+    cameraLocal.set(cockpit ? -0.36 : 0, cockpit ? 0.98 : 0.9, cockpit ? 0.08 : -1.9);
     car.localToWorld(cameraLocal);
     if (!reduced) cameraLocal.y += Math.sin(clock * 19) * 0.006 * (visual.boosting ? 2 : 1);
     if (snap) camera.position.copy(cameraLocal);
@@ -1344,7 +1344,7 @@ function updateVisuals(dt, snap = false, visual = run) {
     camera.up.copy(inCarUp);
     cameraTarget.set(
       roadX(visual.d + 34, course) + visual.x * 0.8,
-      coast.roadY(visual.d + 34) + 0.9 + visual.y,
+      coast.roadY(visual.d + 34) + (cockpit ? 0.9 : 1.35) + visual.y,
       -visual.d - 34,
     );
     camera.lookAt(cameraTarget);

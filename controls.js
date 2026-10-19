@@ -111,6 +111,7 @@ export function createControls(target, onAction, enabled = () => true) {
       0;
     return angle === 90 ? 1 : angle === 270 || angle === -90 ? -1 : 1;
   };
+  // Exposed as tiltSample so tests and QA can feed orientation readings.
   const onOrientation = (e) => {
     if (e.beta == null) return;
     tilt.beta = e.beta;
@@ -167,5 +168,16 @@ export function createControls(target, onAction, enabled = () => true) {
     touches.clear();
     bound.forEach((b) => b.classList.remove("pressed"));
   }
-  return { read, clear, bind, poll, keys, touches, setTilt, calibrate, tilt };
+  return {
+    read,
+    clear,
+    bind,
+    poll,
+    keys,
+    touches,
+    setTilt,
+    calibrate,
+    tilt,
+    tiltSample: onOrientation,
+  };
 }
