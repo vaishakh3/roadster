@@ -20,13 +20,16 @@ export function createControls(target, onAction, enabled = () => true) {
     "Escape",
     "KeyP",
     "KeyR",
+    "KeyC",
   ]);
   const action = (code) =>
     code === "Escape" || code === "KeyP"
       ? "pause"
       : code === "KeyR"
         ? "retry"
-        : null;
+        : code === "KeyC"
+          ? "camera"
+          : null;
   const down = (e) => {
     if (!recognized.has(e.code)) return;
     // Preserve normal activation on menus (Space/Enter on focused buttons).
@@ -97,13 +100,60 @@ export function createControls(target, onAction, enabled = () => true) {
     if (start && !padStart) onAction("pause");
     padStart = start;
   }
+  // Tilt steering: dipping the phone's left or right edge in landscape is a
+  // rotation about the device x axis (beta). The neutral pose is sampled at
+  // race start so a relaxed grip steers straight; 3° dead zone, full lock at 20°.
+  const tilt = { on: false, beta: 0, neutral: 0, steer: 0, pending: false };
+  const orientationSign = () => {
+    const angle =
+      (typeof screen !== "undefined" && screen.orientation?.angle) ??
+      (typeof window !== "undefined" ? window.orientation : 0) ??
+      0;
+    return angle === 90 ? 1 : angle === 270 || angle === -90 ? -1 : 1;
+  };
+  const onOrientation = (e) => {
+    if (e.beta == null) return;
+    tilt.beta = e.beta;
+    if (tilt.pending) {
+      tilt.neutral = e.beta;
+      tilt.pending = false;
+    }
+    const delta = (e.beta - tilt.neutral) * orientationSign();
+    const magnitude = Math.max(0, Math.min(1, (Math.abs(delta) - 3) / 17));
+    tilt.steer = tilt.on ? Math.sign(delta) * magnitude : 0;
+  };
+  async function setTilt(on) {
+    tilt.on = false;
+    tilt.steer = 0;
+    if (!on || typeof window === "undefined") {
+      window?.removeEventListener?.("deviceorientation", onOrientation);
+      return false;
+    }
+    if (typeof DeviceOrientationEvent === "undefined") return false;
+    try {
+      if (typeof DeviceOrientationEvent.requestPermission === "function") {
+        const result = await DeviceOrientationEvent.requestPermission();
+        if (result !== "granted") return false;
+      }
+    } catch {
+      return false;
+    }
+    window.addEventListener("deviceorientation", onOrientation);
+    tilt.on = true;
+    tilt.pending = true;
+    return true;
+  }
+  function calibrate() {
+    tilt.pending = tilt.on;
+    tilt.steer = 0;
+  }
   function read() {
     const active = new Set(touches.values());
     const keySteer =
       Number(has("ArrowRight", "KeyD") || active.has("right")) -
       Number(has("ArrowLeft", "KeyA") || active.has("left"));
     return {
-      steer: keySteer || pad.steer,
+      steer: keySteer || pad.steer || tilt.steer,
       boost:
         has("ShiftLeft", "ShiftRight", "ArrowUp", "KeyW") ||
         active.has("boost") ||
@@ -117,5 +167,5 @@ export function createControls(target, onAction, enabled = () => true) {
     touches.clear();
     bound.forEach((b) => b.classList.remove("pressed"));
   }
-  return { read, clear, bind, poll, keys, touches };
+  return { read, clear, bind, poll, keys, touches, setTilt, calibrate, tilt };
 }

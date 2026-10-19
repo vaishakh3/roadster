@@ -340,9 +340,14 @@
             <span class="label">SCORE <span id="multiplier"></span></span
             ><strong id="score">0</strong>
           </div>
-          <button id="pause" class="icon-button" aria-label="Pause game">
-            Ⅱ
-          </button>
+          <div class="hud-buttons">
+            <button id="camera-toggle" class="icon-button" aria-label="Switch camera view" title="Camera view (C)">
+              <small>CAM</small><b>CHASE</b>
+            </button>
+            <button id="pause" class="icon-button" aria-label="Pause game">
+              Ⅱ
+            </button>
+          </div>
         </div>
         <div id="coach" hidden aria-live="polite">
           <span>FIRST RUN</span><b id="coach-text"></b>
@@ -422,6 +427,10 @@
                 <span>GRAPHICS</span><b>AUTO</b></button
               ><button id="motion" class="setting">
                 <span>CAMERA MOTION</span><b>FULL</b></button
+              ><button id="camera" class="setting" title="Chase, hood or cockpit view; C cycles during a race">
+                <span>CAMERA VIEW</span><b>CHASE</b></button
+              ><button id="gyro" class="setting" title="Tilt the phone like a wheel to steer; buttons still work">
+                <span>TILT STEERING</span><b>OFF</b></button
               ><button
                 id="saver"
                 class="setting"
@@ -447,7 +456,7 @@
               <p id="trim-note"></p>
               <p class="menu-help">
                 Steer with ← → or A / D.<br />Hold Space to fly. Release to
-                land.<br />Hold Shift or ↑ to boost. ↓ brakes.<br />Gamepad:
+                land.<br />Hold Shift or ↑ to boost. ↓ brakes. C switches camera.<br />Gamepad:
                 stick steers, RT boosts, LT flies, B brakes.
               </p>
             </div>
