@@ -3859,36 +3859,6 @@ body[data-phase="results"] .result-stats > div:nth-child(5) {
 #result-rank.bronze {
   color: #e3a774;
 }
-#boost-fx::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent 0 7%,
-    #ffffff10 7% 7.4%,
-    transparent 7.4% 13%
-  );
-  mask: linear-gradient(90deg, #000, transparent 22%, transparent 78%, #000);
-  -webkit-mask: linear-gradient(
-    90deg,
-    #000,
-    transparent 22%,
-    transparent 78%,
-    #000
-  );
-  animation: boost-streaks 0.5s linear infinite;
-}
-@keyframes boost-streaks {
-  from {
-    transform: scaleX(1);
-    opacity: 0.9;
-  }
-  to {
-    transform: scaleX(1.35);
-    opacity: 0.4;
-  }
-}
 #course-select button {
   transition:
     opacity 0.25s,
@@ -3916,9 +3886,33 @@ body[data-phase="results"] .result-stats > div:nth-child(5) {
 @media (prefers-reduced-motion: reduce) {
   body[data-phase="results"] .result-stats > div,
   #result-rank.reveal,
-  #boost-fx::after,
   #course-select button.active i,
   #course-select button.active b {
     animation: none;
   }
+}
+
+/* Camera view toggle sits with the pause button; label + current view. */
+.hud-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#camera-toggle {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 10px;
+  font: 600 11px/1 Barlow, sans-serif;
+  letter-spacing: 0.1em;
+}
+#camera-toggle small {
+  font: 500 8px/1 Plex, monospace;
+  letter-spacing: 0.16em;
+  color: var(--dim);
+}
+#camera-toggle b {
+  font-weight: 600;
 }

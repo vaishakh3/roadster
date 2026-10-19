@@ -583,6 +583,24 @@ function key(target, type, code) {
   target.dispatchEvent(e);
   return e;
 }
+test("Tilt steering calibrates to the held pose, has a dead zone and saturates at 20°", () => {
+  const c = createControls(new EventTarget(), () => {});
+  c.tilt.on = true;
+  c.calibrate();
+  c.tiltSample({ beta: 24 }); // relaxed grip, phone tilted back: becomes neutral
+  assert.equal(c.read().steer, 0);
+  c.tiltSample({ beta: 26 }); // inside the 3° dead zone
+  assert.equal(c.read().steer, 0);
+  c.tiltSample({ beta: 24 + 11.5 });
+  assert.ok(Math.abs(c.read().steer - 0.5) < 0.001, "half lock at 11.5°");
+  c.tiltSample({ beta: 24 + 30 });
+  assert.equal(c.read().steer, 1);
+  c.tiltSample({ beta: 24 - 30 });
+  assert.equal(c.read().steer, -1);
+  c.tilt.on = false;
+  c.tiltSample({ beta: 24 + 30 });
+  assert.equal(c.read().steer, 0, "disabled tilt never steers");
+});
 test("Actual input reducer preserves Shift plus both arrow directions independently", () => {
   const target = new EventTarget(),
     c = createControls(target, () => {});

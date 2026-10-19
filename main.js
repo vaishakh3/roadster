@@ -175,10 +175,21 @@ let qualityLow = false,
   initialized = false;
 const coarse = () => matchMedia("(pointer:coarse)").matches;
 const phoneTier = coarse() || innerWidth < 900;
+const CAMERA_MODES = ["chase", "hood", "cockpit"];
+let cameraMode = CAMERA_MODES.includes(storage.get("roadster-camera", "chase"))
+    ? storage.get("roadster-camera", "chase")
+    : "chase",
+  gyro = storage.get("roadster-gyro", false) === true;
+const cameraUp = new THREE.Vector3(),
+  inCarUp = new THREE.Vector3(0, 1, 0),
+  cameraLocal = new THREE.Vector3();
 const cameraTarget = new THREE.Vector3(),
   cameraGoal = new THREE.Vector3();
 const num = (n) => Math.round(n).toLocaleString("en-US");
 function setPhase(value) {
+  car?.userData.setCockpit(
+    cameraMode === "cockpit" && (value === "playing" || value === "paused"),
+  );
   if (value !== "home") showroomTurn = null;
   phase = value;
   document.body.dataset.phase = value;
@@ -343,6 +354,7 @@ function start() {
   recordFrame();
   ghostIndex = 0;
   countdown = 1.5;
+  controls.calibrate();
   toastTime = impactTime = 0;
   $("event").textContent = "";
   setPhase("playing");
@@ -1083,6 +1095,7 @@ const rampNormal = new THREE.Vector3(),
   rampRight = new THREE.Vector3(),
   rampBasis = new THREE.Matrix4();
 function updateVisuals(dt, snap = false, visual = run) {
+  camera.up.set(0, 1, 0);
   const hero =
     phase === "home" || (phase === "paused" && previousPhase === "home");
   advanceShowroom(dt);
@@ -1310,6 +1323,31 @@ function updateVisuals(dt, snap = false, visual = run) {
     if (snap) camera.position.copy(cameraGoal);
     else camera.position.lerp(cameraGoal, 1 - Math.exp(-dt * 7));
     camera.lookAt(x, y + 0.65, -visual.d - 1);
+  } else if (cameraMode !== "chase") {
+    // In-car views ride the body: position and up vector come from the car's
+    // world matrix, so ramps, rolls and landings are felt, while the look
+    // target stays on the road ahead to keep the horizon readable.
+    camera.clearViewOffset();
+    const cockpit = cameraMode === "cockpit";
+    camera.fov = THREE.MathUtils.lerp(
+      camera.fov,
+      (cockpit ? 66 : 70) + (visual.boosting && !reduced ? 7 : 0),
+      snap ? 1 : 1 - Math.exp(-dt * 3),
+    );
+    cameraLocal.set(cockpit ? -0.36 : 0, cockpit ? 0.98 : 0.9, cockpit ? 0.08 : -1.9);
+    car.localToWorld(cameraLocal);
+    if (!reduced) cameraLocal.y += Math.sin(clock * 19) * 0.006 * (visual.boosting ? 2 : 1);
+    if (snap) camera.position.copy(cameraLocal);
+    else camera.position.lerp(cameraLocal, 1 - Math.exp(-dt * 30));
+    cameraUp.set(0, 1, 0).transformDirection(car.matrixWorld);
+    inCarUp.lerp(cameraUp, snap ? 1 : 1 - Math.exp(-dt * 12)).normalize();
+    camera.up.copy(inCarUp);
+    cameraTarget.set(
+      roadX(visual.d + 34, course) + visual.x * 0.8,
+      coast.roadY(visual.d + 34) + (cockpit ? 0.9 : 1.35) + visual.y,
+      -visual.d - 34,
+    );
+    camera.lookAt(cameraTarget);
   } else {
     camera.clearViewOffset();
     const targetFov = reduced
@@ -1346,6 +1384,21 @@ function updateVisuals(dt, snap = false, visual = run) {
     camera.lookAt(cameraTarget);
   }
   camera.updateProjectionMatrix();
+}
+function applyCamera() {
+  const label = cameraMode.toUpperCase();
+  $("camera").querySelector("b").textContent = label;
+  $("camera-toggle").querySelector("b").textContent = label;
+  car?.userData.setCockpit(
+    cameraMode === "cockpit" && (phase === "playing" || phase === "paused"),
+  );
+  storage.set("roadster-camera", cameraMode);
+}
+function cycleCamera() {
+  cameraMode =
+    CAMERA_MODES[(CAMERA_MODES.indexOf(cameraMode) + 1) % CAMERA_MODES.length];
+  applyCamera();
+  updateVisuals(0, true);
 }
 function applyQuality() {
   frameBudget.reset();
@@ -1470,6 +1523,29 @@ function saveCard() {
   const ctx = c.getContext("2d");
   ctx.fillStyle = "#102b34";
   ctx.fillRect(0, 0, 1200, 630);
+  // The card carries the moment, not just numbers: the live frame (car on the
+  // venue) is drawn right after a render, before the WebGL buffer is swapped.
+  try {
+    renderer.render(scene, camera);
+    const src = renderer.domElement,
+      scale = Math.max(1200 / src.width, 630 / src.height),
+      w = src.width * scale,
+      h = src.height * scale;
+    ctx.drawImage(src, (1200 - w) / 2, (630 - h) / 2, w, h);
+    const fade = ctx.createLinearGradient(0, 0, 1200, 0);
+    fade.addColorStop(0, "#102b34f2");
+    fade.addColorStop(0.55, "#102b34c8");
+    fade.addColorStop(1, "#102b3433");
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, 0, 1200, 630);
+    const floor = ctx.createLinearGradient(0, 380, 0, 630);
+    floor.addColorStop(0, "#102b3400");
+    floor.addColorStop(1, "#102b34e6");
+    ctx.fillStyle = floor;
+    ctx.fillRect(0, 380, 1200, 250);
+  } catch {
+    /* Card still works without the frame. */
+  }
   ctx.fillStyle = "#ff8255";
   ctx.fillRect(0, 0, 18, 630);
   ctx.font = "600 26px Barlow";
@@ -1958,6 +2034,8 @@ async function boot() {
           if (phase === "replay") stopFilm();
           else if (phase === "playing") pause();
           else if (phase === "paused") resume();
+        } else if (action === "camera") {
+          if (phase === "playing" || phase === "paused") cycleCamera();
         } else if (
           action === "retry" &&
           (phase === "playing" ||
@@ -2109,6 +2187,27 @@ async function boot() {
       $("saver").querySelector("b").textContent = saver ? "30 FPS" : "OFF";
     };
     $("saver").querySelector("b").textContent = saver ? "30 FPS" : "OFF";
+    $("camera").onclick = $("camera-toggle").onclick = () => cycleCamera();
+    applyCamera();
+    const gyroLabel = (state) =>
+      ($("gyro").querySelector("b").textContent = state);
+    $("gyro").onclick = async () => {
+      if (gyro) {
+        gyro = false;
+        await controls.setTilt(false);
+        gyroLabel("OFF");
+      } else {
+        gyroLabel("…");
+        gyro = await controls.setTilt(true);
+        gyroLabel(gyro ? "ON" : "UNAVAILABLE");
+      }
+      storage.set("roadster-gyro", gyro);
+    };
+    if (gyro)
+      controls.setTilt(true).then((ok) => {
+        gyro = ok;
+        gyroLabel(ok ? "ON" : "TAP TO ALLOW");
+      });
     $("trim").onclick = () => {
       const unlocked = TRIMS.filter((t) => t.required <= totalCups()).length;
       trimIndex = (trimIndex + 1) % unlocked;
@@ -2367,6 +2466,11 @@ async function boot() {
         },
         get drawCalls() {
           return renderer.info.render.calls;
+        },
+        setCamera(mode) {
+          cameraMode = mode;
+          applyCamera();
+          updateVisuals(0, true);
         },
         freeze(value = true) {
           frozen = value;

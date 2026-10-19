@@ -488,6 +488,6 @@ export function createCar() {
   for(const wheel of wheels){batchRigid(wheel.spin);batchRigid(wheel.pivot);}
   batchRigid(wing);
   batchRigid(car,new Set([...brakeLights,...thrusterJets,...flightHardware.jets]));
-  car.userData={interior,setDetail:detailed=>{const t=detailed?.20:0;if(glass.transmission!==t){glass.transmission=t;glass.side=detailed?THREE.DoubleSide:THREE.FrontSide;glass.needsUpdate=true;}interior.visible=!!detailed;},wheels,brakeLights,thrusterJets,flightHardware,wing,paintMaterial:paint,glassMaterial:glass,headlightMaterial:headlamp};
+  let cockpitOn=false;car.userData={interior,setCockpit:on=>{on=!!on;if(cockpitOn===on)return;cockpitOn=on;glass.transparent=true;glass.opacity=on?.22:1;glass.depthWrite=!on;glass.needsUpdate=true;interior.visible=on;},setDetail:detailed=>{const t=detailed?.20:0;if(glass.transmission!==t){glass.transmission=t;glass.side=detailed?THREE.DoubleSide:THREE.FrontSide;glass.needsUpdate=true;}interior.visible=!!detailed||cockpitOn;},wheels,brakeLights,thrusterJets,flightHardware,wing,paintMaterial:paint,glassMaterial:glass,headlightMaterial:headlamp};
   return car;
 }
