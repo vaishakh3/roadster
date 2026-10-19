@@ -174,6 +174,7 @@ let qualityLow = false,
   lastHud = 0,
   initialized = false;
 const coarse = () => matchMedia("(pointer:coarse)").matches;
+const phoneTier = coarse() || innerWidth < 900;
 const cameraTarget = new THREE.Vector3(),
   cameraGoal = new THREE.Vector3();
 const num = (n) => Math.round(n).toLocaleString("en-US");
@@ -907,6 +908,8 @@ function tick(dt) {
     if (countdown <= 0) {
       announce("RACE THE CARS · FLY OVER OR PASS", "GO", 0.8);
       audio.event("start");
+      // Shader warm-up stutter during READY/SET must not be read as a slow GPU.
+      frameBudget.reset();
     } else if (was > 0.7 && countdown <= 0.7)
       $("announcement-title").textContent = "SET";
     return;
@@ -1346,6 +1349,7 @@ function updateVisuals(dt, snap = false, visual = run) {
 }
 function applyQuality() {
   frameBudget.reset();
+  coast?.setShadows(true);
   qualityLow =
     quality === "low" || (quality === "auto" && (coarse() || innerWidth < 900));
   renderer.setPixelRatio(
@@ -1433,7 +1437,8 @@ function frame(now) {
         `${((perfStats.seconds / perfStats.frames) * 1000).toFixed(1)} MS · ` +
         `PR ${renderer.getPixelRatio().toFixed(2)} · ${info.calls} CALLS · ` +
         `${(info.triangles / 1000).toFixed(0)}K TRIS · ${quality.toUpperCase()}` +
-        `${qualityLow ? " LOW" : ""}${saver ? " · SAVER" : ""} · ` +
+        `${qualityLow ? " LOW" : ""}${saver ? " · SAVER" : ""}` +
+        `${coast?.shadows === false ? " · NO SHADOWS" : ""} · ` +
         `${innerWidth}×${innerHeight} @${devicePixelRatio}`;
       perfStats.frames = perfStats.seconds = 0;
     }
@@ -1445,12 +1450,17 @@ function frame(now) {
     (phase === "playing" || (phase === "home" && showroomDrive.stats.moving))
   ) {
     const ceiling = Math.min(devicePixelRatio || 1, qualityLow ? 1.25 : 1.75);
+    // Phones never render below CSS resolution: that is the grain he saw.
+    // Past the floor the ladder drops the shadow pass instead.
     const ratio = frameBudget.sample(
       frameSeconds,
       renderer.getPixelRatio(),
       ceiling,
+      phoneTier ? Math.min(1, ceiling) : 0.7,
     );
     if (ratio !== renderer.getPixelRatio()) renderer.setPixelRatio(ratio);
+    if (coast && frameBudget.shadows !== coast.shadows)
+      coast.setShadows(frameBudget.shadows);
   }
 }
 function saveCard() {
@@ -1509,7 +1519,7 @@ const nextPaint = () =>
 function ensureVenue(id) {
   if (venues.has(id)) return venues.get(id);
   const current = coast,
-    venue = createCoast(scene, renderer, getCourse(id));
+    venue = createCoast(scene, renderer, getCourse(id), { lite: phoneTier });
   venue.root.visible = false;
   venues.set(id, venue);
   if (current) current.activate();
@@ -1910,7 +1920,11 @@ async function boot() {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Soft PCF is ~9 dependent taps per fragment; phones get plain PCF and the
+    // lighter terrain shader (phoneTier is fixed at startup so venues never rebuild).
+    renderer.shadowMap.type = phoneTier
+      ? THREE.PCFShadowMap
+      : THREE.PCFSoftShadowMap;
     await loadVisualAssets(renderer, (value) => {
       loading.update(
         5 + value * 48,
